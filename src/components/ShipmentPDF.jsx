@@ -1,10 +1,10 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
 const styles = StyleSheet.create({
-  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#1a1a1a', backgroundColor: '#fff' },
-  headerBar:   { backgroundColor: '#0e0e0e', padding: '16 24', marginBottom: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#ffffff', backgroundColor: '#fff' },
+  headerBar:   { backgroundColor: '#f0ebe2', padding: '16 24', marginBottom: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLabel: { fontSize: 8, color: '#c8a96e', letterSpacing: 2 },
-  headerTitle: { fontSize: 18, color: '#e8e0d0', fontFamily: 'Helvetica', marginTop: 2 },
+  headerTitle: { fontSize: 18, color: '#0e0a04', fontFamily: 'Helvetica', marginTop: 2 },
   headerRight: { fontSize: 8, color: '#888', textAlign: 'right' },
   sectionLabel:{ fontSize: 8, color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, marginTop: 20 },
   row:         { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottom: '0.5 solid #eeeeee' },

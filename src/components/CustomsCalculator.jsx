@@ -61,8 +61,8 @@ function Spinner() {
         display: "inline-block",
         width: 16,
         height: 16,
-        border: "2px solid #c8a96e44",
-        borderTopColor: "#c8a96e",
+        border: "2px solid rgba(200,144,10,0.25)",
+        borderTopColor: "#C8900A",
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
       }}
@@ -72,8 +72,6 @@ function Spinner() {
 
 export default function CustomsCalculator({ user }) {
   const [tab, setTab] = useState("calculator");
-
-  // Form state
   const [description, setDescription] = useState("");
   const [hsCode, setHsCode] = useState("");
   const [dutyRate, setDutyRate] = useState("");
@@ -85,24 +83,18 @@ export default function CustomsCalculator({ user }) {
   const [incoterm, setIncoterm] = useState("FOB");
   const [preferential, setPreferential] = useState(false);
   const [hasProofOfOrigin, setHasProofOfOrigin] = useState(false);
-
-  // Data state
   const [exchangeRate, setExchangeRate] = useState(null);
   const [rateLoading, setRateLoading] = useState(false);
   const [rateDate, setRateDate] = useState(null);
   const [hsResult, setHsResult] = useState(null);
   const [hsLoading, setHsLoading] = useState(false);
-  const [dutyRateSource, setDutyRateSource] = useState(null); // null | "ai" | "manual"
+  const [dutyRateSource, setDutyRateSource] = useState(null);
   const [dutyRateLoading, setDutyRateLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-
-  // Favourites
   const [favourites, setFavourites] = useState([]);
   const [favLoading, setFavLoading] = useState(false);
   const [savedCodes, setSavedCodes] = useState(new Set());
-
-  // FX board state
   const [allRates, setAllRates] = useState({});
   const [allRatesDate, setAllRatesDate] = useState(null);
   const [allRatesLoading, setAllRatesLoading] = useState(false);
@@ -112,7 +104,6 @@ export default function CustomsCalculator({ user }) {
 
   const hasPref = ORIGIN_AGREEMENTS[originCountry]?.pref;
 
-  // Fetch exchange rate
   useEffect(() => {
     if (currency === "EUR") {
       setExchangeRate(1);
@@ -133,7 +124,6 @@ export default function CustomsCalculator({ user }) {
       });
   }, [currency]);
 
-  // Fetch all rates once on mount (base EUR)
   useEffect(() => {
     setAllRatesLoading(true);
     fetch("https://api.frankfurter.app/latest?from=EUR")
@@ -146,7 +136,6 @@ export default function CustomsCalculator({ user }) {
       .catch(() => setAllRatesLoading(false));
   }, []);
 
-  // Load favourites
   useEffect(() => {
     fetch("/api/favourites")
       .then((r) => r.json())
@@ -219,31 +208,20 @@ export default function CustomsCalculator({ user }) {
     const ins = parseFloat(insurance) || 0;
     const rate = exchangeRate || 1;
     const duty = parseFloat(dutyRate) || 0;
-
     if (!val || !exchangeRate) return;
-
-    // Convert everything to EUR
     const valEUR = val * rate;
     const frEUR = fr * rate;
     const insEUR = ins * rate;
-
-    // CIF value
     let cifEUR = valEUR;
     if (incoterm === "FOB" || incoterm === "EXW") cifEUR = valEUR + frEUR + insEUR;
     else if (incoterm === "CFR") cifEUR = valEUR + insEUR;
-
-    // Duty-free threshold
     const dutyFree = cifEUR <= 150;
-
-    // Apply preferential rate
     let effectiveDutyRate = duty / 100;
     if (hasPref && hasProofOfOrigin) effectiveDutyRate = 0;
-
     const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
     const vatBase = cifEUR + customsDuty;
     const importVAT = vatBase * LUXEMBURG_VAT;
     const total = cifEUR + customsDuty + importVAT;
-
     setResult({
       cifEUR,
       customsDuty,
@@ -325,57 +303,54 @@ export default function CustomsCalculator({ user }) {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0e0e0e",
-        color: "#e8e0d0",
-        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        background: "#f0ebe2",
+        color: "#0e0a04",
+        fontFamily: "'DM Sans', sans-serif",
         padding: "0",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Courier+Prime:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=Courier+Prime:wght@400;700&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        input, select { background: #1a1a1a; border: 1px solid #333; color: #e8e0d0; padding: 8px 12px; font-family: 'Courier Prime', monospace; font-size: 13px; border-radius: 2px; width: 100%; outline: none; transition: border-color 0.2s; }
-        input:focus, select:focus { border-color: #c8a96e; }
-        select option { background: #1a1a1a; }
-        button { cursor: pointer; font-family: 'Cormorant Garamond', Georgia, serif; }
+        input, select { background: #fff; border: 1px solid #d8d2c8; color: #0e0a04; padding: 8px 12px; font-family: 'Courier Prime', monospace; font-size: 13px; border-radius: 2px; width: 100%; outline: none; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: #C8900A; }
+        select option { background: #fff; color: #0e0a04; }
+        button { cursor: pointer; font-family: 'DM Sans', sans-serif; }
         .tag { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px; font-family: 'Courier Prime', monospace; }
-        .tag-green { background: #1a2e1a; border: 1px solid #2d5a2d; color: #6bc26b; }
-        .tag-red { background: #2e1a1a; border: 1px solid #5a2d2d; color: #c26b6b; }
-        .tag-amber { background: #2e261a; border: 1px solid #5a4a2d; color: #c8a96e; }
-        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
+        .tag-green { background: #e8f5e8; border: 1px solid #a8d8a8; color: #2e6e2e; }
+        .tag-red { background: #fde8e8; border: 1px solid #e8a8a8; color: #8e2e2e; }
+        .tag-amber { background: rgba(200,144,10,0.1); border: 1px solid rgba(200,144,10,0.3); color: #C8900A; }
+        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e0d8cc; }
         .result-row:last-child { border-bottom: none; }
-        .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: #666; margin-bottom: 12px; }
-        .btn-gold { background: #c8a96e; color: #0e0e0e; border: none; transition: background 0.2s, box-shadow 0.25s, transform 0.1s; cursor: pointer; }
-        .btn-gold:hover { background: #ddb97e; box-shadow: 0 0 22px #c8a96e55, 0 0 6px #c8a96e33; transform: translateY(-1px); }
+        .section-label { font-family: 'Oswald', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; color: #9a8e7e; margin-bottom: 12px; font-weight: 400; }
+        .btn-gold { background: linear-gradient(135deg, #F8DA6A, #C8900A); color: #0a0600; border: none; transition: all 0.2s; cursor: pointer; }
+        .btn-gold:hover { background: linear-gradient(135deg, #fce880, #e0a010); box-shadow: 0 4px 20px rgba(200,144,10,0.3); transform: translateY(-1px); }
         .btn-gold:active { transform: translateY(0); box-shadow: none; }
-        .btn-gold:disabled { background: #333; color: #666; box-shadow: none; transform: none; cursor: default; }
-        .btn-ghost { background: none; transition: color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s; cursor: pointer; }
-        .btn-ghost:hover { border-color: #c8a96e88 !important; color: #ddb97e !important; box-shadow: 0 0 12px #c8a96e22; transform: translateY(-1px); }
+        .btn-gold:disabled { background: #e8e2d8; color: #b0a898; box-shadow: none; transform: none; cursor: default; }
+        .btn-ghost { background: none; transition: color 0.2s, border-color 0.2s, transform 0.1s; cursor: pointer; }
+        .btn-ghost:hover { border-color: #C8900A !important; color: #C8900A !important; transform: translateY(-1px); }
         .btn-ghost:active { transform: translateY(0); }
-        .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; box-shadow: none; }
-
-        /* Responsive */
+        .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid #222; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid #d8d2c8; padding: 0 16px; overflow-x: auto; scrollbar-width: none; background: #ede8e0; }
         .tabs-bar::-webkit-scrollbar { display: none; }
-        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; }
-        .tab-btn:hover { color: #e8e0d0 !important; background: #ffffff08; }
-        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 1px; background: #c8a96e44; transition: left 0.2s, right 0.2s; }
+        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: 'Oswald', sans-serif; font-weight: 600; }
+        .tab-btn:hover { color: #0e0a04 !important; background: rgba(0,0,0,0.03); }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 2px; background: #C8900A; transition: left 0.2s, right 0.2s; }
         .tab-btn:hover::after { left: 16px; right: 16px; }
-        .page-header { border-bottom: 1px solid #222; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .page-content { padding: 24px; max-width: 900px; margin: 0 auto; }
+        .page-header { border-bottom: 1px solid #d8d2c8; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ede8e0; }
+        .page-content { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
         .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
         .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-
         @media (max-width: 700px) {
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
           .tabs-bar { padding: 0 8px; justify-content: flex-start; }
-          .tab-btn { padding: 12px 14px; font-size: 11px; letter-spacing: 1px; }
-          .page-header { padding: 16px; }
+          .tab-btn { padding: 12px 14px; font-size: 10px; letter-spacing: 1px; }
+          .page-header { padding: 0 16px; }
           .page-content { padding: 16px; }
           .header-right { display: none; }
           .fx-two-col { grid-template-columns: 1fr !important; }
@@ -386,53 +361,78 @@ export default function CustomsCalculator({ user }) {
 
       {/* Header */}
       <div className="page-header">
-        <div>
-          <div
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
+            <rect width="56" height="56" rx="11" fill="#1a1208" />
+            <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#hGold)" />
+            <path
+              d="M13 22L28 39L43 22"
+              stroke="url(#hGold)"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#hGold)" />
+            <defs>
+              <linearGradient id="hGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#F8DA6A" />
+                <stop offset="100%" stopColor="#D4920A" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span
             style={{
-              fontSize: 11,
+              fontFamily: "'Oswald', sans-serif",
+              fontSize: 22,
+              fontWeight: 700,
               letterSpacing: 4,
-              color: "#c8a96e",
               textTransform: "uppercase",
-              marginBottom: 4,
-              fontFamily: "'Courier Prime', monospace",
+              color: "#0e0a04",
             }}
           >
-            Luxembourg · EU Customs
-          </div>
-          <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: 1 }}>Import Duty Calculator</h1>
+            Dutify
+          </span>
         </div>
         <div className="header-right">
-          <div style={{ fontSize: 10, color: "#555", fontFamily: "'Courier Prime', monospace" }}>
-            COMMON CUSTOMS TARIFF
+          <div
+            style={{
+              fontFamily: "'Oswald', sans-serif",
+              fontSize: 10,
+              color: "#b0a898",
+              letterSpacing: 3,
+              textTransform: "uppercase",
+            }}
+          >
+            Luxembourg · VAT 17%
           </div>
-          <div style={{ fontSize: 10, color: "#555", fontFamily: "'Courier Prime', monospace" }}>VAT LU 17%</div>
           {rateDate && currency !== "EUR" && (
-            <div style={{ fontSize: 10, color: "#c8a96e66", fontFamily: "'Courier Prime', monospace", marginTop: 4 }}>
+            <div style={{ fontSize: 10, color: "#C8900A88", fontFamily: "'Courier Prime', monospace", marginTop: 4 }}>
               FX: {currency}/EUR {exchangeRate?.toFixed(5)} · {rateDate}
             </div>
           )}
-          <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "flex-end" }}>
             {user?.role === "ADMIN" && (
               <a
                 href="/admin"
                 style={{
+                  fontFamily: "'Oswald', sans-serif",
                   fontSize: 10,
-                  color: "#555",
-                  fontFamily: "'Courier Prime', monospace",
-                  letterSpacing: 1,
+                  color: "#9a8e7e",
+                  letterSpacing: 2,
                   textDecoration: "none",
-                  padding: "4px 8px",
-                  border: "1px solid #222",
+                  padding: "4px 10px",
+                  border: "1px solid #d8d2c8",
                   borderRadius: 2,
                   transition: "color 0.2s, border-color 0.2s",
+                  textTransform: "uppercase",
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.color = "#c8a96e";
-                  e.target.style.borderColor = "#c8a96e44";
+                  e.target.style.color = "#C8900A";
+                  e.target.style.borderColor = "#C8900A44";
                 }}
                 onMouseLeave={(e) => {
-                  e.target.style.color = "#555";
-                  e.target.style.borderColor = "#222";
+                  e.target.style.color = "#9a8e7e";
+                  e.target.style.borderColor = "#d8d2c8";
                 }}
               >
                 admin
@@ -441,24 +441,25 @@ export default function CustomsCalculator({ user }) {
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               style={{
+                fontFamily: "'Oswald', sans-serif",
                 fontSize: 10,
-                color: "#555",
-                fontFamily: "'Courier Prime', monospace",
-                letterSpacing: 1,
+                color: "#9a8e7e",
+                letterSpacing: 2,
                 background: "none",
-                border: "1px solid #222",
+                border: "1px solid #d8d2c8",
                 borderRadius: 2,
-                padding: "4px 8px",
+                padding: "4px 10px",
                 cursor: "pointer",
                 transition: "color 0.2s, border-color 0.2s",
+                textTransform: "uppercase",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#c26b6b";
-                e.currentTarget.style.borderColor = "#5a2d2d";
+                e.currentTarget.style.color = "#8e2e2e";
+                e.currentTarget.style.borderColor = "#e8a8a8";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#555";
-                e.currentTarget.style.borderColor = "#222";
+                e.currentTarget.style.color = "#9a8e7e";
+                e.currentTarget.style.borderColor = "#d8d2c8";
               }}
             >
               logout
@@ -475,8 +476,8 @@ export default function CustomsCalculator({ user }) {
             onClick={() => setTab(t)}
             className="tab-btn"
             style={{
-              color: tab === t ? "#c8a96e" : "#555",
-              borderBottom: tab === t ? "1px solid #c8a96e" : "1px solid transparent",
+              color: tab === t ? "#C8900A" : "#9a8e7e",
+              borderBottom: tab === t ? "2px solid #C8900A" : "2px solid transparent",
             }}
           >
             {t === "calculator" ? "Calc" : t === "hs-lookup" ? "HS Lookup" : t === "fx" ? "FX Rates" : "Reference"}
@@ -488,17 +489,14 @@ export default function CustomsCalculator({ user }) {
         {/* CALCULATOR TAB */}
         {tab === "calculator" && (
           <div className="two-col">
-            {/* Left: Inputs */}
             <div>
               <div className="section-label">Shipment Details</div>
-
               <div style={{ display: "grid", gap: 16 }}>
-                {/* Origin */}
                 <div>
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -525,7 +523,7 @@ export default function CustomsCalculator({ user }) {
                     <div
                       style={{
                         fontSize: 11,
-                        color: hasPref ? "#6bc26b" : "#888",
+                        color: hasPref ? "#2e6e2e" : "#8a7e6e",
                         marginTop: 6,
                         fontFamily: "'Courier Prime', monospace",
                       }}
@@ -555,12 +553,11 @@ export default function CustomsCalculator({ user }) {
                   )}
                 </div>
 
-                {/* Incoterm */}
                 <div>
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -576,17 +573,18 @@ export default function CustomsCalculator({ user }) {
                       </option>
                     ))}
                   </select>
-                  <div style={{ fontSize: 11, color: "#888", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}>
+                  <div
+                    style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}
+                  >
                     {INCOTERMS_CIF[incoterm]?.note}
                   </div>
                 </div>
 
-                {/* Currency */}
                 <div>
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -601,18 +599,17 @@ export default function CustomsCalculator({ user }) {
                         <option key={c}>{c}</option>
                       ))}
                     </select>
-                    <div style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, color: "#8a7e6e", whiteSpace: "nowrap" }}>
                       {rateLoading ? <Spinner /> : currency === "EUR" ? "" : `× ${exchangeRate?.toFixed(4)}`}
                     </div>
                   </div>
                 </div>
 
-                {/* Values */}
                 <div>
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -635,7 +632,7 @@ export default function CustomsCalculator({ user }) {
                       <label
                         style={{
                           fontSize: 11,
-                          color: "#777",
+                          color: "#8a7e6e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           display: "block",
@@ -655,7 +652,7 @@ export default function CustomsCalculator({ user }) {
                       <label
                         style={{
                           fontSize: 11,
-                          color: "#777",
+                          color: "#8a7e6e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           display: "block",
@@ -678,7 +675,7 @@ export default function CustomsCalculator({ user }) {
                     <label
                       style={{
                         fontSize: 11,
-                        color: "#777",
+                        color: "#8a7e6e",
                         letterSpacing: 2,
                         textTransform: "uppercase",
                         display: "block",
@@ -700,7 +697,7 @@ export default function CustomsCalculator({ user }) {
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -730,8 +727,8 @@ export default function CustomsCalculator({ user }) {
                       style={{
                         flex: "1 1 auto",
                         padding: "8px 12px",
-                        border: "1px solid #333",
-                        color: dutyRateLoading ? "#555" : "#c8a96e",
+                        border: "1px solid #d8d2c8",
+                        color: dutyRateLoading ? "#9a8e7e" : "#C8900A",
                         fontSize: 11,
                         letterSpacing: 1,
                         borderRadius: 2,
@@ -757,8 +754,8 @@ export default function CustomsCalculator({ user }) {
                       style={{
                         flex: "1 1 auto",
                         padding: "8px 12px",
-                        border: "1px solid #333",
-                        color: "#c8a96e",
+                        border: "1px solid #d8d2c8",
+                        color: "#C8900A",
                         fontSize: 11,
                         letterSpacing: 1,
                         borderRadius: 2,
@@ -775,7 +772,7 @@ export default function CustomsCalculator({ user }) {
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#777",
+                      color: "#8a7e6e",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -789,7 +786,7 @@ export default function CustomsCalculator({ user }) {
                           marginLeft: 8,
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 10,
-                          color: "#c8a96e",
+                          color: "#C8900A",
                           letterSpacing: 1,
                         }}
                       >
@@ -806,27 +803,25 @@ export default function CustomsCalculator({ user }) {
                       setDutyRateSource((s) => (s ? { ...s, aiGenerated: false } : null));
                     }}
                     step="0.1"
-                    style={{ borderColor: dutyRateSource?.aiGenerated ? "#c8a96e55" : undefined }}
+                    style={{ borderColor: dutyRateSource?.aiGenerated ? "rgba(200,144,10,0.3)" : undefined }}
                   />
-
-                  {/* AI-suggested rate disclaimer */}
                   {dutyRateSource?.aiGenerated && !dutyRateSource.error && (
                     <div
                       style={{
                         marginTop: 8,
                         padding: "10px 14px",
-                        background: "#1e1a10",
-                        border: "1px solid #c8a96e33",
+                        background: "#fff8e8",
+                        border: "1px solid rgba(200,144,10,0.2)",
                         borderRadius: 2,
                       }}
                     >
-                      <div style={{ fontSize: 12, color: "#c8a96e", marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, color: "#C8900A", marginBottom: 4 }}>
                         ⚠ AI-estimated rate — please verify before use
                       </div>
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#888",
+                          color: "#8a7e6e",
                           fontFamily: "'Courier Prime', monospace",
                           lineHeight: 1.6,
                         }}
@@ -853,7 +848,7 @@ export default function CustomsCalculator({ user }) {
                           display: "inline-block",
                           marginTop: 8,
                           fontSize: 11,
-                          color: "#c8a96e",
+                          color: "#C8900A",
                           fontFamily: "'Courier Prime', monospace",
                         }}
                       >
@@ -863,21 +858,21 @@ export default function CustomsCalculator({ user }) {
                   )}
                   {dutyRateSource?.error && (
                     <div
-                      style={{ marginTop: 6, fontSize: 11, color: "#c26b6b", fontFamily: "'Courier Prime', monospace" }}
+                      style={{ marginTop: 6, fontSize: 11, color: "#8e2e2e", fontFamily: "'Courier Prime', monospace" }}
                     >
                       Could not look up rate — enter manually and verify in TARIC.
                     </div>
                   )}
                   {!dutyRateSource && !dutyRateLoading && (
                     <div
-                      style={{ fontSize: 11, color: "#444", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}
+                      style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}
                     >
                       Enter HS code above to auto-suggest · or{" "}
                       <a
                         href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp"
                         target="_blank"
                         rel="noopener"
-                        style={{ color: "#c8a96e" }}
+                        style={{ color: "#C8900A" }}
                       >
                         look up in TARIC ↗
                       </a>
@@ -896,7 +891,7 @@ export default function CustomsCalculator({ user }) {
                     fontWeight: 700,
                     borderRadius: 2,
                     marginTop: 8,
-                    fontFamily: "'Cormorant Garamond', serif",
+                    fontFamily: "'Oswald', sans-serif",
                     width: "100%",
                   }}
                 >
@@ -908,15 +903,14 @@ export default function CustomsCalculator({ user }) {
             {/* Right: Results */}
             <div>
               <div className="section-label">Duty Breakdown</div>
-
               {!result && (
                 <div
                   style={{
-                    border: "1px dashed #222",
+                    border: "1px dashed #d8d2c8",
                     borderRadius: 2,
                     padding: 40,
                     textAlign: "center",
-                    color: "#444",
+                    color: "#9a8e7e",
                     fontSize: 14,
                     fontStyle: "italic",
                   }}
@@ -924,19 +918,18 @@ export default function CustomsCalculator({ user }) {
                   Enter shipment details and calculate to see the duty breakdown
                 </div>
               )}
-
               {result && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
                   {result.dutyFree && (
                     <div
                       style={{
-                        background: "#1a2e1a",
-                        border: "1px solid #2d5a2d",
+                        background: "#e8f5e8",
+                        border: "1px solid #a8d8a8",
                         padding: "12px 16px",
                         borderRadius: 2,
                         marginBottom: 16,
                         fontSize: 13,
-                        color: "#6bc26b",
+                        color: "#2e6e2e",
                       }}
                     >
                       ✓ CIF value ≤ €150 — Customs duties waived (low-value goods threshold). Import VAT still applies.
@@ -945,22 +938,21 @@ export default function CustomsCalculator({ user }) {
                   {hasPref && hasProofOfOrigin && (
                     <div
                       style={{
-                        background: "#1a2e1a",
-                        border: "1px solid #2d5a2d",
+                        background: "#e8f5e8",
+                        border: "1px solid #a8d8a8",
                         padding: "12px 16px",
                         borderRadius: 2,
                         marginBottom: 16,
                         fontSize: 13,
-                        color: "#6bc26b",
+                        color: "#2e6e2e",
                       }}
                     >
                       ✓ Preferential duty rate applied (0%) — valid proof of origin declared
                     </div>
                   )}
-
-                  <div style={{ background: "#141414", border: "1px solid #222", borderRadius: 2, padding: 20 }}>
+                  <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 20 }}>
                     <div className="result-row">
-                      <span style={{ color: "#888", fontSize: 13 }}>Goods value</span>
+                      <span style={{ color: "#8a7e6e", fontSize: 13 }}>Goods value</span>
                       <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
                         € {fmt(result.valEUR)}
                       </span>
@@ -968,13 +960,13 @@ export default function CustomsCalculator({ user }) {
                     {(incoterm === "FOB" || incoterm === "EXW") && (
                       <>
                         <div className="result-row">
-                          <span style={{ color: "#888", fontSize: 13 }}>+ Freight</span>
+                          <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Freight</span>
                           <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
                             € {fmt(result.frEUR)}
                           </span>
                         </div>
                         <div className="result-row">
-                          <span style={{ color: "#888", fontSize: 13 }}>+ Insurance</span>
+                          <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Insurance</span>
                           <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
                             € {fmt(result.insEUR)}
                           </span>
@@ -983,31 +975,31 @@ export default function CustomsCalculator({ user }) {
                     )}
                     {incoterm === "CFR" && (
                       <div className="result-row">
-                        <span style={{ color: "#888", fontSize: 13 }}>+ Insurance</span>
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Insurance</span>
                         <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
                           € {fmt(result.insEUR)}
                         </span>
                       </div>
                     )}
-
-                    <div className="result-row" style={{ borderTop: "1px solid #333", paddingTop: 14, marginTop: 4 }}>
+                    <div
+                      className="result-row"
+                      style={{ borderTop: "1px solid #e0d8cc", paddingTop: 14, marginTop: 4 }}
+                    >
                       <span style={{ fontSize: 14, fontWeight: 600 }}>CIF Value (customs base)</span>
-                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 14, color: "#c8a96e" }}>
+                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 14, color: "#C8900A" }}>
                         € {fmt(result.cifEUR)}
                       </span>
                     </div>
-
-                    <div style={{ height: 1, background: "#222", margin: "12px 0" }} />
-
+                    <div style={{ height: 1, background: "#e0d8cc", margin: "12px 0" }} />
                     <div className="result-row">
-                      <span style={{ color: "#888", fontSize: 13 }}>
+                      <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Customs duty
                         <span
                           style={{
                             fontFamily: "'Courier Prime', monospace",
                             marginLeft: 8,
                             fontSize: 11,
-                            color: "#555",
+                            color: "#9a8e7e",
                           }}
                         >
                           {result.dutyFree ? "(waived)" : `${result.effectiveDutyRate.toFixed(2)}%`}
@@ -1017,16 +1009,15 @@ export default function CustomsCalculator({ user }) {
                         € {fmt(result.customsDuty)}
                       </span>
                     </div>
-
-                    <div className="result-row" style={{ borderBottom: "1px solid #333", paddingBottom: 14 }}>
-                      <span style={{ color: "#888", fontSize: 13 }}>
+                    <div className="result-row" style={{ borderBottom: "1px solid #e0d8cc", paddingBottom: 14 }}>
+                      <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Import VAT (LU)
                         <span
                           style={{
                             fontFamily: "'Courier Prime', monospace",
                             marginLeft: 8,
                             fontSize: 11,
-                            color: "#555",
+                            color: "#9a8e7e",
                           }}
                         >
                           17%
@@ -1036,28 +1027,31 @@ export default function CustomsCalculator({ user }) {
                         € {fmt(result.importVAT)}
                       </span>
                     </div>
-
                     <div className="result-row" style={{ borderBottom: "none", paddingTop: 16 }}>
                       <span style={{ fontSize: 16, fontWeight: 600 }}>Total landed cost</span>
                       <span
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 20,
-                          color: "#c8a96e",
+                          color: "#C8900A",
                           fontWeight: 700,
                         }}
                       >
                         € {fmt(result.total)}
                       </span>
                     </div>
-
-                    <div style={{ marginTop: 16, padding: "12px 16px", background: "#0e0e0e", borderRadius: 2 }}>
-                      <div style={{ fontSize: 11, color: "#555", fontFamily: "'Courier Prime', monospace" }}>
+                    <div style={{ marginTop: 16, padding: "12px 16px", background: "#f5f0e8", borderRadius: 2 }}>
+                      <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
                         Duties as % of goods value:{" "}
                         {(((result.customsDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}%
                       </div>
                       <div
-                        style={{ fontSize: 11, color: "#555", fontFamily: "'Courier Prime', monospace", marginTop: 4 }}
+                        style={{
+                          fontSize: 11,
+                          color: "#9a8e7e",
+                          fontFamily: "'Courier Prime', monospace",
+                          marginTop: 4,
+                        }}
                       >
                         VAT base: CIF + Duty = € {fmt(result.vatBase)}
                       </div>
@@ -1065,7 +1059,7 @@ export default function CustomsCalculator({ user }) {
                         <div
                           style={{
                             fontSize: 11,
-                            color: "#555",
+                            color: "#9a8e7e",
                             fontFamily: "'Courier Prime', monospace",
                             marginTop: 4,
                           }}
@@ -1075,33 +1069,31 @@ export default function CustomsCalculator({ user }) {
                       )}
                     </div>
                   </div>
-
                   <div
                     style={{
                       marginTop: 16,
                       padding: "12px 16px",
-                      background: "#141414",
-                      border: "1px solid #222",
+                      background: "#fff8f0",
+                      border: "1px solid #e8ddd0",
                       borderRadius: 2,
                       fontSize: 12,
-                      color: "#666",
+                      color: "#8a7e6e",
                       lineHeight: 1.6,
                     }}
                   >
-                    <strong style={{ color: "#888" }}>⚠ Important:</strong> This is an estimate only. Actual duties are
-                    determined by Luxembourg customs (Administration des Douanes). Anti-dumping, excise, or other
+                    <strong style={{ color: "#7a6e5e" }}>⚠ Important:</strong> This is an estimate only. Actual duties
+                    are determined by Luxembourg customs (Administration des Douanes). Anti-dumping, excise, or other
                     special duties are not included. Always verify HS code and rates in{" "}
                     <a
                       href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp"
                       target="_blank"
                       rel="noopener"
-                      style={{ color: "#c8a96e" }}
+                      style={{ color: "#C8900A" }}
                     >
                       TARIC ↗
                     </a>
                     .
                   </div>
-
                   <button
                     onClick={downloadPDF}
                     className="btn-ghost"
@@ -1109,14 +1101,14 @@ export default function CustomsCalculator({ user }) {
                       marginTop: 12,
                       width: "100%",
                       padding: "12px",
-                      border: "1px solid #333",
-                      color: "#c8a96e",
+                      border: "1px solid #d8d2c8",
+                      color: "#C8900A",
                       fontSize: 12,
                       letterSpacing: 3,
                       textTransform: "uppercase",
                       borderRadius: 2,
                       background: "none",
-                      fontFamily: "'Cormorant Garamond', serif",
+                      fontFamily: "'Oswald', sans-serif",
                     }}
                   >
                     ↓ Export PDF
@@ -1131,11 +1123,10 @@ export default function CustomsCalculator({ user }) {
         {tab === "hs-lookup" && (
           <div style={{ maxWidth: 640 }}>
             <div className="section-label">AI-Assisted HS Code Classification</div>
-            <p style={{ color: "#888", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
+            <p style={{ color: "#8a7e6e", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
               Describe your product in detail. The more specific, the better — include material composition, function,
               whether it's finished/unfinished, and end use.
             </p>
-
             <div style={{ display: "grid", gap: 12 }}>
               <textarea
                 value={description}
@@ -1143,9 +1134,9 @@ export default function CustomsCalculator({ user }) {
                 placeholder="e.g. Laptop computer, 15-inch, Intel Core i7, 16GB RAM, for personal/commercial use. Not a gaming laptop."
                 rows={4}
                 style={{
-                  background: "#1a1a1a",
-                  border: "1px solid #333",
-                  color: "#e8e0d0",
+                  background: "#f5f0e8",
+                  border: "1px solid #d8d2c8",
+                  color: "#0e0a04",
                   padding: "12px",
                   fontFamily: "'Courier Prime', monospace",
                   fontSize: 13,
@@ -1161,14 +1152,14 @@ export default function CustomsCalculator({ user }) {
                 className={hsLoading ? "" : "btn-gold"}
                 style={{
                   padding: "14px",
-                  background: hsLoading ? "#333" : undefined,
-                  color: hsLoading ? "#888" : undefined,
+                  background: hsLoading ? "#e8e2d8" : undefined,
+                  color: hsLoading ? "#9a8e7e" : undefined,
                   fontSize: 13,
                   letterSpacing: 3,
                   textTransform: "uppercase",
                   fontWeight: 700,
                   borderRadius: 2,
-                  fontFamily: "'Cormorant Garamond', serif",
+                  fontFamily: "'Oswald', sans-serif",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1189,7 +1180,7 @@ export default function CustomsCalculator({ user }) {
 
             {hsResult && !hsResult.error && (
               <div style={{ marginTop: 24, animation: "fadeIn 0.3s ease" }}>
-                <div style={{ background: "#141414", border: "1px solid #222", borderRadius: 2, padding: 24 }}>
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24 }}>
                   <div
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 20 }}
                   >
@@ -1198,13 +1189,13 @@ export default function CustomsCalculator({ user }) {
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 28,
-                          color: "#c8a96e",
+                          color: "#C8900A",
                           letterSpacing: 4,
                         }}
                       >
                         {hsResult.hs6}
                       </div>
-                      <div style={{ fontSize: 14, color: "#aaa", marginTop: 4 }}>{hsResult.description}</div>
+                      <div style={{ fontSize: 14, color: "#9a8e7e", marginTop: 4 }}>{hsResult.description}</div>
                     </div>
                     <span
                       className={`tag tag-${hsResult.confidence === "high" ? "green" : hsResult.confidence === "medium" ? "amber" : "red"}`}
@@ -1212,13 +1203,12 @@ export default function CustomsCalculator({ user }) {
                       {hsResult.confidence} confidence
                     </span>
                   </div>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                    <div style={{ background: "#0e0e0e", padding: 16, borderRadius: 2 }}>
+                    <div style={{ background: "#f5f0e8", padding: 16, borderRadius: 2 }}>
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#555",
+                          color: "#9a8e7e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           marginBottom: 6,
@@ -1226,16 +1216,18 @@ export default function CustomsCalculator({ user }) {
                       >
                         Standard Duty Rate
                       </div>
-                      <div style={{ fontFamily: "'Courier Prime', monospace", fontSize: 24, color: "#e8e0d0" }}>
+                      <div style={{ fontFamily: "'Courier Prime', monospace", fontSize: 24, color: "#0e0a04" }}>
                         {hsResult.standardDutyRate}%
                       </div>
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>MFN (Most Favoured Nation) rate</div>
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4 }}>
+                        MFN (Most Favoured Nation) rate
+                      </div>
                     </div>
-                    <div style={{ background: "#0e0e0e", padding: 16, borderRadius: 2 }}>
+                    <div style={{ background: "#f5f0e8", padding: 16, borderRadius: 2 }}>
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#555",
+                          color: "#9a8e7e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           marginBottom: 8,
@@ -1256,17 +1248,16 @@ export default function CustomsCalculator({ user }) {
                       </div>
                     </div>
                   </div>
-
                   {hsResult.antiDumping && hsResult.antiDumpingNote && (
                     <div
                       style={{
-                        background: "#2e1a1a",
-                        border: "1px solid #5a2d2d",
+                        background: "#fde8e8",
+                        border: "1px solid #e8a8a8",
                         padding: 12,
                         borderRadius: 2,
                         marginBottom: 12,
                         fontSize: 13,
-                        color: "#c26b6b",
+                        color: "#8e2e2e",
                       }}
                     >
                       Anti-dumping: {hsResult.antiDumpingNote}
@@ -1275,25 +1266,24 @@ export default function CustomsCalculator({ user }) {
                   {hsResult.excise && hsResult.exciseNote && (
                     <div
                       style={{
-                        background: "#2e261a",
-                        border: "1px solid #5a4a2d",
+                        background: "rgba(200,144,10,0.08)",
+                        border: "1px solid rgba(200,144,10,0.3)",
                         padding: 12,
                         borderRadius: 2,
                         marginBottom: 12,
                         fontSize: 13,
-                        color: "#c8a96e",
+                        color: "#C8900A",
                       }}
                     >
                       Excise: {hsResult.exciseNote}
                     </div>
                   )}
-
                   {hsResult.complianceNotes?.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#555",
+                          color: "#9a8e7e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           marginBottom: 8,
@@ -1307,10 +1297,10 @@ export default function CustomsCalculator({ user }) {
                             key={i}
                             style={{
                               fontSize: 13,
-                              color: "#aaa",
+                              color: "#8a7e6e",
                               fontFamily: "'Courier Prime', monospace",
                               padding: "6px 10px",
-                              background: "#0e0e0e",
+                              background: "#f5f0e8",
                               borderRadius: 2,
                             }}
                           >
@@ -1320,13 +1310,12 @@ export default function CustomsCalculator({ user }) {
                       </ul>
                     </div>
                   )}
-
                   {hsResult.alternativeHS?.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
                       <div
                         style={{
                           fontSize: 11,
-                          color: "#555",
+                          color: "#9a8e7e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           marginBottom: 8,
@@ -1343,12 +1332,9 @@ export default function CustomsCalculator({ user }) {
                       </div>
                     </div>
                   )}
-
                   <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
                     <button
-                      onClick={() => {
-                        setTab("calculator");
-                      }}
+                      onClick={() => setTab("calculator")}
                       className="btn-gold"
                       style={{
                         flex: 1,
@@ -1358,7 +1344,7 @@ export default function CustomsCalculator({ user }) {
                         textTransform: "uppercase",
                         fontWeight: 700,
                         borderRadius: 2,
-                        fontFamily: "'Cormorant Garamond', serif",
+                        fontFamily: "'Oswald', sans-serif",
                       }}
                     >
                       Use in Calculator
@@ -1373,11 +1359,11 @@ export default function CustomsCalculator({ user }) {
                       className="btn-ghost"
                       style={{
                         padding: "12px 16px",
-                        border: "1px solid #333",
+                        border: "1px solid #d8d2c8",
                         borderRadius: 2,
                         fontSize: 18,
                         background: "none",
-                        color: savedCodes.has(hsResult.hs6) ? "#c8a96e" : "#555",
+                        color: savedCodes.has(hsResult.hs6) ? "#C8900A" : "#9a8e7e",
                       }}
                       title={savedCodes.has(hsResult.hs6) ? "Remove from favourites" : "Save to favourites"}
                     >
@@ -1391,8 +1377,8 @@ export default function CustomsCalculator({ user }) {
                       style={{
                         flex: 1,
                         padding: "12px",
-                        border: "1px solid #333",
-                        color: "#c8a96e",
+                        border: "1px solid #d8d2c8",
+                        color: "#C8900A",
                         fontSize: 12,
                         letterSpacing: 2,
                         textTransform: "uppercase",
@@ -1414,10 +1400,10 @@ export default function CustomsCalculator({ user }) {
                 style={{
                   marginTop: 16,
                   padding: "12px 16px",
-                  background: "#2e1a1a",
-                  border: "1px solid #5a2d2d",
+                  background: "#fde8e8",
+                  border: "1px solid #e8a8a8",
                   borderRadius: 2,
-                  color: "#c26b6b",
+                  color: "#8e2e2e",
                   fontSize: 13,
                 }}
               >
@@ -1425,7 +1411,6 @@ export default function CustomsCalculator({ user }) {
               </div>
             )}
 
-            {/* Favourites */}
             {favourites.length > 0 && (
               <div style={{ marginTop: 32 }}>
                 <div className="section-label">Saved HS Codes</div>
@@ -1434,8 +1419,8 @@ export default function CustomsCalculator({ user }) {
                     <div
                       key={fav.id}
                       style={{
-                        background: "#141414",
-                        border: "1px solid #1e1e1e",
+                        background: "#fff",
+                        border: "1px solid #e0d8cc",
                         borderRadius: 2,
                         padding: "12px 16px",
                         display: "flex",
@@ -1450,7 +1435,7 @@ export default function CustomsCalculator({ user }) {
                             style={{
                               fontFamily: "'Courier Prime', monospace",
                               fontSize: 16,
-                              color: "#c8a96e",
+                              color: "#C8900A",
                               letterSpacing: 2,
                             }}
                           >
@@ -1461,7 +1446,7 @@ export default function CustomsCalculator({ user }) {
                         <div
                           style={{
                             fontSize: 12,
-                            color: "#777",
+                            color: "#8a7e6e",
                             marginTop: 3,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -1481,8 +1466,8 @@ export default function CustomsCalculator({ user }) {
                           className="btn-ghost"
                           style={{
                             padding: "6px 12px",
-                            border: "1px solid #333",
-                            color: "#c8a96e",
+                            border: "1px solid #d8d2c8",
+                            color: "#C8900A",
                             fontSize: 11,
                             letterSpacing: 1,
                             borderRadius: 2,
@@ -1496,8 +1481,8 @@ export default function CustomsCalculator({ user }) {
                           className="btn-ghost"
                           style={{
                             padding: "6px 10px",
-                            border: "1px solid #333",
-                            color: "#555",
+                            border: "1px solid #d8d2c8",
+                            color: "#9a8e7e",
                             fontSize: 13,
                             borderRadius: 2,
                             background: "none",
@@ -1519,16 +1504,14 @@ export default function CustomsCalculator({ user }) {
         {tab === "fx" && (
           <div>
             <div className="two-col" style={{ gap: 32 }}>
-              {/* Left: Converter */}
               <div>
                 <div className="section-label">Currency Converter → EUR</div>
-                <div style={{ background: "#141414", border: "1px solid #222", borderRadius: 2, padding: 24 }}>
-                  {/* Amount + From */}
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24 }}>
                   <div style={{ marginBottom: 16 }}>
                     <label
                       style={{
                         fontSize: 11,
-                        color: "#777",
+                        color: "#8a7e6e",
                         letterSpacing: 2,
                         textTransform: "uppercase",
                         display: "block",
@@ -1543,9 +1526,9 @@ export default function CustomsCalculator({ user }) {
                       onChange={(e) => setFxAmount(e.target.value)}
                       placeholder="1.00"
                       style={{
-                        background: "#1a1a1a",
-                        border: "1px solid #333",
-                        color: "#e8e0d0",
+                        background: "#f5f0e8",
+                        border: "1px solid #d8d2c8",
+                        color: "#0e0a04",
                         padding: "10px 14px",
                         fontFamily: "'Courier Prime', monospace",
                         fontSize: 15,
@@ -1568,7 +1551,7 @@ export default function CustomsCalculator({ user }) {
                       <label
                         style={{
                           fontSize: 11,
-                          color: "#777",
+                          color: "#8a7e6e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           display: "block",
@@ -1581,9 +1564,9 @@ export default function CustomsCalculator({ user }) {
                         value={fxFrom}
                         onChange={(e) => setFxFrom(e.target.value)}
                         style={{
-                          background: "#1a1a1a",
-                          border: "1px solid #333",
-                          color: "#e8e0d0",
+                          background: "#f5f0e8",
+                          border: "1px solid #d8d2c8",
+                          color: "#0e0a04",
                           padding: "10px 12px",
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 13,
@@ -1597,12 +1580,12 @@ export default function CustomsCalculator({ user }) {
                         ))}
                       </select>
                     </div>
-                    <div style={{ fontSize: 20, color: "#555", paddingBottom: 4, textAlign: "center" }}>⇄</div>
+                    <div style={{ fontSize: 20, color: "#9a8e7e", paddingBottom: 4, textAlign: "center" }}>⇄</div>
                     <div>
                       <label
                         style={{
                           fontSize: 11,
-                          color: "#777",
+                          color: "#8a7e6e",
                           letterSpacing: 2,
                           textTransform: "uppercase",
                           display: "block",
@@ -1615,9 +1598,9 @@ export default function CustomsCalculator({ user }) {
                         value={fxTo}
                         onChange={(e) => setFxTo(e.target.value)}
                         style={{
-                          background: "#1a1a1a",
-                          border: "1px solid #333",
-                          color: "#e8e0d0",
+                          background: "#f5f0e8",
+                          border: "1px solid #d8d2c8",
+                          color: "#0e0a04",
                           padding: "10px 12px",
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 13,
@@ -1632,29 +1615,28 @@ export default function CustomsCalculator({ user }) {
                       </select>
                     </div>
                   </div>
-                  {/* Result */}
                   {(() => {
                     const converted = convertFX(fxAmount, fxFrom, fxTo);
                     const rate = convertFX(1, fxFrom, fxTo);
                     if (!fxAmount || converted === null) return null;
                     return (
-                      <div style={{ background: "#0e0e0e", borderRadius: 2, padding: "20px 20px" }}>
+                      <div style={{ background: "#f5f0e8", borderRadius: 2, padding: "20px 20px" }}>
                         <div
                           style={{
                             fontFamily: "'Courier Prime', monospace",
                             fontSize: 28,
-                            color: "#c8a96e",
+                            color: "#C8900A",
                             letterSpacing: 2,
                           }}
                         >
                           {converted.toLocaleString("de-LU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}{" "}
-                          <span style={{ fontSize: 16, color: "#888" }}>{fxTo}</span>
+                          <span style={{ fontSize: 16, color: "#8a7e6e" }}>{fxTo}</span>
                         </div>
                         <div
                           style={{
                             marginTop: 8,
                             fontSize: 12,
-                            color: "#555",
+                            color: "#9a8e7e",
                             fontFamily: "'Courier Prime', monospace",
                           }}
                         >
@@ -1665,7 +1647,7 @@ export default function CustomsCalculator({ user }) {
                             style={{
                               marginTop: 4,
                               fontSize: 11,
-                              color: "#444",
+                              color: "#9a8e7e",
                               fontFamily: "'Courier Prime', monospace",
                             }}
                           >
@@ -1675,7 +1657,6 @@ export default function CustomsCalculator({ user }) {
                       </div>
                     );
                   })()}
-                  {/* Swap button */}
                   <button
                     onClick={() => {
                       const tmp = fxFrom;
@@ -1688,8 +1669,8 @@ export default function CustomsCalculator({ user }) {
                       width: "100%",
                       padding: "10px",
                       background: "none",
-                      border: "1px solid #2a2a2a",
-                      color: "#666",
+                      border: "1px solid #d8d2c8",
+                      color: "#9a8e7e",
                       fontSize: 11,
                       letterSpacing: 2,
                       textTransform: "uppercase",
@@ -1699,26 +1680,23 @@ export default function CustomsCalculator({ user }) {
                     swap currencies
                   </button>
                 </div>
-
-                {/* Source note */}
                 <div
                   style={{
                     marginTop: 12,
                     fontSize: 11,
-                    color: "#444",
+                    color: "#9a8e7e",
                     fontFamily: "'Courier Prime', monospace",
                     lineHeight: 1.7,
                   }}
                 >
                   Rates sourced from the European Central Bank via{" "}
-                  <a href="https://www.frankfurter.app" target="_blank" rel="noopener" style={{ color: "#c8a96e66" }}>
+                  <a href="https://www.frankfurter.app" target="_blank" rel="noopener" style={{ color: "#C8900A55" }}>
                     frankfurter.app ↗
                   </a>{" "}
                   · Updated daily on ECB business days · Not for financial transactions
                 </div>
               </div>
 
-              {/* Right: Rates board */}
               <div>
                 <div
                   style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}
@@ -1727,25 +1705,23 @@ export default function CustomsCalculator({ user }) {
                     Live Rates vs EUR
                   </div>
                   {allRatesDate && (
-                    <span style={{ fontSize: 10, color: "#444", fontFamily: "'Courier Prime', monospace" }}>
+                    <span style={{ fontSize: 10, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
                       {allRatesDate}
                     </span>
                   )}
                 </div>
-
                 {allRatesLoading ? (
                   <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
                     <Spinner />
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    {/* EUR itself */}
                     <div
                       style={{
                         display: "grid",
                         gridTemplateColumns: "52px 1fr 1fr 1fr",
                         gap: 0,
-                        background: "#1a1a14",
+                        background: "#ede8e0",
                         flexShrink: 0,
                         padding: "9px 14px",
                         borderRadius: 2,
@@ -1756,18 +1732,18 @@ export default function CustomsCalculator({ user }) {
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 13,
-                          color: "#c8a96e",
+                          color: "#C8900A",
                           fontWeight: 700,
                         }}
                       >
                         EUR
                       </span>
-                      <span style={{ fontSize: 11, color: "#555" }}>Euro (base)</span>
+                      <span style={{ fontSize: 11, color: "#9a8e7e" }}>Euro (base)</span>
                       <span
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 13,
-                          color: "#888",
+                          color: "#8a7e6e",
                           textAlign: "right",
                         }}
                       >
@@ -1778,7 +1754,7 @@ export default function CustomsCalculator({ user }) {
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 11,
-                          color: "#555",
+                          color: "#9a8e7e",
                           textAlign: "right",
                         }}
                       >
@@ -1796,7 +1772,7 @@ export default function CustomsCalculator({ user }) {
                               display: "grid",
                               gridTemplateColumns: "52px 1fr 1fr 1fr",
                               gap: 0,
-                              background: i % 2 === 0 ? "#141414" : "#111",
+                              background: i % 2 === 0 ? "#f5f0e8" : "#fff",
                               padding: "9px 14px",
                               alignItems: "center",
                               cursor: "pointer",
@@ -1808,15 +1784,15 @@ export default function CustomsCalculator({ user }) {
                             }}
                             title={`Click to convert ${code} → EUR`}
                           >
-                            <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13, color: "#e8e0d0" }}>
+                            <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13, color: "#0e0a04" }}>
                               {code}
                             </span>
-                            <span style={{ fontSize: 11, color: "#555" }}>1 EUR =</span>
+                            <span style={{ fontSize: 11, color: "#9a8e7e" }}>1 EUR =</span>
                             <span
                               style={{
                                 fontFamily: "'Courier Prime', monospace",
                                 fontSize: 13,
-                                color: "#aaa",
+                                color: "#8a7e6e",
                                 textAlign: "right",
                               }}
                             >
@@ -1827,7 +1803,7 @@ export default function CustomsCalculator({ user }) {
                               style={{
                                 fontFamily: "'Courier Prime', monospace",
                                 fontSize: 11,
-                                color: "#666",
+                                color: "#9a8e7e",
                                 textAlign: "right",
                               }}
                             >
@@ -1877,18 +1853,13 @@ export default function CustomsCalculator({ user }) {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    style={{
-                      background: "#141414",
-                      border: "1px solid #1e1e1e",
-                      padding: "14px 16px",
-                      borderRadius: 2,
-                    }}
+                    style={{ background: "#fff", border: "1px solid #e0d8cc", padding: "14px 16px", borderRadius: 2 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ fontSize: 13 }}>{item.label}</span>
                       <span className={`tag tag-${item.color}`}>{item.value}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#666", fontFamily: "'Courier Prime', monospace" }}>
+                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
                       {item.note}
                     </div>
                   </div>
@@ -1907,18 +1878,13 @@ export default function CustomsCalculator({ user }) {
                 ].map((item, i) => (
                   <div
                     key={i}
-                    style={{
-                      background: "#141414",
-                      border: "1px solid #1e1e1e",
-                      padding: "14px 16px",
-                      borderRadius: 2,
-                    }}
+                    style={{ background: "#fff", border: "1px solid #e0d8cc", padding: "14px 16px", borderRadius: 2 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ fontSize: 13 }}>{item.label}</span>
                       <span className="tag tag-amber">{item.value}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#666", fontFamily: "'Courier Prime', monospace" }}>
+                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
                       {item.note}
                     </div>
                   </div>
@@ -1933,8 +1899,8 @@ export default function CustomsCalculator({ user }) {
                   <div
                     key={code}
                     style={{
-                      background: "#141414",
-                      border: "1px solid #1e1e1e",
+                      background: "#fff",
+                      border: "1px solid #e0d8cc",
                       padding: "10px 16px",
                       borderRadius: 2,
                       display: "flex",
@@ -1945,7 +1911,12 @@ export default function CustomsCalculator({ user }) {
                     <div>
                       <span style={{ fontSize: 13 }}>{info.name}</span>
                       <div
-                        style={{ fontSize: 11, color: "#555", fontFamily: "'Courier Prime', monospace", marginTop: 2 }}
+                        style={{
+                          fontSize: 11,
+                          color: "#9a8e7e",
+                          fontFamily: "'Courier Prime', monospace",
+                          marginTop: 2,
+                        }}
                       >
                         {info.note}
                       </div>
@@ -1987,8 +1958,8 @@ export default function CustomsCalculator({ user }) {
                   rel="noopener"
                   style={{
                     display: "block",
-                    background: "#141414",
-                    border: "1px solid #1e1e1e",
+                    background: "#fff",
+                    border: "1px solid #e0d8cc",
                     padding: "12px 16px",
                     borderRadius: 2,
                     textDecoration: "none",
@@ -1996,8 +1967,10 @@ export default function CustomsCalculator({ user }) {
                     transition: "border-color 0.2s",
                   }}
                 >
-                  <div style={{ color: "#c8a96e", fontSize: 13 }}>{link.label} ↗</div>
-                  <div style={{ fontSize: 11, color: "#555", fontFamily: "'Courier Prime', monospace", marginTop: 2 }}>
+                  <div style={{ color: "#C8900A", fontSize: 13 }}>{link.label} ↗</div>
+                  <div
+                    style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace", marginTop: 2 }}
+                  >
                     {link.desc}
                   </div>
                 </a>
