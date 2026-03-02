@@ -1,0 +1,1323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dutify — Luxembourg Import Duty Calculator</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f0ebe2;
+        --bg2: #e8e2d8;
+        --bg3: #efe8de;
+        --card: #fff;
+        --card2: #ede8e0;
+        --border: #d8d2c8;
+        --border2: #c8c0b0;
+        --gold-hi: #f8da6a;
+        --gold-mid: #c8900a;
+        --gold-dark: #8a5c00;
+        --text: #0e0a04;
+        --text2: #3a3020;
+        --muted: #8a7e6e;
+        --subtle: #c0b8a8;
+        --dark-card: #1a1208;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "DM Sans", sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      /* ── Subtle paper texture ── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+        opacity: 0.6;
+      }
+
+      /* ── Background grid ── */
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgba(180, 160, 120, 0.07) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(180, 160, 120, 0.07) 1px, transparent 1px);
+        background-size: 72px 72px;
+      }
+
+      /* ── Drifting gold glow blobs ── */
+      @keyframes blob1 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+          opacity: 0.18;
+        }
+        33% {
+          transform: translate(40px, -60px) scale(1.1);
+          opacity: 0.24;
+        }
+        66% {
+          transform: translate(-30px, 40px) scale(0.95);
+          opacity: 0.14;
+        }
+      }
+      @keyframes blob2 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+          opacity: 0.13;
+        }
+        33% {
+          transform: translate(-50px, 30px) scale(1.05);
+          opacity: 0.18;
+        }
+        66% {
+          transform: translate(60px, -40px) scale(1.1);
+          opacity: 0.1;
+        }
+      }
+      @keyframes blob3 {
+        0%,
+        100% {
+          transform: translate(0, 0) scale(1);
+          opacity: 0.1;
+        }
+        50% {
+          transform: translate(30px, 50px) scale(1.08);
+          opacity: 0.15;
+        }
+      }
+      .bg-blobs {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        will-change: transform;
+      }
+      .blob-1 {
+        width: 640px;
+        height: 640px;
+        top: -12%;
+        left: -8%;
+        background: radial-gradient(circle, rgba(248, 218, 106, 0.28) 0%, transparent 70%);
+        animation: blob1 20s ease-in-out infinite;
+      }
+      .blob-2 {
+        width: 520px;
+        height: 520px;
+        top: 15%;
+        right: -10%;
+        background: radial-gradient(circle, rgba(212, 146, 10, 0.2) 0%, transparent 70%);
+        animation: blob2 25s ease-in-out infinite;
+      }
+      .blob-3 {
+        width: 440px;
+        height: 440px;
+        bottom: 8%;
+        left: 28%;
+        background: radial-gradient(circle, rgba(248, 218, 106, 0.18) 0%, transparent 70%);
+        animation: blob3 30s ease-in-out infinite;
+      }
+
+      .z1 {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ── Typography ── */
+      h1,
+      h2,
+      h3 {
+        font-family: "Oswald", sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        line-height: 1.05;
+      }
+
+      /* ── Layout ── */
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 48px;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ── ANIMATIONS ── */
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes slideRight {
+        from {
+          transform: scaleX(0);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+
+      /* ── NAV ── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 48px;
+        background: rgba(240, 235, 226, 0.9);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+      }
+      .nav-wordmark {
+        font-family: "Oswald", sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        color: var(--text);
+        text-transform: uppercase;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 36px;
+      }
+      .nav-links a {
+        font-family: "Oswald", sans-serif;
+        font-size: 11px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 400;
+        transition: color 0.2s;
+      }
+      .nav-links a:hover {
+        color: var(--text);
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: "Oswald", sans-serif;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        cursor: pointer;
+        text-decoration: none;
+        border-radius: 3px;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .btn-gold {
+        background: linear-gradient(135deg, var(--gold-hi), var(--gold-mid));
+        color: #0a0600;
+        border: none;
+        padding: 13px 28px;
+        font-size: 13px;
+      }
+      .btn-gold:hover {
+        background: linear-gradient(135deg, #fce880, #e0a010);
+        box-shadow: 0 4px 20px #c8900a33;
+        transform: translateY(-1px);
+      }
+      .btn-outline {
+        background: none;
+        border: 1.5px solid var(--border2);
+        color: var(--text2);
+        padding: 12px 24px;
+        font-size: 12px;
+      }
+      .btn-outline:hover {
+        border-color: var(--gold-mid);
+        color: var(--gold-dark);
+      }
+
+      /* ── HERO ── */
+      #hero {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-items: center;
+        gap: 0;
+        padding-top: 64px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* decorative gold line top */
+      #hero::before {
+        content: "";
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          var(--gold-mid) 30%,
+          var(--gold-hi) 50%,
+          var(--gold-mid) 70%,
+          transparent 100%
+        );
+        opacity: 0.3;
+      }
+
+      .hero-left {
+        padding: 80px 48px 80px 48px;
+        border-right: 1px solid var(--border);
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero-eyebrow {
+        font-family: "Oswald", sans-serif;
+        font-size: 11px;
+        letter-spacing: 6px;
+        text-transform: uppercase;
+        color: var(--gold-mid);
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        opacity: 0;
+        animation: fadeUp 0.5s ease forwards 0.1s;
+      }
+      .hero-eyebrow::before {
+        content: "";
+        display: block;
+        width: 28px;
+        height: 1.5px;
+        background: var(--gold-mid);
+        flex-shrink: 0;
+      }
+
+      .hero-h1 {
+        font-size: clamp(52px, 6vw, 96px);
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: var(--text);
+        margin-bottom: 6px;
+        opacity: 0;
+        animation: fadeUp 0.6s ease forwards 0.2s;
+      }
+
+      .hero-h1-gold {
+        font-family: "Oswald", sans-serif;
+        font-size: clamp(52px, 6vw, 96px);
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        background: linear-gradient(135deg, var(--gold-hi) 0%, var(--gold-mid) 70%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.05;
+        opacity: 0;
+        animation: fadeUp 0.6s ease forwards 0.3s;
+      }
+
+      .hero-tagline {
+        font-family: "Oswald", sans-serif;
+        font-size: clamp(15px, 1.8vw, 20px);
+        font-weight: 300;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 28px;
+        margin-bottom: 48px;
+        line-height: 1.5;
+        opacity: 0;
+        animation: fadeUp 0.6s ease forwards 0.45s;
+      }
+
+      .hero-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 56px;
+        opacity: 0;
+        animation: fadeUp 0.6s ease forwards 0.6s;
+      }
+
+      .hero-note {
+        font-size: 12px;
+        color: var(--subtle);
+        font-style: italic;
+        opacity: 0;
+        animation: fadeUp 0.6s ease forwards 0.75s;
+      }
+
+      /* Hero right — calculator preview */
+      .hero-right {
+        padding: 80px 48px;
+        background: var(--bg2);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0;
+        position: relative;
+        opacity: 0;
+        animation: fadeIn 0.8s ease forwards 0.5s;
+      }
+
+      .calc-preview {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .calc-header {
+        background: var(--dark-card);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .calc-header-title {
+        font-family: "Oswald", sans-serif;
+        font-size: 11px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #888;
+      }
+      .calc-badge {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 2px;
+        background: #1a2e1a;
+        border: 1px solid #2d5a2d;
+        color: #6bc26b;
+      }
+
+      .calc-body {
+        padding: 24px;
+      }
+
+      .calc-field {
+        margin-bottom: 16px;
+      }
+      .calc-field label {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
+      }
+      .calc-input {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 9px 12px;
+        font-family: "Courier Prime", monospace;
+        font-size: 13px;
+        color: var(--text);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .calc-input span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .calc-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 20px 0;
+      }
+
+      .calc-result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .calc-result-row:last-child {
+        border-bottom: none;
+      }
+      .calc-result-label {
+        color: var(--muted);
+      }
+      .calc-result-val {
+        font-family: "Oswald", sans-serif;
+        font-size: 14px;
+        letter-spacing: 1px;
+        color: var(--text);
+      }
+      .calc-result-val.accent {
+        color: var(--gold-mid);
+        font-size: 22px;
+      }
+      .tag-g {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 2px;
+        font-size: 10px;
+        font-family: "Oswald", sans-serif;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        background: rgba(200, 144, 10, 0.12);
+        border: 1px solid rgba(200, 144, 10, 0.3);
+        color: var(--gold-mid);
+      }
+
+      .calc-footer {
+        padding: 14px 24px;
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--muted);
+        font-style: italic;
+        text-align: center;
+      }
+
+      /* ── TRUST BAR ── */
+      #trust {
+        padding: 28px 0;
+        background: var(--dark-card);
+        border-top: 1px solid #2a2218;
+        border-bottom: 1px solid #2a2218;
+      }
+      .trust-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 48px;
+        display: flex;
+        align-items: center;
+        gap: 36px;
+      }
+      .trust-label {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #3a3020;
+        white-space: nowrap;
+      }
+      .trust-sep {
+        width: 1px;
+        height: 24px;
+        background: #2a2218;
+        flex-shrink: 0;
+      }
+      .trust-items {
+        display: flex;
+        align-items: center;
+        gap: 36px;
+        flex-wrap: wrap;
+      }
+      .trust-item {
+        font-family: "Oswald", sans-serif;
+        font-size: 12px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #4a3e28;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .trust-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--gold-mid);
+        opacity: 0.5;
+      }
+
+      /* ── SECTION BASE ── */
+      .section-pad {
+        padding: 120px 0;
+      }
+
+      .section-eyebrow {
+        font-family: "Oswald", sans-serif;
+        font-size: 11px;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        color: var(--gold-mid);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .section-eyebrow::before {
+        content: "";
+        display: block;
+        width: 24px;
+        height: 1.5px;
+        background: var(--gold-mid);
+        flex-shrink: 0;
+      }
+      .section-h2 {
+        font-size: clamp(32px, 4vw, 52px);
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: var(--text);
+        margin-bottom: 16px;
+      }
+      .section-sub {
+        font-size: 15px;
+        color: var(--muted);
+        max-width: 500px;
+        font-weight: 300;
+        line-height: 1.8;
+      }
+
+      /* ── PAIN ── */
+      #pain {
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .pain-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 56px;
+      }
+      .pain-item {
+        padding: 44px 40px;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        position: relative;
+      }
+      .pain-item:nth-child(even) {
+        border-right: none;
+        background: var(--bg);
+      }
+      .pain-item:nth-child(3),
+      .pain-item:nth-child(4) {
+        border-bottom: none;
+      }
+      .pain-item:hover {
+        background: var(--card2);
+      }
+      .pain-num {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 4px;
+        color: var(--subtle);
+        margin-bottom: 18px;
+        text-transform: uppercase;
+      }
+      .pain-icon {
+        font-size: 22px;
+        margin-bottom: 14px;
+        opacity: 0.7;
+      }
+      .pain-title {
+        font-family: "Oswald", sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+      .pain-body {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.75;
+        font-weight: 300;
+      }
+
+      /* ── FEATURES ── */
+      #features {
+        background: var(--bg);
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 56px;
+      }
+      .feature {
+        background: var(--card);
+        padding: 40px 36px;
+        transition: background 0.2s;
+      }
+      .feature:hover {
+        background: var(--bg2);
+      }
+      .feature-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin-bottom: 24px;
+      }
+      .feature-title {
+        font-family: "Oswald", sans-serif;
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+      .feature-body {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.75;
+        font-weight: 300;
+      }
+      .feature-tag {
+        display: inline-block;
+        margin-top: 18px;
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--gold-mid);
+        border-bottom: 1px solid rgba(200, 144, 10, 0.3);
+        padding-bottom: 1px;
+      }
+
+      /* ── HOW IT WORKS ── */
+      #how {
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        margin-top: 56px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .step {
+        padding: 40px 32px;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        position: relative;
+      }
+      .step:last-child {
+        border-right: none;
+      }
+      .step-num {
+        font-family: "Oswald", sans-serif;
+        font-size: 48px;
+        font-weight: 700;
+        color: rgba(200, 144, 10, 0.12);
+        line-height: 1;
+        margin-bottom: 16px;
+        letter-spacing: 0;
+      }
+      .step-title {
+        font-family: "Oswald", sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--text);
+        margin-bottom: 10px;
+      }
+      .step-body {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.7;
+        font-weight: 300;
+      }
+
+      /* ── CTA ── */
+      #cta {
+        background: var(--dark-card);
+        border-top: 1px solid #2a2218;
+        padding: 120px 0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      #cta::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 10%;
+        right: 10%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--gold-mid), transparent);
+        opacity: 0.5;
+      }
+
+      .cta-inner {
+        position: relative;
+        z-index: 1;
+      }
+      .cta-eyebrow {
+        font-family: "Oswald", sans-serif;
+        font-size: 11px;
+        letter-spacing: 6px;
+        text-transform: uppercase;
+        color: var(--gold-mid);
+        margin-bottom: 24px;
+      }
+      .cta-h2 {
+        font-size: clamp(36px, 5vw, 68px);
+        font-weight: 700;
+        letter-spacing: 3px;
+        color: #fff;
+        margin-bottom: 20px;
+      }
+      .cta-sub {
+        font-size: 15px;
+        color: #666;
+        margin-bottom: 48px;
+        font-weight: 300;
+        line-height: 1.8;
+      }
+      .cta-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+      }
+
+      /* ── FOOTER ── */
+      footer {
+        background: var(--dark-card);
+        border-top: 1px solid #1e1a10;
+        padding: 48px 0 32px;
+      }
+      .footer-inner {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 48px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+      }
+      .footer-logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .footer-wordmark {
+        font-family: "Oswald", sans-serif;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #444;
+      }
+      .footer-note {
+        font-size: 12px;
+        color: #2e2820;
+        font-style: italic;
+      }
+      .footer-links {
+        display: flex;
+        gap: 28px;
+      }
+      .footer-links a {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: #2e2820;
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      .footer-links a:hover {
+        color: #666;
+      }
+
+      /* ── MOBILE ── */
+      @media (max-width: 768px) {
+        nav {
+          padding: 0 20px;
+        }
+        .nav-links {
+          display: none;
+        }
+
+        #hero {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+        .hero-left {
+          padding: 80px 24px 48px;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+        }
+        .hero-right {
+          padding: 40px 24px;
+          min-height: auto;
+        }
+
+        .container {
+          padding: 0 24px;
+        }
+        .trust-inner {
+          padding: 0 24px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .pain-grid {
+          grid-template-columns: 1fr;
+        }
+        .pain-item {
+          border-right: none !important;
+        }
+        .pain-item:nth-child(3) {
+          border-bottom: 1px solid var(--border) !important;
+        }
+        .features-grid {
+          grid-template-columns: 1fr;
+        }
+        .steps {
+          grid-template-columns: 1fr 1fr;
+        }
+        .step:nth-child(2) {
+          border-right: none;
+        }
+        .step:nth-child(1),
+        .step:nth-child(2) {
+          border-bottom: 1px solid var(--border);
+        }
+        .pricing-grid {
+          grid-template-columns: 1fr;
+        }
+        .footer-inner {
+          flex-direction: column;
+          align-items: flex-start;
+          text-align: left;
+        }
+        .cta-actions {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Background effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="z1">
+      <a href="#" class="nav-logo">
+        <svg width="30" height="30" viewBox="0 0 56 56" fill="none">
+          <rect width="56" height="56" rx="11" fill="var(--dark-card)" />
+          <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#nGold)" />
+          <path
+            d="M13 22L28 39L43 22"
+            stroke="url(#nGold)"
+            stroke-width="5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#nGold)" />
+          <defs>
+            <linearGradient id="nGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#F8DA6A" />
+              <stop offset="100%" stop-color="#D4920A" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="nav-wordmark">Dutify</span>
+      </a>
+      <div class="nav-links">
+        <a href="#pain">Problem</a>
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center">
+        <a href="/login" class="btn btn-outline">Log in</a>
+        <a href="/register" class="btn btn-gold">Get started</a>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <section id="hero">
+      <div class="hero-left z1">
+        <div class="hero-eyebrow">Luxembourg Import Intelligence</div>
+        <h1 class="hero-h1">Know your</h1>
+        <div class="hero-h1-gold">landed cost.</div>
+        <div class="hero-tagline">Before it lands.</div>
+        <div class="hero-actions">
+          <a href="/register" class="btn btn-gold">Start for free →</a>
+          <a href="#features" class="btn btn-outline">See how it works</a>
+        </div>
+        <div class="hero-note">No credit card required &nbsp;·&nbsp; Luxembourg-ready &nbsp;·&nbsp; TARIC-backed</div>
+      </div>
+
+      <div class="hero-right">
+        <div class="calc-preview">
+          <div class="calc-header">
+            <span class="calc-header-title">Live calculation</span>
+            <span class="calc-badge">✓ FTA Rate Applied</span>
+          </div>
+          <div class="calc-body">
+            <div class="calc-field">
+              <label>Origin Country</label>
+              <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+              <div class="calc-field">
+                <label>HS Code</label>
+                <div class="calc-input">8471.30</div>
+              </div>
+              <div class="calc-field">
+                <label>Duty Rate</label>
+                <div class="calc-input">0% <span class="tag-g" style="font-size: 9px; padding: 1px 6px">FTA</span></div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+              <div class="calc-field">
+                <label>Goods Value</label>
+                <div class="calc-input">€ 12,400.00</div>
+              </div>
+              <div class="calc-field">
+                <label>Incoterm</label>
+                <div class="calc-input">CIF</div>
+              </div>
+            </div>
+            <div class="calc-divider"></div>
+            <div class="calc-result-row">
+              <span class="calc-result-label">CIF Value (customs base)</span>
+              <span class="calc-result-val">€ 12,400.00</span>
+            </div>
+            <div class="calc-result-row">
+              <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
+              <span class="calc-result-val">€ 0.00</span>
+            </div>
+            <div class="calc-result-row">
+              <span class="calc-result-label">Import VAT (LU 17%)</span>
+              <span class="calc-result-val">€ 2,108.00</span>
+            </div>
+            <div class="calc-result-row" style="padding-top: 14px">
+              <span
+                style="
+                  font-family: &quot;Oswald&quot;, sans-serif;
+                  font-size: 15px;
+                  font-weight: 600;
+                  letter-spacing: 1px;
+                  text-transform: uppercase;
+                  color: var(--text);
+                "
+                >Total landed cost</span
+              >
+              <span class="calc-result-val accent">€ 14,508.00</span>
+            </div>
+          </div>
+          <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRUST BAR -->
+    <section id="trust">
+      <div class="trust-inner">
+        <span class="trust-label">Built on</span>
+        <div class="trust-sep"></div>
+        <div class="trust-items">
+          <span class="trust-item"><span class="trust-dot"></span>TARIC Database</span>
+          <span class="trust-item"><span class="trust-dot"></span>ECB Exchange Rates</span>
+          <span class="trust-item"><span class="trust-dot"></span>LU VAT 17%</span>
+          <span class="trust-item"><span class="trust-dot"></span>Administration des Douanes</span>
+          <span class="trust-item"><span class="trust-dot"></span>27 FTA Agreements</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAIN -->
+    <section id="pain" class="section-pad">
+      <div class="container">
+        <div class="section-eyebrow">The problem</div>
+        <h2 class="section-h2">Importing into the EU<br />shouldn't be a guessing game.</h2>
+        <div class="pain-grid">
+          <div class="pain-item">
+            <div class="pain-num">01</div>
+            <div class="pain-icon">📋</div>
+            <div class="pain-title">Surprise costs at the border</div>
+            <div class="pain-body">
+              Duties, VAT, and handling fees appear only when your shipment arrives — blowing your margin calculations
+              and causing cash flow chaos.
+            </div>
+          </div>
+          <div class="pain-item">
+            <div class="pain-num">02</div>
+            <div class="pain-icon">📊</div>
+            <div class="pain-title">HS codes are a nightmare</div>
+            <div class="pain-body">
+              Finding the right Harmonized System code for your product requires expert knowledge. Get it wrong and you
+              face penalties or pay more duty than needed.
+            </div>
+          </div>
+          <div class="pain-item">
+            <div class="pain-num">03</div>
+            <div class="pain-icon">🔄</div>
+            <div class="pain-title">FX rates change daily</div>
+            <div class="pain-body">
+              Customs values must be declared in EUR. Manual currency conversions using stale rates introduce errors
+              that compound across large shipments.
+            </div>
+          </div>
+          <div class="pain-item">
+            <div class="pain-num">04</div>
+            <div class="pain-icon">🤝</div>
+            <div class="pain-title">FTA rules are complex</div>
+            <div class="pain-body">
+              The EU has 42+ free trade agreements. Knowing which apply to goods entering Luxembourg, and whether you
+              qualify for preferential rates, takes hours of research.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="section-pad">
+      <div class="container">
+        <div class="section-eyebrow">Features</div>
+        <h2 class="section-h2">Everything you need<br />to land costs confidently.</h2>
+        <div class="section-sub" style="margin-top: 8px">
+          Built specifically for companies importing into Luxembourg.
+        </div>
+        <div class="features-grid">
+          <div class="feature">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-title">Instant calculation</div>
+            <div class="feature-body">
+              Enter shipment details and get a full breakdown in seconds — CIF basis, customs duty, and Luxembourg
+              import VAT at 17%.
+            </div>
+            <div class="feature-tag">CIF · FOB · EXW · CIF · CFR</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🤖</div>
+            <div class="feature-title">AI HS code lookup</div>
+            <div class="feature-body">
+              Describe your product in plain language. Our AI suggests likely HS-6 codes with duty rates, compliance
+              notes, and TARIC verification links.
+            </div>
+            <div class="feature-tag">Powered by Claude</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">💱</div>
+            <div class="feature-title">Live ECB rates</div>
+            <div class="feature-body">
+              Real-time currency conversion sourced directly from the European Central Bank. Updated every business day
+              for 30+ currencies.
+            </div>
+            <div class="feature-tag">ECB · 30+ currencies</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">🌍</div>
+            <div class="feature-title">FTA preferential rates</div>
+            <div class="feature-body">
+              Automatic detection of EU free trade agreements with your origin country. Applies preferential 0% rates
+              when valid proof of origin is declared.
+            </div>
+            <div class="feature-tag">EU-LU FTA coverage</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">📄</div>
+            <div class="feature-title">PDF export</div>
+            <div class="feature-body">
+              Download a professional calculation report for every shipment. Share with your finance team, freight
+              forwarder, or customs broker.
+            </div>
+            <div class="feature-tag">Professional reports</div>
+          </div>
+          <div class="feature">
+            <div class="feature-icon">⭐</div>
+            <div class="feature-title">HS code favourites</div>
+            <div class="feature-body">
+              Save your frequently-used HS codes for one-click reuse. Build a personal library of your product
+              classifications over time.
+            </div>
+            <div class="feature-tag">Personal library</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how" class="section-pad">
+      <div class="container">
+        <div class="section-eyebrow">How it works</div>
+        <h2 class="section-h2">From product to landed cost<br />in four steps.</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-title">Describe your product</div>
+            <div class="step-body">
+              Use the AI classifier to get HS code suggestions from a plain-language product description.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-title">Enter shipment details</div>
+            <div class="step-body">
+              Add origin country, incoterm, value, freight, and insurance. Select your currency.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-title">Get the breakdown</div>
+            <div class="step-body">
+              Receive a full cost breakdown — CIF value, customs duty with FTA logic, and Luxembourg VAT at 17%.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-title">Export and share</div>
+            <div class="step-body">Download a PDF report and share with your team, broker, or finance department.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="cta">
+      <div class="container">
+        <div class="cta-inner">
+          <div class="cta-eyebrow">Get started today</div>
+          <h2 class="cta-h2">Know your landed cost<br />before it lands.</h2>
+          <div class="cta-sub">Join companies in Luxembourg using Dutify to import smarter.</div>
+          <div class="cta-actions">
+            <a href="/register" class="btn btn-gold" style="font-size: 14px; padding: 15px 36px">Start for free →</a>
+            <a
+              href="mailto:hello@dutify.eu"
+              class="btn btn-ghost"
+              style="font-size: 12px; padding: 14px 28px; border-color: #2a2218; color: #444"
+              >Talk to us</a
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-inner">
+        <div>
+          <div class="footer-logo" style="margin-bottom: 8px">
+            <svg width="24" height="24" viewBox="0 0 56 56" fill="none">
+              <rect width="56" height="56" rx="11" fill="#1a1208" />
+              <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#fGold)" />
+              <path
+                d="M13 22L28 39L43 22"
+                stroke="url(#fGold)"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#fGold)" />
+              <defs>
+                <linearGradient id="fGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#F8DA6A" />
+                  <stop offset="100%" stop-color="#D4920A" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span class="footer-wordmark">Dutify</span>
+          </div>
+          <div class="footer-note">Luxembourg customs duty calculator · VAT 17% · Administration des Douanes</div>
+        </div>
+        <div class="footer-links">
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+          <a href="#">GDPR</a>
+          <a href="mailto:hello@dutify.eu">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -6,7 +6,8 @@ export default auth((req) => {
   const isAuthPage  = req.nextUrl.pathname.startsWith('/login') ||
                       req.nextUrl.pathname.startsWith('/register')
   const isPublicApi = req.nextUrl.pathname.startsWith('/api/register') ||
-                      req.nextUrl.pathname.startsWith('/api/auth')
+                      req.nextUrl.pathname.startsWith('/api/auth') ||
+                      req.nextUrl.pathname === '/landing.html'
   const isAdminPage = req.nextUrl.pathname.startsWith('/admin')
   const isAdminUser = req.auth?.user?.role === 'ADMIN'
 
