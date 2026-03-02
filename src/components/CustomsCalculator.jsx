@@ -97,6 +97,11 @@ export default function CustomsCalculator({ user }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  // Favourites
+  const [favourites, setFavourites] = useState([]);
+  const [favLoading, setFavLoading] = useState(false);
+  const [savedCodes, setSavedCodes] = useState(new Set());
+
   // FX board state
   const [allRates, setAllRates] = useState({});
   const [allRatesDate, setAllRatesDate] = useState(null);
@@ -139,6 +144,18 @@ export default function CustomsCalculator({ user }) {
         setAllRatesLoading(false);
       })
       .catch(() => setAllRatesLoading(false));
+  }, []);
+
+  // Load favourites
+  useEffect(() => {
+    fetch("/api/favourites")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setFavourites(data);
+          setSavedCodes(new Set(data.map((f) => f.hsCode)));
+        }
+      });
   }, []);
 
   const convertFX = (amount, from, to) => {
@@ -238,6 +255,67 @@ export default function CustomsCalculator({ user }) {
       valEUR,
       frEUR,
       insEUR,
+    });
+  };
+
+  const downloadPDF = async () => {
+    if (!result) return;
+    const data = {
+      createdAt: new Date(),
+      originCountry,
+      incoterm,
+      currency,
+      exchangeRate,
+      rateDate,
+      lines: [{ description, hsCode, dutyRate, value: itemValue, freight, insurance }],
+      cifEUR: result.cifEUR,
+      customsDuty: result.customsDuty,
+      importVAT: result.importVAT,
+      total: result.total,
+    };
+    const res = await fetch("/api/export/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `customs-${Date.now()}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const saveFavourite = async (hs) => {
+    setFavLoading(true);
+    const res = await fetch("/api/favourites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        hsCode: hs.hs6,
+        description: hs.description,
+        dutyRate: hs.standardDutyRate,
+        notes: hs.antiDumpingNote || "",
+      }),
+    });
+    const fav = await res.json();
+    setFavourites((f) => [fav, ...f.filter((x) => x.hsCode !== fav.hsCode)]);
+    setSavedCodes((s) => new Set([...s, fav.hsCode]));
+    setFavLoading(false);
+  };
+
+  const removeFavourite = async (id, hsCode) => {
+    await fetch("/api/favourites", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setFavourites((f) => f.filter((x) => x.id !== id));
+    setSavedCodes((s) => {
+      const n = new Set(s);
+      n.delete(hsCode);
+      return n;
     });
   };
 
@@ -1023,6 +1101,26 @@ export default function CustomsCalculator({ user }) {
                     </a>
                     .
                   </div>
+
+                  <button
+                    onClick={downloadPDF}
+                    className="btn-ghost"
+                    style={{
+                      marginTop: 12,
+                      width: "100%",
+                      padding: "12px",
+                      border: "1px solid #333",
+                      color: "#c8a96e",
+                      fontSize: 12,
+                      letterSpacing: 3,
+                      textTransform: "uppercase",
+                      borderRadius: 2,
+                      background: "none",
+                      fontFamily: "'Cormorant Garamond', serif",
+                    }}
+                  >
+                    ↓ Export PDF
+                  </button>
                 </div>
               )}
             </div>
@@ -1265,6 +1363,26 @@ export default function CustomsCalculator({ user }) {
                     >
                       Use in Calculator
                     </button>
+                    <button
+                      onClick={() =>
+                        savedCodes.has(hsResult.hs6)
+                          ? removeFavourite(favourites.find((f) => f.hsCode === hsResult.hs6)?.id, hsResult.hs6)
+                          : saveFavourite(hsResult)
+                      }
+                      disabled={favLoading}
+                      className="btn-ghost"
+                      style={{
+                        padding: "12px 16px",
+                        border: "1px solid #333",
+                        borderRadius: 2,
+                        fontSize: 18,
+                        background: "none",
+                        color: savedCodes.has(hsResult.hs6) ? "#c8a96e" : "#555",
+                      }}
+                      title={savedCodes.has(hsResult.hs6) ? "Remove from favourites" : "Save to favourites"}
+                    >
+                      {savedCodes.has(hsResult.hs6) ? "★" : "☆"}
+                    </button>
                     <a
                       href={`https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=${hsResult.hs6?.replace(".", "")}`}
                       target="_blank"
@@ -1304,6 +1422,94 @@ export default function CustomsCalculator({ user }) {
                 }}
               >
                 {hsResult.error}
+              </div>
+            )}
+
+            {/* Favourites */}
+            {favourites.length > 0 && (
+              <div style={{ marginTop: 32 }}>
+                <div className="section-label">Saved HS Codes</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {favourites.map((fav) => (
+                    <div
+                      key={fav.id}
+                      style={{
+                        background: "#141414",
+                        border: "1px solid #1e1e1e",
+                        borderRadius: 2,
+                        padding: "12px 16px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span
+                            style={{
+                              fontFamily: "'Courier Prime', monospace",
+                              fontSize: 16,
+                              color: "#c8a96e",
+                              letterSpacing: 2,
+                            }}
+                          >
+                            {fav.hsCode}
+                          </span>
+                          <span className="tag tag-amber">{fav.dutyRate}%</span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#777",
+                            marginTop: 3,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {fav.description}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                        <button
+                          onClick={() => {
+                            setHsCode(fav.hsCode);
+                            setDutyRate(String(fav.dutyRate));
+                            setTab("calculator");
+                          }}
+                          className="btn-ghost"
+                          style={{
+                            padding: "6px 12px",
+                            border: "1px solid #333",
+                            color: "#c8a96e",
+                            fontSize: 11,
+                            letterSpacing: 1,
+                            borderRadius: 2,
+                            background: "none",
+                          }}
+                        >
+                          use
+                        </button>
+                        <button
+                          onClick={() => removeFavourite(fav.id, fav.hsCode)}
+                          className="btn-ghost"
+                          style={{
+                            padding: "6px 10px",
+                            border: "1px solid #333",
+                            color: "#555",
+                            fontSize: 13,
+                            borderRadius: 2,
+                            background: "none",
+                          }}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
