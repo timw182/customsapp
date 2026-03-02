@@ -25,6 +25,61 @@ const styles = StyleSheet.create({
 const fmt = (n) => `€ ${Number(n).toLocaleString('de-LU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtDate = (d) => new Date(d).toLocaleDateString('de-LU', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
+export function ExcisePDF({ data }) {
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+
+        <View style={styles.headerBar}>
+          <View>
+            <Text style={styles.headerLabel}>LUXEMBOURG · EU CUSTOMS</Text>
+            <Text style={styles.headerTitle}>Excise Duty Calculation</Text>
+          </View>
+          <View>
+            <Text style={styles.headerRight}>{data.category}</Text>
+            <Text style={styles.headerRight}>{fmtDate(data.createdAt || new Date())}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Excise Breakdown</Text>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Category</Text>
+          <Text style={styles.rowValue}>{data.category}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Excise Duty (LU){data.exciseNote ? `  —  ${data.exciseNote}` : ''}</Text>
+          <Text style={styles.rowValue}>{fmt(data.exciseDuty)}</Text>
+        </View>
+        {data.cifVal > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Declared Goods Value (CIF)</Text>
+            <Text style={styles.rowValue}>{fmt(data.cifVal)}</Text>
+          </View>
+        )}
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Import VAT Luxembourg ({data.vatRate}% on {data.cifVal > 0 ? 'goods + excise' : 'excise'})</Text>
+          <Text style={styles.rowValue}>{fmt(data.importVAT)}</Text>
+        </View>
+
+        <View style={styles.totalBox}>
+          <Text style={styles.totalLabel}>Total Excise + VAT</Text>
+          <Text style={styles.totalValue}>{fmt(data.total)}</Text>
+        </View>
+
+        <Text style={styles.disclaimer}>
+          This document is an estimate only. Excise duty rates are sourced from the Administration des Douanes et Accises (ADA) Luxembourg, effective 01.01.2026. Actual duties are determined by ADA at the time of release for consumption. Always verify current rates at douanes.public.lu before filing.
+        </Text>
+
+        <View style={styles.footer}>
+          <Text>EU Customs Calculator · dutify.lu</Text>
+          <Text>Generated {fmtDate(new Date())}</Text>
+        </View>
+
+      </Page>
+    </Document>
+  )
+}
+
 export function ShipmentPDF({ data }) {
   const lines = typeof data.lines === 'string' ? JSON.parse(data.lines) : (data.lines || [])
   const dutyFree = data.cifEUR <= 150
@@ -80,23 +135,13 @@ export function ShipmentPDF({ data }) {
         {/* Duty breakdown */}
         <Text style={styles.sectionLabel}>Duty Breakdown</Text>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>{data.intraEU ? 'Transaction Value' : 'CIF Value (customs base)'}</Text>
+          <Text style={styles.rowLabel}>CIF Value (customs base)</Text>
           <Text style={styles.rowValue}>{fmt(data.cifEUR)}</Text>
         </View>
-        {!data.intraEU && (
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>
-              Customs Duty {dutyFree ? '(waived — CIF ≤ €150)' : ''}
-            </Text>
-            <Text style={styles.rowValue}>{fmt(data.customsDuty)}</Text>
-          </View>
-        )}
-        {data.exciseDuty > 0 && (
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Excise Duty (LU)</Text>
-            <Text style={styles.rowValue}>{fmt(data.exciseDuty)}</Text>
-          </View>
-        )}
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Customs Duty {dutyFree ? '(waived — CIF ≤ €150)' : ''}</Text>
+          <Text style={styles.rowValue}>{fmt(data.customsDuty)}</Text>
+        </View>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Import VAT Luxembourg (17% on CIF + duties)</Text>
           <Text style={styles.rowValue}>{fmt(data.importVAT)}</Text>

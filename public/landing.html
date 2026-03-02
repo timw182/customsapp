@@ -541,6 +541,130 @@
         text-align: center;
       }
 
+      /* ── HERO CAROUSEL ── */
+      .carousel-wrapper { width: 100%; }
+      .carousel-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .carousel-feature-name {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .carousel-counter {
+        font-family: "Oswald", sans-serif;
+        font-size: 10px;
+        letter-spacing: 2px;
+        color: var(--subtle);
+      }
+      .carousel-progress {
+        height: 1px;
+        background: var(--border);
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+      .carousel-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--gold-mid), var(--gold-hi));
+        width: 0%;
+      }
+      .carousel-slides { display: grid; }
+      .c-slide {
+        grid-area: 1 / 1;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.52s ease, transform 0.52s ease;
+        pointer-events: none;
+      }
+      .c-slide.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      .carousel-dots {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 18px;
+      }
+      .c-dot {
+        height: 3px;
+        width: 16px;
+        border-radius: 2px;
+        background: var(--border2);
+        cursor: pointer;
+        transition: all 0.35s ease;
+        border: none;
+        padding: 0;
+        outline: none;
+      }
+      .c-dot.active { background: var(--gold-mid); width: 32px; }
+      /* Slide inner helpers */
+      .hs-result {
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+      }
+      .hs-result.best {
+        background: rgba(200, 144, 10, 0.06);
+        border-color: rgba(200, 144, 10, 0.25);
+      }
+      .hs-result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3px;
+      }
+      .hs-code-mono { font-family: "Courier Prime", monospace; font-size: 14px; color: var(--text); }
+      .hs-rate-lbl { font-family: "Oswald", sans-serif; font-size: 11px; letter-spacing: 1px; color: var(--text2); }
+      .hs-rate-lbl.zero { color: var(--gold-mid); }
+      .hs-desc-text { font-size: 11px; color: var(--muted); }
+      .fx-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .fx-row:last-child { border-bottom: none; }
+      .fx-curr { font-family: "Oswald", sans-serif; font-size: 12px; letter-spacing: 3px; color: var(--text2); font-weight: 600; }
+      .fx-mid { font-size: 11px; color: var(--subtle); }
+      .fx-val { font-family: "Courier Prime", monospace; font-size: 13px; color: var(--text); }
+      .fav-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .fav-row:last-child { border-bottom: none; }
+      .fav-star { color: var(--gold-mid); font-size: 12px; flex-shrink: 0; }
+      .fav-code { font-family: "Courier Prime", monospace; font-size: 13px; color: var(--text); flex-shrink: 0; min-width: 54px; }
+      .fav-desc { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fav-pct { font-family: "Oswald", sans-serif; font-size: 11px; letter-spacing: 1px; color: var(--text2); flex-shrink: 0; }
+      .excise-toggle {
+        width: 28px; height: 16px;
+        background: var(--gold-mid);
+        border-radius: 8px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .excise-toggle::after {
+        content: "";
+        position: absolute;
+        right: 2px; top: 2px;
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: white;
+      }
+
       /* ── TRUST BAR ── */
       #trust {
         padding: 28px 0;
@@ -1037,66 +1161,251 @@
       </div>
 
       <div class="hero-right">
-        <div class="calc-preview">
-          <div class="calc-header">
-            <span class="calc-header-title">Live calculation</span>
-            <span class="calc-badge">✓ FTA Rate Applied</span>
+        <div class="carousel-wrapper">
+
+          <!-- Label + progress bar -->
+          <div class="carousel-top">
+            <span class="carousel-feature-name" id="c-label">Duty Calculator</span>
+            <span class="carousel-counter"><span id="c-cur">1</span><span style="color:var(--subtle)">&thinsp;/&thinsp;5</span></span>
           </div>
-          <div class="calc-body">
-            <div class="calc-field">
-              <label>Origin Country</label>
-              <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-              <div class="calc-field">
-                <label>HS Code</label>
-                <div class="calc-input">8471.30</div>
+          <div class="carousel-progress"><div class="carousel-progress-bar" id="c-progress"></div></div>
+
+          <!-- Slides -->
+          <div class="carousel-slides">
+
+            <!-- ① Duty Calculator -->
+            <div class="c-slide">
+              <div class="calc-preview">
+                <div class="calc-header">
+                  <span class="calc-header-title">Live calculation</span>
+                  <span class="calc-badge">✓ FTA Rate Applied</span>
+                </div>
+                <div class="calc-body">
+                  <div class="calc-field">
+                    <label>Origin Country</label>
+                    <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="calc-field">
+                      <label>HS Code</label>
+                      <div class="calc-input">8471.30</div>
+                    </div>
+                    <div class="calc-field">
+                      <label>Duty Rate</label>
+                      <div class="calc-input">0% <span class="tag-g" style="font-size:9px;padding:1px 6px">FTA</span></div>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="calc-field">
+                      <label>Goods Value</label>
+                      <div class="calc-input">€ 12,400.00</div>
+                    </div>
+                    <div class="calc-field">
+                      <label>Incoterm</label>
+                      <div class="calc-input">CIF</div>
+                    </div>
+                  </div>
+                  <div class="calc-divider"></div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">CIF Value (customs base)</span>
+                    <span class="calc-result-val">€ 12,400.00</span>
+                  </div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
+                    <span class="calc-result-val">€ 0.00</span>
+                  </div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">Import VAT (LU 17%)</span>
+                    <span class="calc-result-val">€ 2,108.00</span>
+                  </div>
+                  <div class="calc-result-row" style="padding-top:14px">
+                    <span style="font-family:&quot;Oswald&quot;,sans-serif;font-size:15px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text)">Total landed cost</span>
+                    <span class="calc-result-val accent">€ 14,508.00</span>
+                  </div>
+                </div>
+                <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
               </div>
-              <div class="calc-field">
-                <label>Duty Rate</label>
-                <div class="calc-input">0% <span class="tag-g" style="font-size: 9px; padding: 1px 6px">FTA</span></div>
+            </div>
+
+            <!-- ② AI HS Lookup -->
+            <div class="c-slide">
+              <div class="calc-preview">
+                <div class="calc-header">
+                  <span class="calc-header-title">AI HS Classification</span>
+                  <span class="calc-badge" style="background:#16162a;border-color:#30307a;color:#9999ee">✦ Claude AI</span>
+                </div>
+                <div class="calc-body">
+                  <div class="calc-field">
+                    <label>Product Description</label>
+                    <div class="calc-input" style="font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text2)">Wireless noise-cancelling over-ear headphones</div>
+                  </div>
+                  <div class="calc-divider"></div>
+                  <div class="hs-result best">
+                    <div class="hs-result-row">
+                      <span class="hs-code-mono">8518.30</span>
+                      <span class="hs-rate-lbl zero">0% DUTY</span>
+                    </div>
+                    <div class="hs-desc-text">Headphones &amp; earphones &nbsp;<span style="color:var(--gold-mid)">★ Best match</span></div>
+                  </div>
+                  <div class="hs-result">
+                    <div class="hs-result-row">
+                      <span class="hs-code-mono">8518.40</span>
+                      <span class="hs-rate-lbl">3.7%</span>
+                    </div>
+                    <div class="hs-desc-text">Audio frequency electric amplifiers</div>
+                  </div>
+                  <div class="hs-result" style="margin-bottom:0">
+                    <div class="hs-result-row">
+                      <span class="hs-code-mono">8527.91</span>
+                      <span class="hs-rate-lbl">2.8%</span>
+                    </div>
+                    <div class="hs-desc-text">Radio receivers incorporating sound recording</div>
+                  </div>
+                  <div style="margin-top:14px;text-align:right">
+                    <a href="#" style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold-mid);text-decoration:none">Verify in TARIC ↗</a>
+                  </div>
+                </div>
+                <div class="calc-footer">AI-assisted · Always verify classifications · Not legal advice</div>
               </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-              <div class="calc-field">
-                <label>Goods Value</label>
-                <div class="calc-input">€ 12,400.00</div>
+
+            <!-- ③ FX Converter -->
+            <div class="c-slide">
+              <div class="calc-preview">
+                <div class="calc-header">
+                  <span class="calc-header-title">ECB Exchange Rates</span>
+                  <span class="calc-badge">↻ Live Today</span>
+                </div>
+                <div class="calc-body">
+                  <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:flex-end;margin-bottom:20px">
+                    <div class="calc-field" style="margin-bottom:0">
+                      <label>Amount (USD)</label>
+                      <div class="calc-input">$ 15,000.00</div>
+                    </div>
+                    <div style="padding-bottom:9px;color:var(--muted);font-size:16px">→</div>
+                    <div class="calc-field" style="margin-bottom:0">
+                      <label>EUR</label>
+                      <div class="calc-input" style="color:var(--gold-mid)">€ 13,821.00</div>
+                    </div>
+                  </div>
+                  <div class="calc-divider" style="margin-top:0"></div>
+                  <div class="fx-row"><span class="fx-curr">USD</span><span class="fx-mid">1 USD =</span><span class="fx-val">0.9214 EUR</span></div>
+                  <div class="fx-row"><span class="fx-curr">GBP</span><span class="fx-mid">1 GBP =</span><span class="fx-val">1.1732 EUR</span></div>
+                  <div class="fx-row"><span class="fx-curr">CNY</span><span class="fx-mid">1 CNY =</span><span class="fx-val">0.1270 EUR</span></div>
+                  <div class="fx-row"><span class="fx-curr">JPY</span><span class="fx-mid">1 JPY =</span><span class="fx-val">0.0061 EUR</span></div>
+                  <div class="fx-row"><span class="fx-curr">CHF</span><span class="fx-mid">1 CHF =</span><span class="fx-val">1.0432 EUR</span></div>
+                  <div class="fx-row"><span class="fx-curr">KRW</span><span class="fx-mid">1 KRW =</span><span class="fx-val">0.0006 EUR</span></div>
+                </div>
+                <div class="calc-footer">Source: ECB · Updated every business day · 30+ currencies</div>
               </div>
-              <div class="calc-field">
-                <label>Incoterm</label>
-                <div class="calc-input">CIF</div>
+            </div>
+
+            <!-- ④ Excise Duties -->
+            <div class="c-slide">
+              <div class="calc-preview">
+                <div class="calc-header">
+                  <span class="calc-header-title">Excise Duties</span>
+                  <span class="calc-badge" style="background:#1e1200;border-color:#3d2600;color:#c8900a">LU 2024 Rates</span>
+                </div>
+                <div class="calc-body">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)">Include excise duties</span>
+                    <div class="excise-toggle"></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div class="calc-field">
+                      <label>Category</label>
+                      <div class="calc-input">Spirits</div>
+                    </div>
+                    <div class="calc-field">
+                      <label>Volume (L)</label>
+                      <div class="calc-input">1,000 L</div>
+                    </div>
+                  </div>
+                  <div class="calc-field">
+                    <label>ABV</label>
+                    <div class="calc-input">40 %</div>
+                  </div>
+                  <div class="calc-divider"></div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">Excise duty (spirits)</span>
+                    <span class="calc-result-val">€ 6,453.20</span>
+                  </div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">Customs duty (FTA)</span>
+                    <span class="calc-result-val">€ 0.00</span>
+                  </div>
+                  <div class="calc-result-row">
+                    <span class="calc-result-label">Import VAT (17%)</span>
+                    <span class="calc-result-val">€ 3,497.04</span>
+                  </div>
+                  <div class="calc-result-row" style="padding-top:14px">
+                    <span style="font-family:&quot;Oswald&quot;,sans-serif;font-size:15px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text)">Total landed cost</span>
+                    <span class="calc-result-val accent">€ 27,550.24</span>
+                  </div>
+                </div>
+                <div class="calc-footer">Alcohol · Tobacco · Energy · Luxembourg Administration des Douanes</div>
               </div>
             </div>
-            <div class="calc-divider"></div>
-            <div class="calc-result-row">
-              <span class="calc-result-label">CIF Value (customs base)</span>
-              <span class="calc-result-val">€ 12,400.00</span>
+
+            <!-- ⑤ HS Favourites -->
+            <div class="c-slide">
+              <div class="calc-preview">
+                <div class="calc-header">
+                  <span class="calc-header-title">Saved HS Codes</span>
+                  <span class="calc-badge" style="background:#181818;border-color:#2a2a2a;color:#666">Your Library</span>
+                </div>
+                <div class="calc-body">
+                  <div class="fav-row">
+                    <span class="fav-star">★</span>
+                    <span class="fav-code">8471.30</span>
+                    <span class="fav-desc">Laptops &amp; portable computers</span>
+                    <span class="fav-pct">0.0%</span>
+                  </div>
+                  <div class="fav-row">
+                    <span class="fav-star">★</span>
+                    <span class="fav-code">6110.20</span>
+                    <span class="fav-desc">Cotton jerseys &amp; pullovers</span>
+                    <span class="fav-pct">12.0%</span>
+                  </div>
+                  <div class="fav-row">
+                    <span class="fav-star">★</span>
+                    <span class="fav-code">8517.12</span>
+                    <span class="fav-desc">Mobile phones &amp; smartphones</span>
+                    <span class="fav-pct">0.0%</span>
+                  </div>
+                  <div class="fav-row">
+                    <span class="fav-star">★</span>
+                    <span class="fav-code">9403.20</span>
+                    <span class="fav-desc">Metal furniture for offices</span>
+                    <span class="fav-pct">2.7%</span>
+                  </div>
+                  <div class="fav-row">
+                    <span class="fav-star">★</span>
+                    <span class="fav-code">2204.21</span>
+                    <span class="fav-desc">Wine of fresh grapes (≤ 2 L)</span>
+                    <span class="fav-pct">32.0%</span>
+                  </div>
+                  <div style="margin-top:16px;text-align:center">
+                    <span style="font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold-mid)">+ Add from HS Lookup</span>
+                  </div>
+                </div>
+                <div class="calc-footer">One-click reuse · Build your product library · Verify in TARIC</div>
+              </div>
             </div>
-            <div class="calc-result-row">
-              <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
-              <span class="calc-result-val">€ 0.00</span>
-            </div>
-            <div class="calc-result-row">
-              <span class="calc-result-label">Import VAT (LU 17%)</span>
-              <span class="calc-result-val">€ 2,108.00</span>
-            </div>
-            <div class="calc-result-row" style="padding-top: 14px">
-              <span
-                style="
-                  font-family: &quot;Oswald&quot;, sans-serif;
-                  font-size: 15px;
-                  font-weight: 600;
-                  letter-spacing: 1px;
-                  text-transform: uppercase;
-                  color: var(--text);
-                "
-                >Total landed cost</span
-              >
-              <span class="calc-result-val accent">€ 14,508.00</span>
-            </div>
+
+          </div><!-- /carousel-slides -->
+
+          <!-- Dots -->
+          <div class="carousel-dots">
+            <button class="c-dot" aria-label="Slide 1"></button>
+            <button class="c-dot" aria-label="Slide 2"></button>
+            <button class="c-dot" aria-label="Slide 3"></button>
+            <button class="c-dot" aria-label="Slide 4"></button>
+            <button class="c-dot" aria-label="Slide 5"></button>
           </div>
-          <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
-        </div>
+
+        </div><!-- /carousel-wrapper -->
       </div>
     </section>
 
@@ -1319,5 +1628,69 @@
         </div>
       </div>
     </footer>
+    <script>
+      (function () {
+        var DURATION = 4200;
+        var featureNames = ['Duty Calculator', 'AI HS Lookup', 'FX Converter', 'Excise Duties', 'HS Favourites'];
+        var slides = document.querySelectorAll('.c-slide');
+        var dots = document.querySelectorAll('.c-dot');
+        var labelEl = document.getElementById('c-label');
+        var counterEl = document.getElementById('c-cur');
+        var progressBar = document.getElementById('c-progress');
+        var current = 0;
+        var autoTimer = null;
+        var progressRaf = null;
+        var progressStart = null;
+
+        function showSlide(n) {
+          slides[current].classList.remove('active');
+          dots[current].classList.remove('active');
+          current = ((n % slides.length) + slides.length) % slides.length;
+          slides[current].classList.add('active');
+          dots[current].classList.add('active');
+          if (labelEl) labelEl.textContent = featureNames[current];
+          if (counterEl) counterEl.textContent = String(current + 1);
+          startProgress();
+        }
+
+        function startProgress() {
+          cancelAnimationFrame(progressRaf);
+          if (progressBar) progressBar.style.width = '0%';
+          progressStart = performance.now();
+          function tick(now) {
+            var pct = Math.min(((now - progressStart) / DURATION) * 100, 100);
+            if (progressBar) progressBar.style.width = pct + '%';
+            if (pct < 100) progressRaf = requestAnimationFrame(tick);
+          }
+          progressRaf = requestAnimationFrame(tick);
+        }
+
+        function startAuto() {
+          clearInterval(autoTimer);
+          autoTimer = setInterval(function () { showSlide(current + 1); }, DURATION);
+        }
+
+        function stopAuto() {
+          clearInterval(autoTimer);
+          cancelAnimationFrame(progressRaf);
+        }
+
+        if (slides.length) {
+          slides[0].classList.add('active');
+          dots[0].classList.add('active');
+          startProgress();
+          startAuto();
+        }
+
+        dots.forEach(function (dot, i) {
+          dot.addEventListener('click', function () {
+            clearInterval(autoTimer);
+            showSlide(i);
+            startAuto();
+          });
+        });
+
+      })();
+    </script>
   </body>
 </html>

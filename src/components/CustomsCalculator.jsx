@@ -4,23 +4,249 @@ import { signOut } from "next-auth/react";
 
 const LUXEMBURG_VAT = 0.17;
 
+// Official Luxembourg ADA excise rates effective 01.01.2026
+// Source: douanes.public.lu/fr/accises/taux-droits-accise.html
 const EXCISE_RATES = {
-  beer:                    7.74,    // €/hl per %vol abv
-  'sparkling-wine':       57.75,   // €/hl
-  'still-wine':            0,      // €/hl (LU exercises EU 0-rate option)
-  intermediate:           80.20,   // €/hl (fortified wine >15%vol)
-  spirits:              1546.50,   // €/hl pure alcohol
-  cigarettes_specific:    22.00,   // €/1000 units
-  cigarettes_advalorem:    0.50,   // 50% of retail price
-  cigarettes_minimum:    120.00,   // €/1000 minimum
-  cigars:                  0.16,   // 16% of retail price (ad valorem)
-  fine_cut:               37.00,   // €/kg
-  other_tobacco:          22.00,   // €/kg
-  petrol:                  0.4622, // €/L
-  diesel:                  0.3370, // €/L
-  heating_fuel:            0.1330, // €/L
-  lpg:                     0.07427,// €/kg
+  // Alcohol — €/hl per °Plato (3 production tiers)
+  beer_small:            0.3966,  // brewery ≤ 50,000 hl/yr
+  beer_medium:           0.4462,  // brewery ≤ 200,000 hl/yr
+  beer_large:            0.7933,  // brewery > 200,000 hl/yr
+  'still-wine':          0,       // LU applies EU 0-rate (14% VAT ≤13°, 17% >13°)
+  'sparkling-wine':      0,       // LU applies EU 0-rate (17% VAT)
+  intermediate_low:     47.0998,  // €/hl — intermediate ≤ 15° alc
+  intermediate_high:    66.9313,  // €/hl — intermediate > 15° alc
+  spirits:            1123.1042,  // €/hl pure alcohol (total incl. contributions)
+  // Tobacco
+  cigarettes_specific:   23.3914, // €/1000 units
+  cigarettes_advalorem:   0.4814, // 48.14% of retail price
+  cigarettes_minimum:   152.80,   // €/1000 minimum
+  cigars_advalorem:       0.10,   // 10% of retail price
+  cigars_minimum:        23.50,   // €/1000 pieces minimum
+  fine_cut_specific:     26.40,   // €/kg
+  fine_cut_advalorem:     0.356,  // 35.6% of retail price
+  fine_cut_minimum:      77.90,   // €/kg minimum floor
+  heated_tobacco_advalorem: 0.28, // 28% of retail price
+  heated_tobacco_specific: 16.80, // €/kg
+  eliquid:              120.00,   // €/L
+  nicotine_pouches:      22.00,   // €/kg
+  // Energy
+  petrol:                0.5691,  // €/L — unleaded ≤ 10 mg/kg S (17% VAT)
+  diesel:                0.4646,  // €/L — road use ≤ 10 mg/kg S (17% VAT)
+  heating_fuel:          0.1302,  // €/L — fioul domestique (14% VAT)
+  lpg:                   0.2362,  // €/kg — LPG fuel use (8% VAT)
 };
+// Schema-driven excise config — each category defines its inputs, formula, and VAT rate.
+// To add a new category: add one entry here. Nothing else needs to change.
+const EXCISE_SCHEMAS = {
+  beer: {
+    label: 'Beer', group: 'Alcohol', vatRate: 0.17,
+    inputs: ['volume', 'plato', 'breweryTier'],
+    calc(inp, R) {
+      const rate = inp.breweryTier === 'small' ? R.beer_small
+                 : inp.breweryTier === 'medium' ? R.beer_medium : R.beer_large;
+      const hl = (inp.volume / 100).toFixed(2);
+      return { duty: (inp.volume / 100) * (inp.plato || 0) * rate,
+               note: `${inp.plato || 0}°P × ${hl} hl × €${rate}/hl/°P` };
+    },
+  },
+  'still-wine': {
+    label: 'Still Wine', group: 'Alcohol', vatRate: 0.17,
+    inputs: ['volume'],
+    calc(inp, R) {
+      return { duty: (inp.volume / 100) * R['still-wine'], note: 'EU 0-rate — no excise duty in LU' };
+    },
+  },
+  'sparkling-wine': {
+    label: 'Sparkling Wine / Champagne', group: 'Alcohol', vatRate: 0.17,
+    inputs: ['volume'],
+    calc(inp, R) {
+      return { duty: (inp.volume / 100) * R['sparkling-wine'], note: 'EU 0-rate — no excise duty in LU' };
+    },
+  },
+  intermediate: {
+    label: 'Intermediate Products', group: 'Alcohol', vatRate: 0.17,
+    inputs: ['volume', 'above15'],
+    calc(inp, R) {
+      const rate = inp.above15 ? R.intermediate_high : R.intermediate_low;
+      return { duty: (inp.volume / 100) * rate, note: `€${rate}/hl (${inp.above15 ? '>15°' : '≤15°'} alc)` };
+    },
+  },
+  spirits: {
+    label: 'Spirits / Liqueur', group: 'Alcohol', vatRate: 0.17,
+    inputs: ['volume', 'abv'],
+    calc(inp, R) {
+      const hl = (inp.volume / 100).toFixed(2);
+      return { duty: (inp.volume / 100) * ((inp.abv || 0) / 100) * R.spirits,
+               note: `${inp.abv || 0}% ABV × ${hl} hl × €${R.spirits}/hl pure alc` };
+    },
+  },
+  cigarettes: {
+    label: 'Cigarettes', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['qty', 'retailPerUnit'],
+    calc(inp, R) {
+      const specific = (inp.qty / 1000) * R.cigarettes_specific;
+      const adval    = inp.qty * (inp.retailPerUnit || 0) * R.cigarettes_advalorem;
+      const floor    = (inp.qty / 1000) * R.cigarettes_minimum;
+      const duty     = Math.max(specific + adval, floor);
+      return { duty, note: duty <= floor + 0.001 ? `min €${R.cigarettes_minimum}/1000 units applies` : 'specific + 48.14% ad valorem' };
+    },
+  },
+  cigars: {
+    label: 'Cigars / Cigarillos', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['qty', 'retailPerUnit'],
+    calc(inp, R) {
+      const adval = inp.qty * (inp.retailPerUnit || 0) * R.cigars_advalorem;
+      const floor = (inp.qty / 1000) * R.cigars_minimum;
+      const duty  = Math.max(adval, floor);
+      return { duty, note: duty <= floor + 0.001 ? `min €${R.cigars_minimum}/1000 pcs applies` : '10% ad valorem' };
+    },
+  },
+  'fine-cut': {
+    label: 'Fine-Cut Tobacco', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['weight', 'retailPerKg'],
+    calc(inp, R) {
+      const specific = inp.weight * R.fine_cut_specific;
+      const adval    = inp.weight * (inp.retailPerKg || 0) * R.fine_cut_advalorem;
+      const floor    = inp.weight * R.fine_cut_minimum;
+      const duty     = Math.max(specific + adval, floor);
+      return { duty, note: duty <= floor + 0.001 ? `min €${R.fine_cut_minimum}/kg applies` : `€${R.fine_cut_specific}/kg + 35.6% ad valorem` };
+    },
+  },
+  'other-tobacco': {
+    label: 'Other Tobacco', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['weight', 'retailPerKg'],
+    calc(inp, R) {
+      const specific = inp.weight * R.fine_cut_specific;
+      const adval    = inp.weight * (inp.retailPerKg || 0) * R.fine_cut_advalorem;
+      const floor    = inp.weight * R.fine_cut_minimum;
+      const duty     = Math.max(specific + adval, floor);
+      return { duty, note: duty <= floor + 0.001 ? `min €${R.fine_cut_minimum}/kg applies` : `€${R.fine_cut_specific}/kg + 35.6% ad valorem` };
+    },
+  },
+  'heated-tobacco': {
+    label: 'Heated Tobacco Products', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['weight', 'retailPerKg'],
+    calc(inp, R) {
+      const specific = inp.weight * R.heated_tobacco_specific;
+      const adval    = inp.weight * (inp.retailPerKg || 0) * R.heated_tobacco_advalorem;
+      return { duty: specific + adval, note: `€${R.heated_tobacco_specific}/kg specific + 28% ad valorem` };
+    },
+  },
+  eliquid: {
+    label: 'E-Liquid (vapes)', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['volume'],
+    calc(inp, R) {
+      return { duty: inp.volume * R.eliquid, note: `€${R.eliquid}/L` };
+    },
+  },
+  'nicotine-pouches': {
+    label: 'Nicotine Pouches', group: 'Tobacco', vatRate: 0.17,
+    inputs: ['weight'],
+    calc(inp, R) {
+      return { duty: inp.weight * R.nicotine_pouches, note: `€${R.nicotine_pouches}/kg` };
+    },
+  },
+  petrol: {
+    label: 'Petrol (unleaded)', group: 'Energy', vatRate: 0.17,
+    inputs: ['volume'],
+    calc(inp, R) { return { duty: inp.volume * R.petrol, note: `€${R.petrol}/L` }; },
+  },
+  diesel: {
+    label: 'Diesel', group: 'Energy', vatRate: 0.17,
+    inputs: ['volume'],
+    calc(inp, R) { return { duty: inp.volume * R.diesel, note: `€${R.diesel}/L` }; },
+  },
+  'heating-fuel': {
+    label: 'Heating Fuel', group: 'Energy', vatRate: 0.14,
+    inputs: ['volume'],
+    calc(inp, R) { return { duty: inp.volume * R.heating_fuel, note: `€${R.heating_fuel}/L (14% VAT)` }; },
+  },
+  lpg: {
+    label: 'LPG', group: 'Energy', vatRate: 0.08,
+    inputs: ['weight'],
+    calc(inp, R) { return { duty: inp.weight * R.lpg, note: `€${R.lpg}/kg (8% VAT)` }; },
+  },
+};
+
+// ─── CBAM (Carbon Border Adjustment Mechanism) — EU Regulation 2023/956 ────────
+// Phase-in factor = 1 − share of free EU ETS allowances still in circulation
+const CBAM_FACTOR = {
+  2026: 0.025, 2027: 0.050, 2028: 0.100, 2029: 0.225,
+  2030: 0.485, 2031: 0.730, 2032: 0.865, 2033: 0.980, 2034: 1.000,
+};
+
+// Default embedded emission factors (tCO₂e / tonne or MWh) — pre-markup
+// Source: EU Implementing Regulation 2025/2621
+const CBAM_DEFAULT_EMISSIONS = {
+  steel:       { CN: 3.486, IN: 4.697, RU: 3.531, TR: 2.541, UA: 2.476, US: 1.618, EG: 3.210, BR: 2.230, KR: 2.150, default: 2.900 },
+  aluminium:   { CN: 14.1,  IN: 9.6,   RU: 4.2,   TR: 5.3,   NO: 0.7,   CA: 1.8,   EG: 4.8,   default: 6.700 },
+  cement:      { UA: 1.518, EG: 1.419, TR: 0.895, CN: 1.051, IN: 1.131, MA: 1.102, DZ: 1.089,  default: 0.870 },
+  fertilisers: { RU: 2.700, CN: 6.800, EG: 2.100, TN: 2.300, MA: 2.600, SA: 2.200, default: 3.500 },
+  hydrogen:    { RU: 8.900, CN: 9.000, US: 8.800, NO: 0.500, SA: 9.100, default: 8.900 },
+  electricity:  { CN: 0.555, IN: 0.708, RU: 0.334, TR: 0.328, UA: 0.344, BA: 0.685, RS: 0.540, default: 0.350 },
+};
+
+// EU ETS product benchmarks (tCO₂e/tonne) — best-available technology reference
+const CBAM_BENCHMARKS = {
+  steel_bf_bof:       1.370,
+  steel_dri_eaf:      0.481,
+  steel_scrap_eaf:    0.072,
+  aluminium_primary:  1.423,
+  aluminium_secondary:0.091,
+  cement:             0.766,
+  ammonia_ng:         1.522,
+};
+
+// Default value markup applied on top of base default emission factors
+// (penalises use of default values vs verified actual emissions)
+const CBAM_MARKUP = (year, isFertiliser) =>
+  isFertiliser ? 1.01 : year <= 2026 ? 1.10 : year === 2027 ? 1.20 : 1.30;
+
+const CBAM_SECTORS = {
+  steel:       { label: 'Steel & Iron',        cnCodes: 'CN 7201–7326',   unit: 'tonne', indirectIncluded: false,
+    routes: [
+      { value: 'bf_bof',     label: 'BF/BOF — Blast Furnace + Basic Oxygen Furnace', benchmark: 'steel_bf_bof' },
+      { value: 'dri_eaf',    label: 'DRI/EAF — Direct Reduced Iron + Electric Arc Furnace', benchmark: 'steel_dri_eaf' },
+      { value: 'scrap_eaf',  label: 'Scrap EAF — Electric Arc Furnace (scrap-fed)', benchmark: 'steel_scrap_eaf' },
+    ] },
+  aluminium:   { label: 'Aluminium',           cnCodes: 'CN 7601–7616',   unit: 'tonne', indirectIncluded: false,
+    routes: [
+      { value: 'primary',    label: 'Primary aluminium (electrolysis)', benchmark: 'aluminium_primary' },
+      { value: 'secondary',  label: 'Secondary aluminium (recycled scrap)', benchmark: 'aluminium_secondary' },
+    ] },
+  cement:      { label: 'Cement',              cnCodes: 'CN 2523',        unit: 'tonne', indirectIncluded: true,  routes: null, benchmark: 'cement' },
+  fertilisers: { label: 'Fertilisers (N-based)',cnCodes: 'CN 2814, 3102, 3105', unit: 'tonne', indirectIncluded: true, routes: null, isFertiliser: true },
+  hydrogen:    { label: 'Hydrogen',             cnCodes: 'CN 2804 10 00', unit: 'tonne', indirectIncluded: false,
+    routes: [
+      { value: 'smr',         label: 'Steam Methane Reforming (grey/blue H₂)', benchmark: 'ammonia_ng' },
+      { value: 'electrolysis',label: 'Electrolysis (green H₂, low-emission)', benchmark: null },
+    ] },
+  electricity: { label: 'Electricity',          cnCodes: 'CN 2716 00 00', unit: 'MWh',   indirectIncluded: true, routes: null, noDeMinimis: true },
+};
+
+const CBAM_COUNTRIES = [
+  { code: 'CN', name: 'China' },
+  { code: 'IN', name: 'India' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'UA', name: 'Ukraine' },
+  { code: 'US', name: 'United States' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'MA', name: 'Morocco' },
+  { code: 'DZ', name: 'Algeria' },
+  { code: 'TN', name: 'Tunisia' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'BA', name: 'Bosnia & Herzegovina' },
+  { code: 'RS', name: 'Serbia' },
+  { code: 'KZ', name: 'Kazakhstan' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'default', name: 'Other / Unknown' },
+];
+
 const ORIGIN_AGREEMENTS = {
   CH: { name: "Switzerland", pref: true, note: "Free Trade Agreement – 0% on most goods" },
   NO: { name: "Norway", pref: true, note: "EEA – 0% on most goods" },
@@ -90,7 +316,6 @@ function Spinner() {
 
 export default function CustomsCalculator({ user }) {
   const [tab, setTab] = useState("calculator");
-  const [importType, setImportType] = useState("third-country"); // 'third-country' | 'intra-eu'
   const [description, setDescription] = useState("");
   const [hsCode, setHsCode] = useState("");
   const [dutyRate, setDutyRate] = useState("");
@@ -121,15 +346,24 @@ export default function CustomsCalculator({ user }) {
   const [fxFrom, setFxFrom] = useState("USD");
   const [fxTo, setFxTo] = useState("EUR");
 
-  const [isExcise, setIsExcise] = useState(false);
   const [exciseCategory, setExciseCategory] = useState('beer');
-  const [exciseVolume, setExciseVolume] = useState('');
-  const [exciseAlcohol, setExciseAlcohol] = useState('');
-  const [exciseQuantity, setExciseQuantity] = useState('');
-  const [exciseWeight, setExciseWeight] = useState('');
-  const [exciseRetailPrice, setExciseRetailPrice] = useState('');
+  const [exciseInputs, setExciseInputs] = useState({ breweryTier: 'large', above15: false });
+  const [exciseCifValue, setExciseCifValue] = useState('');
+  const [exciseResult, setExciseResult] = useState(null);
   const [exciseRates, setExciseRates] = useState(EXCISE_RATES);
   const [exciseRatesLastChecked, setExciseRatesLastChecked] = useState(null);
+  const setExciseInput = (key, val) => setExciseInputs(prev => ({ ...prev, [key]: val }));
+
+  const [cbamSector, setCbamSector] = useState('steel');
+  const [cbamCountry, setCbamCountry] = useState('CN');
+  const [cbamTonnes, setCbamTonnes] = useState('');
+  const [cbamMode, setCbamMode] = useState('default');
+  const [cbamActualEmissions, setCbamActualEmissions] = useState('');
+  const [cbamEtsPrice, setCbamEtsPrice] = useState('70');
+  const [cbamCarbonPaid, setCbamCarbonPaid] = useState('');
+  const [cbamRoute, setCbamRoute] = useState('bf_bof');
+  const [cbamYear, setCbamYear] = useState(2026);
+  const [cbamResult, setCbamResult] = useState(null);
 
   const resultRef = useRef(null);
 
@@ -271,72 +505,131 @@ export default function CustomsCalculator({ user }) {
     let cifEUR = valEUR;
     if (incoterm === "FOB" || incoterm === "EXW") cifEUR = valEUR + frEUR + insEUR;
     else if (incoterm === "CFR") cifEUR = valEUR + insEUR;
-    const intraEU = importType === 'intra-eu';
-    const dutyFree = !intraEU && cifEUR <= 150;
-    let effectiveDutyRate = intraEU ? 0 : duty / 100;
-    if (!intraEU && hasPref && hasProofOfOrigin) effectiveDutyRate = 0;
-    const customsDuty = intraEU ? 0 : (dutyFree ? 0 : cifEUR * effectiveDutyRate);
+    const dutyFree = cifEUR <= 150;
+    let effectiveDutyRate = duty / 100;
+    if (hasPref && hasProofOfOrigin) effectiveDutyRate = 0;
+    const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
 
-    let exciseDuty = 0;
-    if (isExcise) {
-      const vol = parseFloat(exciseVolume) || 0;
-      const alc = parseFloat(exciseAlcohol) || 0;
-      const qty = parseFloat(exciseQuantity) || 0;
-      const wt  = parseFloat(exciseWeight) || 0;
-      const rp  = parseFloat(exciseRetailPrice) || 0;
-      const R = exciseRates;
-      switch (exciseCategory) {
-        case 'beer':
-          exciseDuty = (vol / 100) * alc * R.beer; break;
-        case 'still-wine':
-          exciseDuty = (vol / 100) * R['still-wine']; break;
-        case 'sparkling-wine':
-          exciseDuty = (vol / 100) * R['sparkling-wine']; break;
-        case 'intermediate':
-          exciseDuty = (vol / 100) * R.intermediate; break;
-        case 'spirits':
-          exciseDuty = (vol / 100) * (alc / 100) * R.spirits; break;
-        case 'cigarettes': {
-          const specific = (qty / 1000) * R.cigarettes_specific;
-          const adVal = qty * rp * R.cigarettes_advalorem;
-          const minimum = (qty / 1000) * R.cigarettes_minimum;
-          exciseDuty = Math.max(specific + adVal, minimum); break;
-        }
-        case 'cigars':
-          exciseDuty = qty * rp * R.cigars; break;
-        case 'fine-cut':
-          exciseDuty = wt * R.fine_cut; break;
-        case 'other-tobacco':
-          exciseDuty = wt * R.other_tobacco; break;
-        case 'petrol':
-          exciseDuty = vol * R.petrol; break;
-        case 'diesel':
-          exciseDuty = vol * R.diesel; break;
-        case 'heating-fuel':
-          exciseDuty = vol * R.heating_fuel; break;
-        case 'lpg':
-          exciseDuty = wt * R.lpg; break;
-      }
-    }
-
-    const vatBase = cifEUR + customsDuty + exciseDuty;
+    const vatBase = cifEUR + customsDuty;
     const importVAT = vatBase * LUXEMBURG_VAT;
-    const total = cifEUR + customsDuty + exciseDuty + importVAT;
+    const total = cifEUR + customsDuty + importVAT;
     setResult({
       cifEUR,
       customsDuty,
-      exciseDuty,
       importVAT,
       total,
       effectiveDutyRate: effectiveDutyRate * 100,
       dutyFree,
-      intraEU,
       vatBase,
       valEUR,
       frEUR,
       insEUR,
     });
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
+  };
+
+  const calculateExcise = () => {
+    const schema = EXCISE_SCHEMAS[exciseCategory];
+    if (!schema) return;
+    const inp = {
+      volume:        parseFloat(exciseInputs.volume)        || 0,
+      plato:         parseFloat(exciseInputs.plato)         || 0,
+      abv:           parseFloat(exciseInputs.abv)           || 0,
+      qty:           parseFloat(exciseInputs.qty)           || 0,
+      weight:        parseFloat(exciseInputs.weight)        || 0,
+      retailPerUnit: parseFloat(exciseInputs.retailPerUnit) || 0,
+      retailPerKg:   parseFloat(exciseInputs.retailPerKg)   || 0,
+      breweryTier:   exciseInputs.breweryTier || 'large',
+      above15:       !!exciseInputs.above15,
+    };
+    const { duty, note } = schema.calc(inp, exciseRates);
+    const cifVal = parseFloat(exciseCifValue) || 0;
+    const vatBase = cifVal + (duty || 0);
+    const vatAmt = vatBase * schema.vatRate;
+    setExciseResult({
+      duty: duty || 0,
+      note: note || '',
+      cifVal,
+      vatAmt,
+      vatRate: schema.vatRate * 100,
+      total: (duty || 0) + vatAmt,
+      label: schema.label,
+    });
+  };
+
+  const calculateCBAM = () => {
+    const tonnes = parseFloat(cbamTonnes) || 0;
+    const etsPrice = parseFloat(cbamEtsPrice) || 70;
+    const carbonPaid = parseFloat(cbamCarbonPaid) || 0;
+    if (!tonnes) return;
+
+    const sector = CBAM_SECTORS[cbamSector];
+    const factor = CBAM_FACTOR[cbamYear] ?? CBAM_FACTOR[2026];
+    const isFertiliser = !!sector.isFertiliser;
+    const markup = CBAM_MARKUP(cbamYear, isFertiliser);
+
+    let totalEmbedded, defaultPerTonne, emissionsSource;
+    if (cbamMode === 'actual') {
+      const perTonne = parseFloat(cbamActualEmissions) || 0;
+      totalEmbedded = perTonne * tonnes;
+      defaultPerTonne = null;
+      emissionsSource = `Actual verified: ${perTonne.toFixed(3)} tCO₂e/${sector.unit} × ${tonnes} ${sector.unit}`;
+    } else {
+      const defaults = CBAM_DEFAULT_EMISSIONS[cbamSector] || {};
+      const base = defaults[cbamCountry] ?? defaults.default ?? 0;
+      defaultPerTonne = base * markup;
+      totalEmbedded = defaultPerTonne * tonnes;
+      emissionsSource = `Default: ${base.toFixed(3)} × ${markup} markup = ${defaultPerTonne.toFixed(3)} tCO₂e/${sector.unit}`;
+    }
+
+    const coveredEmissions = totalEmbedded * factor;
+    const grossCost = coveredEmissions * etsPrice;
+    const netCost = Math.max(0, grossCost - carbonPaid);
+    const perUnitCost = tonnes > 0 ? netCost / tonnes : 0;
+    const deMinimis = !sector.noDeMinimis && cbamSector !== 'electricity' && tonnes < 50;
+
+    // Benchmark comparison (only for default mode with a known route benchmark)
+    let benchmarkEmissions = null;
+    if (cbamMode === 'default') {
+      if (sector.routes) {
+        const route = sector.routes.find(r => r.value === cbamRoute);
+        benchmarkEmissions = route?.benchmark ? CBAM_BENCHMARKS[route.benchmark] ?? null : null;
+      } else if (sector.benchmark) {
+        benchmarkEmissions = CBAM_BENCHMARKS[sector.benchmark] ?? null;
+      }
+    }
+
+    setCbamResult({
+      tonnes, totalEmbedded, factor, coveredEmissions,
+      etsPrice, grossCost, carbonPaid, netCost, perUnitCost,
+      deMinimis, emissionsSource, defaultPerTonne,
+      benchmarkEmissions, year: cbamYear, sectorLabel: sector.label, unit: sector.unit,
+    });
+  };
+
+  const downloadExcisePDF = async () => {
+    if (!exciseResult) return;
+    const res = await fetch('/api/export/pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'excise',
+        createdAt: new Date(),
+        category: exciseResult.label,
+        exciseDuty: exciseResult.duty,
+        exciseNote: exciseResult.note,
+        cifVal: exciseResult.cifVal,
+        importVAT: exciseResult.vatAmt,
+        vatRate: exciseResult.vatRate,
+        total: exciseResult.total,
+      }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `excise-${Date.now()}.pdf`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const downloadPDF = async () => {
@@ -351,10 +644,9 @@ export default function CustomsCalculator({ user }) {
       lines: [{ description, hsCode, dutyRate, value: itemValue, freight, insurance }],
       cifEUR: result.cifEUR,
       customsDuty: result.customsDuty,
-      exciseDuty: result.exciseDuty,
+      exciseDuty: 0,
       importVAT: result.importVAT,
       total: result.total,
-      intraEU: result.intraEU,
     };
     const res = await fetch("/api/export/pdf", {
       method: "POST",
@@ -576,7 +868,7 @@ export default function CustomsCalculator({ user }) {
 
       {/* Tabs */}
       <div className="tabs-bar">
-        {["calculator", "hs-lookup", "fx", "reference"].map((t) => (
+        {["calculator", "excise", "cbam", "hs-lookup", "fx", "reference"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -587,7 +879,7 @@ export default function CustomsCalculator({ user }) {
               background: tab === t ? "rgba(200,144,10,0.07)" : undefined,
             }}
           >
-            {t === "calculator" ? "Calc" : t === "hs-lookup" ? "HS Lookup" : t === "fx" ? "FX Rates" : "Reference"}
+            {t === "calculator" ? "Calc" : t === "excise" ? "Excise" : t === "cbam" ? "CBAM" : t === "hs-lookup" ? "HS Lookup" : t === "fx" ? "FX Rates" : "Reference"}
           </button>
         ))}
       </div>
@@ -597,35 +889,6 @@ export default function CustomsCalculator({ user }) {
         {tab === "calculator" && (
           <div className="two-col">
             <div>
-              {/* Import type toggle */}
-              <div style={{ display: "flex", gap: 0, marginBottom: 20, borderRadius: 2, overflow: "hidden", border: "1px solid #d8d2c8" }}>
-                {[
-                  { value: "third-country", label: "Third-country import" },
-                  { value: "intra-eu", label: "Intra-EU movement" },
-                ].map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => { setImportType(value); setResult(null); }}
-                    style={{
-                      flex: 1,
-                      padding: "10px 8px",
-                      border: "none",
-                      background: importType === value ? "#1a1208" : "#faf7f2",
-                      color: importType === value ? "#F8DA6A" : "#8a7e6e",
-                      fontFamily: "var(--font-oswald), sans-serif",
-                      fontSize: 10,
-                      letterSpacing: 2,
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                      transition: "background 0.15s, color 0.15s",
-                      borderRight: value === "third-country" ? "1px solid #d8d2c8" : "none",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
               <div className="section-label">Shipment Details</div>
               <div style={{ display: "grid", gap: 16 }}>
                 <div>
@@ -667,7 +930,7 @@ export default function CustomsCalculator({ user }) {
                       {ORIGIN_AGREEMENTS[originCountry].note}
                     </div>
                   )}
-                  {hasPref && importType === "third-country" && (
+                  {hasPref && (
                     <label
                       style={{
                         display: "flex",
@@ -829,7 +1092,6 @@ export default function CustomsCalculator({ user }) {
                   </div>
                 )}
 
-                {importType === "third-country" && (<>
                 <div>
                   <label
                     style={{
@@ -1016,156 +1278,6 @@ export default function CustomsCalculator({ user }) {
                     </div>
                   )}
                 </div>
-                </>)}
-
-                {/* Excise Goods Toggle */}
-                <div style={{ borderTop: "1px solid #e0d8cc", paddingTop: 16 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
-                    <input
-                      type="checkbox"
-                      checked={isExcise}
-                      onChange={(e) => setIsExcise(e.target.checked)}
-                      style={{ width: "auto" }}
-                    />
-                    <span style={{ fontSize: 12, fontFamily: "var(--font-oswald), sans-serif", letterSpacing: 2, textTransform: "uppercase", color: isExcise ? "#C8900A" : "#8a7e6e" }}>
-                      Excise Goods
-                    </span>
-                  </label>
-
-                  {isExcise && (
-                    <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
-                      <div>
-                        <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                          Category
-                        </label>
-                        <select value={exciseCategory} onChange={(e) => setExciseCategory(e.target.value)}>
-                          <optgroup label="Alcohol">
-                            <option value="beer">Beer</option>
-                            <option value="still-wine">Still Wine</option>
-                            <option value="sparkling-wine">Sparkling Wine / Champagne</option>
-                            <option value="intermediate">Intermediate (Fortified Wine &gt;15%)</option>
-                            <option value="spirits">Spirits / Liqueur</option>
-                          </optgroup>
-                          <optgroup label="Tobacco">
-                            <option value="cigarettes">Cigarettes</option>
-                            <option value="cigars">Cigars / Cigarillos</option>
-                            <option value="fine-cut">Fine-Cut Tobacco</option>
-                            <option value="other-tobacco">Other Tobacco</option>
-                          </optgroup>
-                          <optgroup label="Energy">
-                            <option value="petrol">Petrol (unleaded)</option>
-                            <option value="diesel">Diesel</option>
-                            <option value="heating-fuel">Heating Fuel</option>
-                            <option value="lpg">LPG</option>
-                          </optgroup>
-                        </select>
-                      </div>
-
-                      {/* Volume (L) — beer, still-wine, sparkling-wine, intermediate, spirits, petrol, diesel, heating-fuel */}
-                      {['beer','still-wine','sparkling-wine','intermediate','spirits','petrol','diesel','heating-fuel'].includes(exciseCategory) && (
-                        <div>
-                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                            Volume (litres)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g. 100"
-                            value={exciseVolume}
-                            onChange={(e) => setExciseVolume(e.target.value)}
-                            min="0"
-                            step="0.1"
-                          />
-                        </div>
-                      )}
-
-                      {/* Alcohol % — beer, spirits */}
-                      {['beer','spirits'].includes(exciseCategory) && (
-                        <div>
-                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                            Alcohol % abv
-                          </label>
-                          <input
-                            type="number"
-                            placeholder={exciseCategory === 'beer' ? "e.g. 5" : "e.g. 40"}
-                            value={exciseAlcohol}
-                            onChange={(e) => setExciseAlcohol(e.target.value)}
-                            min="0"
-                            max="100"
-                            step="0.1"
-                          />
-                        </div>
-                      )}
-
-                      {/* Quantity (units) — cigarettes, cigars */}
-                      {['cigarettes','cigars'].includes(exciseCategory) && (
-                        <div>
-                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                            Quantity (units)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g. 1000"
-                            value={exciseQuantity}
-                            onChange={(e) => setExciseQuantity(e.target.value)}
-                            min="0"
-                            step="1"
-                          />
-                        </div>
-                      )}
-
-                      {/* Retail price per unit — cigarettes, cigars */}
-                      {['cigarettes','cigars'].includes(exciseCategory) && (
-                        <div>
-                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                            Retail Price per Unit (€)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g. 0.35"
-                            value={exciseRetailPrice}
-                            onChange={(e) => setExciseRetailPrice(e.target.value)}
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                      )}
-
-                      {/* Weight (kg) — fine-cut, other-tobacco, lpg */}
-                      {['fine-cut','other-tobacco','lpg'].includes(exciseCategory) && (
-                        <div>
-                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-                            Weight (kg)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g. 10"
-                            value={exciseWeight}
-                            onChange={(e) => setExciseWeight(e.target.value)}
-                            min="0"
-                            step="0.1"
-                          />
-                        </div>
-                      )}
-
-                      <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 }}>
-                        {exciseRatesLastChecked && (() => {
-                          const daysOld = Math.floor((Date.now() - new Date(exciseRatesLastChecked)) / 86400000);
-                          const stale = daysOld > 14;
-                          return (
-                            <span style={{ color: stale ? "#8e2e2e" : "#9a8e7e" }}>
-                              {stale ? "⚠ " : ""}Rates last verified {daysOld === 0 ? "today" : `${daysOld}d ago`}
-                              {stale ? " — may be outdated" : ""} ·{" "}
-                            </span>
-                          );
-                        })()}
-                        Verify at{" "}
-                        <a href="https://ae.gouvernement.lu" target="_blank" rel="noopener" style={{ color: "#C8900A" }}>
-                          Administration des Accises ↗
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 <button
                   onClick={calculate}
@@ -1223,21 +1335,6 @@ export default function CustomsCalculator({ user }) {
               )}
               {result && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
-                  {result.intraEU && (
-                    <div
-                      style={{
-                        background: "#e8f0f8",
-                        border: "1px solid #a8c8e8",
-                        padding: "12px 16px",
-                        borderRadius: 2,
-                        marginBottom: 16,
-                        fontSize: 13,
-                        color: "#1a4a7e",
-                      }}
-                    >
-                      Intra-EU movement — customs duty not applicable. Excise + VAT only.
-                    </div>
-                  )}
                   {result.dutyFree && (
                     <div
                       style={{
@@ -1304,14 +1401,13 @@ export default function CustomsCalculator({ user }) {
                       style={{ borderTop: "1px solid #e0d8cc", paddingTop: 14, marginTop: 4 }}
                     >
                       <span style={{ fontSize: 14, fontWeight: 600 }}>
-                        {result.intraEU ? "Transaction Value" : "CIF Value (customs base)"}
+                        CIF Value (customs base)
                       </span>
                       <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 14, color: "#C8900A" }}>
                         € {fmt(result.cifEUR)}
                       </span>
                     </div>
                     <div style={{ height: 1, background: "#e0d8cc", margin: "12px 0" }} />
-                    {!result.intraEU && (
                     <div className="result-row">
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Customs duty
@@ -1330,17 +1426,6 @@ export default function CustomsCalculator({ user }) {
                         € {fmt(result.customsDuty)}
                       </span>
                     </div>
-                    )}
-                    {result.exciseDuty > 0 && (
-                      <div className="result-row">
-                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>
-                          Excise Duty (LU)
-                        </span>
-                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                          € {fmt(result.exciseDuty)}
-                        </span>
-                      </div>
-                    )}
                     <div className="result-row" style={{ borderBottom: "none" }}>
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Import VAT (LU)
@@ -1396,7 +1481,7 @@ export default function CustomsCalculator({ user }) {
                           lineHeight: 1.7,
                         }}
                       >
-                        {result.intraEU ? "Charges" : "Duties"}: {(((result.customsDuty + result.exciseDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}% of goods
+                        Duties: {(((result.customsDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}% of goods
                         value
                         <br />
                         VAT base: € {fmt(result.vatBase)}
@@ -1470,6 +1555,501 @@ export default function CustomsCalculator({ user }) {
             </div>
           </div>
         )}
+
+        {/* EXCISE TAB */}
+        {tab === "excise" && (
+          <div className="two-col">
+            <div>
+              <div className="section-label">Excise Duty Calculator — Luxembourg</div>
+              <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24, display: "grid", gap: 16 }}>
+
+                {/* Category */}
+                <div>
+                  <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>Category</label>
+                  <select
+                    value={exciseCategory}
+                    onChange={(e) => { setExciseCategory(e.target.value); setExciseInputs({ breweryTier: 'large', above15: false }); setExciseResult(null); }}
+                  >
+                    {['Alcohol', 'Tobacco', 'Energy'].map(group => (
+                      <optgroup key={group} label={group}>
+                        {Object.entries(EXCISE_SCHEMAS).filter(([, s]) => s.group === group).map(([key, s]) => (
+                          <option key={key} value={key}>{s.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Schema-driven inputs */}
+                {(() => {
+                  const schema = EXCISE_SCHEMAS[exciseCategory];
+                  if (!schema) return null;
+                  const inp = schema.inputs;
+                  const lbl = { fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 };
+                  return (<>
+                    {inp.includes('volume') && (
+                      <div><label style={lbl}>Volume (litres)</label>
+                        <input type="number" placeholder="e.g. 100" min="0" step="0.1"
+                          value={exciseInputs.volume ?? ''} onChange={(e) => setExciseInput('volume', e.target.value)} /></div>
+                    )}
+                    {inp.includes('plato') && (
+                      <div><label style={lbl}>Original Gravity (°Plato)</label>
+                        <input type="number" placeholder="e.g. 12" min="0" max="30" step="0.1"
+                          value={exciseInputs.plato ?? ''} onChange={(e) => setExciseInput('plato', e.target.value)} /></div>
+                    )}
+                    {inp.includes('breweryTier') && (
+                      <div><label style={lbl}>Brewery Annual Output</label>
+                        <select value={exciseInputs.breweryTier || 'large'} onChange={(e) => setExciseInput('breweryTier', e.target.value)}>
+                          <option value="large">&gt; 200,000 hl/yr — €0.7933/hl/°P</option>
+                          <option value="medium">≤ 200,000 hl/yr — €0.4462/hl/°P</option>
+                          <option value="small">≤ 50,000 hl/yr — €0.3966/hl/°P</option>
+                        </select></div>
+                    )}
+                    {inp.includes('abv') && (
+                      <div><label style={lbl}>Alcohol % vol (ABV)</label>
+                        <input type="number" placeholder="e.g. 40" min="0" max="100" step="0.1"
+                          value={exciseInputs.abv ?? ''} onChange={(e) => setExciseInput('abv', e.target.value)} /></div>
+                    )}
+                    {inp.includes('above15') && (
+                      <div><label style={lbl}>Alcoholic Strength</label>
+                        <select value={exciseInputs.above15 ? 'high' : 'low'} onChange={(e) => setExciseInput('above15', e.target.value === 'high')}>
+                          <option value="low">≤ 15° alc — €47.10/hl</option>
+                          <option value="high">&gt; 15° alc — €66.93/hl</option>
+                        </select></div>
+                    )}
+                    {inp.includes('qty') && (
+                      <div><label style={lbl}>Quantity (units)</label>
+                        <input type="number" placeholder="e.g. 1000" min="0" step="1"
+                          value={exciseInputs.qty ?? ''} onChange={(e) => setExciseInput('qty', e.target.value)} /></div>
+                    )}
+                    {inp.includes('weight') && (
+                      <div><label style={lbl}>Weight (kg)</label>
+                        <input type="number" placeholder="e.g. 10" min="0" step="0.1"
+                          value={exciseInputs.weight ?? ''} onChange={(e) => setExciseInput('weight', e.target.value)} /></div>
+                    )}
+                    {inp.includes('retailPerUnit') && (
+                      <div><label style={lbl}>Retail Price per Unit (€)</label>
+                        <input type="number" placeholder="e.g. 0.35" min="0" step="0.01"
+                          value={exciseInputs.retailPerUnit ?? ''} onChange={(e) => setExciseInput('retailPerUnit', e.target.value)} /></div>
+                    )}
+                    {inp.includes('retailPerKg') && (
+                      <div><label style={lbl}>Retail Price per kg (€) — optional</label>
+                        <input type="number" placeholder="leave blank → minimum floor applies" min="0" step="0.01"
+                          value={exciseInputs.retailPerKg ?? ''} onChange={(e) => setExciseInput('retailPerKg', e.target.value)} /></div>
+                    )}
+                  </>);
+                })()}
+
+                {/* Optional CIF value for VAT calculation */}
+                <div style={{ borderTop: "1px solid #e0d8cc", paddingTop: 16 }}>
+                  <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                    Declared Goods Value (CIF, €) — optional
+                  </label>
+                  <input type="number" placeholder="For VAT calculation on goods + excise" min="0" step="0.01"
+                    value={exciseCifValue} onChange={(e) => setExciseCifValue(e.target.value)} />
+                  <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 6, lineHeight: 1.5 }}>
+                    If provided, import VAT ({EXCISE_SCHEMAS[exciseCategory]?.vatRate * 100 ?? 17}%) is calculated on goods value + excise.
+                  </div>
+                </div>
+
+                {/* Stale rates notice */}
+                <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 }}>
+                  {exciseRatesLastChecked && (() => {
+                    const daysOld = Math.floor((Date.now() - new Date(exciseRatesLastChecked)) / 86400000);
+                    const stale = daysOld > 14;
+                    return (
+                      <span style={{ color: stale ? "#8e2e2e" : "#9a8e7e" }}>
+                        {stale ? "⚠ " : ""}Rates last verified {daysOld === 0 ? "today" : `${daysOld}d ago`}
+                        {stale ? " — may be outdated" : ""} ·{" "}
+                      </span>
+                    );
+                  })()}
+                  Verify at{" "}
+                  <a href="https://douanes.public.lu/fr/accises/taux-droits-accise.html" target="_blank" rel="noopener" style={{ color: "#C8900A" }}>
+                    ADA rate tables ↗
+                  </a>
+                </div>
+
+                <button
+                  onClick={calculateExcise}
+                  className="btn-gold"
+                  style={{ padding: "14px", fontSize: 13, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, borderRadius: 2, fontFamily: "var(--font-oswald), sans-serif", width: "100%" }}
+                >
+                  Calculate Excise
+                </button>
+              </div>
+            </div>
+
+            {/* Result panel */}
+            <div>
+              <div className="section-label">Result</div>
+              {!exciseResult ? (
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24, color: "#9a8e7e", fontSize: 13, lineHeight: 1.7 }}>
+                  Select a category, enter the quantities, and press Calculate Excise.
+                </div>
+              ) : (
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24 }}>
+                  {/* Category label */}
+                  <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", marginBottom: 12 }}>
+                    {exciseResult.label}
+                  </div>
+
+                  <div style={{ borderBottom: "1px solid #e0d8cc" }}>
+                    <div className="result-row">
+                      <span style={{ color: "#8a7e6e", fontSize: 13 }}>
+                        Excise Duty (LU)
+                        {exciseResult.note && (
+                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", marginLeft: 8, fontSize: 11, color: "#9a8e7e" }}>
+                            {exciseResult.note}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
+                        € {fmt(exciseResult.duty)}
+                      </span>
+                    </div>
+                    {exciseResult.cifVal > 0 && (
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>Declared goods value</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>€ {fmt(exciseResult.cifVal)}</span>
+                      </div>
+                    )}
+                    <div className="result-row" style={{ borderBottom: "none" }}>
+                      <span style={{ color: "#8a7e6e", fontSize: 13 }}>
+                        Import VAT (LU)
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", marginLeft: 8, fontSize: 11, color: "#9a8e7e" }}>
+                          {exciseResult.vatRate}% on {exciseResult.cifVal > 0 ? "goods + excise" : "excise only"}
+                        </span>
+                      </span>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>€ {fmt(exciseResult.vatAmt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div style={{ marginTop: 8, background: "linear-gradient(135deg, rgba(248,218,106,0.18), rgba(200,144,10,0.08))", border: "1px solid rgba(200,144,10,0.3)", borderRadius: 2, padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)" }}>
+                      Total Excise + VAT
+                    </div>
+                    <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 28, color: "var(--gold)", fontWeight: 700 }}>
+                      € {fmt(exciseResult.total)}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12, fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 }}>
+                    Source: Official ADA Luxembourg rates, effective 01.01.2026
+                  </div>
+
+                  <button
+                    onClick={downloadExcisePDF}
+                    className="btn-ghost"
+                    style={{ marginTop: 16, width: "100%", padding: "10px 14px", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", border: "1px solid #d8d2c8", borderRadius: 2, color: "#C8900A", background: "none", cursor: "pointer" }}
+                  >
+                    Download PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CBAM TAB */}
+        {tab === "cbam" && (() => {
+          const lbl = { fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 };
+          const sector = CBAM_SECTORS[cbamSector];
+          const defaults = CBAM_DEFAULT_EMISSIONS[cbamSector] || {};
+          const base = defaults[cbamCountry] ?? defaults.default;
+          const markup = CBAM_MARKUP(cbamYear, !!sector?.isFertiliser);
+          const previewFactor = base != null ? base * markup : null;
+          const tonnes = parseFloat(cbamTonnes);
+          const showDeMinimisHint = !isNaN(tonnes) && tonnes > 0 && tonnes < 50 && !sector?.noDeMinimis;
+
+          return (
+            <div className="two-col">
+              {/* ── Left: Inputs ── */}
+              <div>
+                <div className="section-label">CBAM Carbon Cost Calculator</div>
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24, display: "grid", gap: 16 }}>
+
+                  {/* Sector */}
+                  <div>
+                    <label style={lbl}>Product Sector</label>
+                    <select
+                      value={cbamSector}
+                      onChange={(e) => {
+                        const s = CBAM_SECTORS[e.target.value];
+                        setCbamSector(e.target.value);
+                        setCbamRoute(s?.routes?.[0]?.value || '');
+                        setCbamResult(null);
+                      }}
+                    >
+                      {Object.entries(CBAM_SECTORS).map(([k, s]) => (
+                        <option key={k} value={k}>{s.label} · {s.cnCodes}</option>
+                      ))}
+                    </select>
+                    {sector?.indirectIncluded && (
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                        Indirect emissions (electricity) included in default factors.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Country */}
+                  <div>
+                    <label style={lbl}>Country of Origin</label>
+                    <select value={cbamCountry} onChange={(e) => setCbamCountry(e.target.value)}>
+                      {CBAM_COUNTRIES.map(c => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Import Year */}
+                  <div>
+                    <label style={lbl}>Import Year</label>
+                    <select value={cbamYear} onChange={(e) => setCbamYear(parseInt(e.target.value))}>
+                      {Object.entries(CBAM_FACTOR).map(([y, f]) => (
+                        <option key={y} value={y}>{y} — {(f * 100).toFixed(1)}% CBAM factor</option>
+                      ))}
+                    </select>
+                    <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                      Factor = % of embedded emissions requiring certificate coverage.
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div>
+                    <label style={lbl}>Import Quantity ({sector?.unit || 'tonne'})</label>
+                    <input
+                      type="number" placeholder="e.g. 500" min="0" step="0.1"
+                      value={cbamTonnes} onChange={(e) => setCbamTonnes(e.target.value)}
+                    />
+                    {showDeMinimisHint && (
+                      <div style={{ fontSize: 11, color: "#2e6e2e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                        ✓ Below 50 {sector?.unit} de minimis — CBAM obligation likely waived. Confirm with declarant.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Production route */}
+                  {sector?.routes && (
+                    <div>
+                      <label style={lbl}>Production Route</label>
+                      <select value={cbamRoute} onChange={(e) => setCbamRoute(e.target.value)}>
+                        {sector.routes.map(r => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Emissions mode */}
+                  <div>
+                    <label style={lbl}>Embedded Emissions Source</label>
+                    <select value={cbamMode} onChange={(e) => setCbamMode(e.target.value)}>
+                      <option value="default">Default values (EU Reg. 2025/2621 + markup)</option>
+                      <option value="actual">Actual verified emissions (accredited verifier)</option>
+                    </select>
+                    {cbamMode === 'default' && previewFactor != null && (
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 6, fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.6 }}>
+                        Base factor: {(base ?? 0).toFixed(3)} × {markup} markup = {previewFactor.toFixed(3)} tCO₂e/{sector?.unit || 't'}
+                      </div>
+                    )}
+                  </div>
+
+                  {cbamMode === 'actual' && (
+                    <div>
+                      <label style={lbl}>Actual Embedded Emissions (tCO₂e per {sector?.unit || 'tonne'})</label>
+                      <input
+                        type="number" placeholder="e.g. 1.85" min="0" step="0.001"
+                        value={cbamActualEmissions} onChange={(e) => setCbamActualEmissions(e.target.value)}
+                      />
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                        Must be verified by an EU-accredited independent verifier.
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ borderTop: "1px solid #e0d8cc", paddingTop: 16, display: "grid", gap: 16 }}>
+                    {/* ETS price */}
+                    <div>
+                      <label style={lbl}>EU ETS Carbon Price (€/tCO₂)</label>
+                      <input
+                        type="number" placeholder="e.g. 70" min="0" step="0.5"
+                        value={cbamEtsPrice} onChange={(e) => setCbamEtsPrice(e.target.value)}
+                      />
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                        Quarterly average ETS price applies. Check{" "}
+                        <a href="https://www.eex.com/en/market-data/environmental-markets" target="_blank" rel="noopener" style={{ color: "#C8900A" }}>EEX ↗</a>
+                        {" "}for current prices.
+                      </div>
+                    </div>
+
+                    {/* Carbon price already paid */}
+                    <div>
+                      <label style={lbl}>Carbon Price Already Paid Abroad (€) — optional</label>
+                      <input
+                        type="number" placeholder="0.00" min="0" step="0.01"
+                        value={cbamCarbonPaid} onChange={(e) => setCbamCarbonPaid(e.target.value)}
+                      />
+                      <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}>
+                        Effective carbon price paid in origin country. Deducted from CBAM cost.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={calculateCBAM}
+                    className="btn-gold"
+                    style={{ padding: "14px", fontSize: 13, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, borderRadius: 2, fontFamily: "var(--font-oswald), sans-serif", width: "100%" }}
+                  >
+                    Calculate CBAM
+                  </button>
+                </div>
+
+                {/* Key dates reference */}
+                <div style={{ marginTop: 16, background: "#faf7f2", border: "1px solid #e0d8cc", borderRadius: 2, padding: 16 }}>
+                  <div className="section-label" style={{ marginTop: 0, marginBottom: 10 }}>Key Dates & Thresholds</div>
+                  <div style={{ fontSize: 12, color: "#8a7e6e", lineHeight: 2, fontFamily: "var(--font-courier-prime), monospace" }}>
+                    <div>Jan 2026 — CBAM fully operational (declarant obligations begin)</div>
+                    <div>31 May each year — CBAM annual declaration deadline</div>
+                    <div>Feb 2027 — CBAM certificate sales open</div>
+                    <div>30 Sep 2027 — First surrender deadline (covering 2026 imports)</div>
+                    <div style={{ color: "#2e6e2e" }}>50 t/yr — de minimis threshold (excl. electricity)</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Right: Result ── */}
+              <div>
+                <div className="section-label">CBAM Cost Estimate</div>
+                {!cbamResult ? (
+                  <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: "44px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 32, marginBottom: 14, opacity: 0.2, lineHeight: 1 }}>CO₂</div>
+                    <div style={{ fontFamily: "var(--font-oswald), sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>
+                      Carbon Border Adjustment
+                    </div>
+                    <div style={{ fontSize: 13, color: "#b8ae9e", lineHeight: 1.6 }}>
+                      Select sector, origin country, and quantity,<br />then click <strong style={{ fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", letterSpacing: 1 }}>Calculate CBAM</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ animation: "fadeIn 0.3s ease" }}>
+                    {cbamResult.deMinimis && (
+                      <div style={{ background: "#e8f5e8", border: "1px solid #a8d8a8", padding: "12px 16px", borderRadius: 2, marginBottom: 16, fontSize: 13, color: "#2e6e2e" }}>
+                        ✓ {cbamResult.tonnes.toFixed(1)} {cbamResult.unit} is below the 50-{cbamResult.unit} de minimis threshold. No CBAM obligation likely applies — verify with your authorised declarant.
+                      </div>
+                    )}
+
+                    <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+                      <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", marginBottom: 12 }}>
+                        {cbamResult.sectorLabel}
+                      </div>
+
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>Import quantity</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>{cbamResult.tonnes.toFixed(2)} {cbamResult.unit}</span>
+                      </div>
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>Total embedded emissions</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>{cbamResult.totalEmbedded.toFixed(3)} tCO₂e</span>
+                      </div>
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>
+                          CBAM factor ({cbamResult.year})
+                          <span style={{ fontSize: 11, marginLeft: 8, fontFamily: "var(--font-courier-prime), monospace", color: "#9a8e7e" }}>
+                            {(cbamResult.factor * 100).toFixed(1)}% phase-in
+                          </span>
+                        </span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>×{cbamResult.factor}</span>
+                      </div>
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>Covered emissions</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>{cbamResult.coveredEmissions.toFixed(4)} tCO₂e</span>
+                      </div>
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>EU ETS price</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>€{cbamResult.etsPrice}/tCO₂</span>
+                      </div>
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>Gross CBAM cost</span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>€ {fmt(cbamResult.grossCost)}</span>
+                      </div>
+                      {cbamResult.carbonPaid > 0 && (
+                        <div className="result-row">
+                          <span style={{ color: "#8a7e6e", fontSize: 13 }}>− Carbon price paid abroad</span>
+                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13, color: "#2e6e2e" }}>− € {fmt(cbamResult.carbonPaid)}</span>
+                        </div>
+                      )}
+
+                      {/* Net CBAM cost total box */}
+                      <div style={{ marginTop: 8, background: "linear-gradient(135deg, rgba(248,218,106,0.18), rgba(200,144,10,0.08))", border: "1px solid rgba(200,144,10,0.3)", borderRadius: 2, padding: "18px 20px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <div style={{ fontSize: 10, letterSpacing: 4, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)" }}>
+                            Net CBAM Cost
+                          </div>
+                          <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 28, color: "var(--gold)", fontWeight: 700 }}>
+                            € {fmt(cbamResult.netCost)}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace" }}>
+                          € {cbamResult.perUnitCost.toFixed(2)} per {cbamResult.unit} · {cbamResult.tonnes.toFixed(1)} {cbamResult.unit} imported
+                        </div>
+                      </div>
+
+                      {/* Benchmark comparison */}
+                      {cbamResult.benchmarkEmissions != null && cbamResult.defaultPerTonne != null && (
+                        <div style={{ marginTop: 16, padding: "12px 16px", background: "#faf7f2", border: "1px solid #e0d8cc", borderRadius: 2 }}>
+                          <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", marginBottom: 8 }}>
+                            vs EU ETS Benchmark
+                          </div>
+                          <div style={{ fontSize: 12, color: "#8a7e6e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.9 }}>
+                            <div>Imported product: {cbamResult.defaultPerTonne.toFixed(3)} tCO₂e/t</div>
+                            <div>EU benchmark: {cbamResult.benchmarkEmissions.toFixed(3)} tCO₂e/t</div>
+                            <div style={{ color: cbamResult.defaultPerTonne > cbamResult.benchmarkEmissions ? "#8e2e2e" : "#2e6e2e", marginTop: 2 }}>
+                              {cbamResult.defaultPerTonne > cbamResult.benchmarkEmissions
+                                ? `⚠ ${((cbamResult.defaultPerTonne / cbamResult.benchmarkEmissions - 1) * 100).toFixed(0)}% above EU best-in-class`
+                                : `✓ Within EU benchmark range`}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Emissions source note */}
+                      <div style={{ marginTop: 12, fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 }}>
+                        {cbamResult.emissionsSource}
+                      </div>
+
+                      {/* Compliance checklist */}
+                      <div style={{ marginTop: 16, borderTop: "1px solid #e0d8cc", paddingTop: 16 }}>
+                        <div style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", marginBottom: 10 }}>
+                          Compliance Checklist
+                        </div>
+                        {[
+                          "Register as authorised CBAM declarant in the CBAM Registry",
+                          "Obtain embedded emissions report from supplier (or use defaults)",
+                          "Have actual emissions verified by an EU-accredited verifier",
+                          "Purchase CBAM certificates via national authority (ADA Luxembourg)",
+                          "Submit annual CBAM declaration by 31 May for prior year",
+                          "Surrender certificates by 30 September each year",
+                          cbamResult.deMinimis ? "✓ De minimis: below 50t — obligation likely waived" : "Monitor annual import volume — 50t de minimis applies per CN code",
+                        ].map((item, i) => (
+                          <div key={i} style={{ fontSize: 12, color: "#8a7e6e", lineHeight: 1.9, paddingLeft: 14, position: "relative" }}>
+                            <span style={{ position: "absolute", left: 0, color: "#C8900A" }}>·</span>
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12, fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.6 }}>
+                      Estimate based on EU Reg. 2023/956 and Implementing Reg. 2025/2621. Default emission factors subject to mandatory +{((CBAM_MARKUP(cbamResult.year, false) - 1) * 100).toFixed(0)}% markup in {cbamResult.year}. CBAM certificates not purchasable until Feb 2027. First surrender: 30 Sep 2027. Always consult an authorised CBAM declarant before filing.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* HS LOOKUP TAB */}
         {tab === "hs-lookup" && (
