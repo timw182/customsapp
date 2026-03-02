@@ -11,7 +11,9 @@ out/
 .env.production
 
 # database
-data/
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # scripts
 create-admin.mjs

@@ -3,6 +3,24 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { signOut } from "next-auth/react";
 
 const LUXEMBURG_VAT = 0.17;
+
+const EXCISE_RATES = {
+  beer:                    7.74,    // €/hl per %vol abv
+  'sparkling-wine':       57.75,   // €/hl
+  'still-wine':            0,      // €/hl (LU exercises EU 0-rate option)
+  intermediate:           80.20,   // €/hl (fortified wine >15%vol)
+  spirits:              1546.50,   // €/hl pure alcohol
+  cigarettes_specific:    22.00,   // €/1000 units
+  cigarettes_advalorem:    0.50,   // 50% of retail price
+  cigarettes_minimum:    120.00,   // €/1000 minimum
+  cigars:                  0.16,   // 16% of retail price (ad valorem)
+  fine_cut:               37.00,   // €/kg
+  other_tobacco:          22.00,   // €/kg
+  petrol:                  0.4622, // €/L
+  diesel:                  0.3370, // €/L
+  heating_fuel:            0.1330, // €/L
+  lpg:                     0.07427,// €/kg
+};
 const ORIGIN_AGREEMENTS = {
   CH: { name: "Switzerland", pref: true, note: "Free Trade Agreement – 0% on most goods" },
   NO: { name: "Norway", pref: true, note: "EEA – 0% on most goods" },
@@ -72,6 +90,7 @@ function Spinner() {
 
 export default function CustomsCalculator({ user }) {
   const [tab, setTab] = useState("calculator");
+  const [importType, setImportType] = useState("third-country"); // 'third-country' | 'intra-eu'
   const [description, setDescription] = useState("");
   const [hsCode, setHsCode] = useState("");
   const [dutyRate, setDutyRate] = useState("");
@@ -101,6 +120,16 @@ export default function CustomsCalculator({ user }) {
   const [fxAmount, setFxAmount] = useState("1");
   const [fxFrom, setFxFrom] = useState("USD");
   const [fxTo, setFxTo] = useState("EUR");
+
+  const [isExcise, setIsExcise] = useState(false);
+  const [exciseCategory, setExciseCategory] = useState('beer');
+  const [exciseVolume, setExciseVolume] = useState('');
+  const [exciseAlcohol, setExciseAlcohol] = useState('');
+  const [exciseQuantity, setExciseQuantity] = useState('');
+  const [exciseWeight, setExciseWeight] = useState('');
+  const [exciseRetailPrice, setExciseRetailPrice] = useState('');
+  const [exciseRates, setExciseRates] = useState(EXCISE_RATES);
+  const [exciseRatesLastChecked, setExciseRatesLastChecked] = useState(null);
 
   const resultRef = useRef(null);
 
@@ -144,6 +173,18 @@ export default function CustomsCalculator({ user }) {
         if (err.name !== "AbortError") setAllRatesLoading(false);
       });
     return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/excise-rates')
+      .then(r => r.json())
+      .then(d => {
+        if (d.rates) {
+          setExciseRates(d.rates);
+          setExciseRatesLastChecked(d.lastChecked);
+        }
+      })
+      .catch(() => {/* keep hardcoded fallback */});
   }, []);
 
   useEffect(() => {
@@ -230,20 +271,66 @@ export default function CustomsCalculator({ user }) {
     let cifEUR = valEUR;
     if (incoterm === "FOB" || incoterm === "EXW") cifEUR = valEUR + frEUR + insEUR;
     else if (incoterm === "CFR") cifEUR = valEUR + insEUR;
-    const dutyFree = cifEUR <= 150;
-    let effectiveDutyRate = duty / 100;
-    if (hasPref && hasProofOfOrigin) effectiveDutyRate = 0;
-    const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
-    const vatBase = cifEUR + customsDuty;
+    const intraEU = importType === 'intra-eu';
+    const dutyFree = !intraEU && cifEUR <= 150;
+    let effectiveDutyRate = intraEU ? 0 : duty / 100;
+    if (!intraEU && hasPref && hasProofOfOrigin) effectiveDutyRate = 0;
+    const customsDuty = intraEU ? 0 : (dutyFree ? 0 : cifEUR * effectiveDutyRate);
+
+    let exciseDuty = 0;
+    if (isExcise) {
+      const vol = parseFloat(exciseVolume) || 0;
+      const alc = parseFloat(exciseAlcohol) || 0;
+      const qty = parseFloat(exciseQuantity) || 0;
+      const wt  = parseFloat(exciseWeight) || 0;
+      const rp  = parseFloat(exciseRetailPrice) || 0;
+      const R = exciseRates;
+      switch (exciseCategory) {
+        case 'beer':
+          exciseDuty = (vol / 100) * alc * R.beer; break;
+        case 'still-wine':
+          exciseDuty = (vol / 100) * R['still-wine']; break;
+        case 'sparkling-wine':
+          exciseDuty = (vol / 100) * R['sparkling-wine']; break;
+        case 'intermediate':
+          exciseDuty = (vol / 100) * R.intermediate; break;
+        case 'spirits':
+          exciseDuty = (vol / 100) * (alc / 100) * R.spirits; break;
+        case 'cigarettes': {
+          const specific = (qty / 1000) * R.cigarettes_specific;
+          const adVal = qty * rp * R.cigarettes_advalorem;
+          const minimum = (qty / 1000) * R.cigarettes_minimum;
+          exciseDuty = Math.max(specific + adVal, minimum); break;
+        }
+        case 'cigars':
+          exciseDuty = qty * rp * R.cigars; break;
+        case 'fine-cut':
+          exciseDuty = wt * R.fine_cut; break;
+        case 'other-tobacco':
+          exciseDuty = wt * R.other_tobacco; break;
+        case 'petrol':
+          exciseDuty = vol * R.petrol; break;
+        case 'diesel':
+          exciseDuty = vol * R.diesel; break;
+        case 'heating-fuel':
+          exciseDuty = vol * R.heating_fuel; break;
+        case 'lpg':
+          exciseDuty = wt * R.lpg; break;
+      }
+    }
+
+    const vatBase = cifEUR + customsDuty + exciseDuty;
     const importVAT = vatBase * LUXEMBURG_VAT;
-    const total = cifEUR + customsDuty + importVAT;
+    const total = cifEUR + customsDuty + exciseDuty + importVAT;
     setResult({
       cifEUR,
       customsDuty,
+      exciseDuty,
       importVAT,
       total,
       effectiveDutyRate: effectiveDutyRate * 100,
       dutyFree,
+      intraEU,
       vatBase,
       valEUR,
       frEUR,
@@ -264,8 +351,10 @@ export default function CustomsCalculator({ user }) {
       lines: [{ description, hsCode, dutyRate, value: itemValue, freight, insurance }],
       cifEUR: result.cifEUR,
       customsDuty: result.customsDuty,
+      exciseDuty: result.exciseDuty,
       importVAT: result.importVAT,
       total: result.total,
+      intraEU: result.intraEU,
     };
     const res = await fetch("/api/export/pdf", {
       method: "POST",
@@ -508,6 +597,35 @@ export default function CustomsCalculator({ user }) {
         {tab === "calculator" && (
           <div className="two-col">
             <div>
+              {/* Import type toggle */}
+              <div style={{ display: "flex", gap: 0, marginBottom: 20, borderRadius: 2, overflow: "hidden", border: "1px solid #d8d2c8" }}>
+                {[
+                  { value: "third-country", label: "Third-country import" },
+                  { value: "intra-eu", label: "Intra-EU movement" },
+                ].map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => { setImportType(value); setResult(null); }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 8px",
+                      border: "none",
+                      background: importType === value ? "#1a1208" : "#faf7f2",
+                      color: importType === value ? "#F8DA6A" : "#8a7e6e",
+                      fontFamily: "var(--font-oswald), sans-serif",
+                      fontSize: 10,
+                      letterSpacing: 2,
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                      transition: "background 0.15s, color 0.15s",
+                      borderRight: value === "third-country" ? "1px solid #d8d2c8" : "none",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
               <div className="section-label">Shipment Details</div>
               <div style={{ display: "grid", gap: 16 }}>
                 <div>
@@ -549,7 +667,7 @@ export default function CustomsCalculator({ user }) {
                       {ORIGIN_AGREEMENTS[originCountry].note}
                     </div>
                   )}
-                  {hasPref && (
+                  {hasPref && importType === "third-country" && (
                     <label
                       style={{
                         display: "flex",
@@ -711,6 +829,7 @@ export default function CustomsCalculator({ user }) {
                   </div>
                 )}
 
+                {importType === "third-country" && (<>
                 <div>
                   <label
                     style={{
@@ -897,6 +1016,156 @@ export default function CustomsCalculator({ user }) {
                     </div>
                   )}
                 </div>
+                </>)}
+
+                {/* Excise Goods Toggle */}
+                <div style={{ borderTop: "1px solid #e0d8cc", paddingTop: 16 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
+                    <input
+                      type="checkbox"
+                      checked={isExcise}
+                      onChange={(e) => setIsExcise(e.target.checked)}
+                      style={{ width: "auto" }}
+                    />
+                    <span style={{ fontSize: 12, fontFamily: "var(--font-oswald), sans-serif", letterSpacing: 2, textTransform: "uppercase", color: isExcise ? "#C8900A" : "#8a7e6e" }}>
+                      Excise Goods
+                    </span>
+                  </label>
+
+                  {isExcise && (
+                    <div style={{ marginTop: 14, display: "grid", gap: 14 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                          Category
+                        </label>
+                        <select value={exciseCategory} onChange={(e) => setExciseCategory(e.target.value)}>
+                          <optgroup label="Alcohol">
+                            <option value="beer">Beer</option>
+                            <option value="still-wine">Still Wine</option>
+                            <option value="sparkling-wine">Sparkling Wine / Champagne</option>
+                            <option value="intermediate">Intermediate (Fortified Wine &gt;15%)</option>
+                            <option value="spirits">Spirits / Liqueur</option>
+                          </optgroup>
+                          <optgroup label="Tobacco">
+                            <option value="cigarettes">Cigarettes</option>
+                            <option value="cigars">Cigars / Cigarillos</option>
+                            <option value="fine-cut">Fine-Cut Tobacco</option>
+                            <option value="other-tobacco">Other Tobacco</option>
+                          </optgroup>
+                          <optgroup label="Energy">
+                            <option value="petrol">Petrol (unleaded)</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="heating-fuel">Heating Fuel</option>
+                            <option value="lpg">LPG</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      {/* Volume (L) — beer, still-wine, sparkling-wine, intermediate, spirits, petrol, diesel, heating-fuel */}
+                      {['beer','still-wine','sparkling-wine','intermediate','spirits','petrol','diesel','heating-fuel'].includes(exciseCategory) && (
+                        <div>
+                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                            Volume (litres)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 100"
+                            value={exciseVolume}
+                            onChange={(e) => setExciseVolume(e.target.value)}
+                            min="0"
+                            step="0.1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Alcohol % — beer, spirits */}
+                      {['beer','spirits'].includes(exciseCategory) && (
+                        <div>
+                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                            Alcohol % abv
+                          </label>
+                          <input
+                            type="number"
+                            placeholder={exciseCategory === 'beer' ? "e.g. 5" : "e.g. 40"}
+                            value={exciseAlcohol}
+                            onChange={(e) => setExciseAlcohol(e.target.value)}
+                            min="0"
+                            max="100"
+                            step="0.1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Quantity (units) — cigarettes, cigars */}
+                      {['cigarettes','cigars'].includes(exciseCategory) && (
+                        <div>
+                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                            Quantity (units)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 1000"
+                            value={exciseQuantity}
+                            onChange={(e) => setExciseQuantity(e.target.value)}
+                            min="0"
+                            step="1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Retail price per unit — cigarettes, cigars */}
+                      {['cigarettes','cigars'].includes(exciseCategory) && (
+                        <div>
+                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                            Retail Price per Unit (€)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 0.35"
+                            value={exciseRetailPrice}
+                            onChange={(e) => setExciseRetailPrice(e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </div>
+                      )}
+
+                      {/* Weight (kg) — fine-cut, other-tobacco, lpg */}
+                      {['fine-cut','other-tobacco','lpg'].includes(exciseCategory) && (
+                        <div>
+                          <label style={{ fontSize: 11, color: "#8a7e6e", letterSpacing: 2, textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+                            Weight (kg)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 10"
+                            value={exciseWeight}
+                            onChange={(e) => setExciseWeight(e.target.value)}
+                            min="0"
+                            step="0.1"
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 }}>
+                        {exciseRatesLastChecked && (() => {
+                          const daysOld = Math.floor((Date.now() - new Date(exciseRatesLastChecked)) / 86400000);
+                          const stale = daysOld > 14;
+                          return (
+                            <span style={{ color: stale ? "#8e2e2e" : "#9a8e7e" }}>
+                              {stale ? "⚠ " : ""}Rates last verified {daysOld === 0 ? "today" : `${daysOld}d ago`}
+                              {stale ? " — may be outdated" : ""} ·{" "}
+                            </span>
+                          );
+                        })()}
+                        Verify at{" "}
+                        <a href="https://ae.gouvernement.lu" target="_blank" rel="noopener" style={{ color: "#C8900A" }}>
+                          Administration des Accises ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   onClick={calculate}
@@ -954,6 +1223,21 @@ export default function CustomsCalculator({ user }) {
               )}
               {result && (
                 <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  {result.intraEU && (
+                    <div
+                      style={{
+                        background: "#e8f0f8",
+                        border: "1px solid #a8c8e8",
+                        padding: "12px 16px",
+                        borderRadius: 2,
+                        marginBottom: 16,
+                        fontSize: 13,
+                        color: "#1a4a7e",
+                      }}
+                    >
+                      Intra-EU movement — customs duty not applicable. Excise + VAT only.
+                    </div>
+                  )}
                   {result.dutyFree && (
                     <div
                       style={{
@@ -1019,12 +1303,15 @@ export default function CustomsCalculator({ user }) {
                       className="result-row"
                       style={{ borderTop: "1px solid #e0d8cc", paddingTop: 14, marginTop: 4 }}
                     >
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>CIF Value (customs base)</span>
+                      <span style={{ fontSize: 14, fontWeight: 600 }}>
+                        {result.intraEU ? "Transaction Value" : "CIF Value (customs base)"}
+                      </span>
                       <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 14, color: "#C8900A" }}>
                         € {fmt(result.cifEUR)}
                       </span>
                     </div>
                     <div style={{ height: 1, background: "#e0d8cc", margin: "12px 0" }} />
+                    {!result.intraEU && (
                     <div className="result-row">
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Customs duty
@@ -1043,6 +1330,17 @@ export default function CustomsCalculator({ user }) {
                         € {fmt(result.customsDuty)}
                       </span>
                     </div>
+                    )}
+                    {result.exciseDuty > 0 && (
+                      <div className="result-row">
+                        <span style={{ color: "#8a7e6e", fontSize: 13 }}>
+                          Excise Duty (LU)
+                        </span>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
+                          € {fmt(result.exciseDuty)}
+                        </span>
+                      </div>
+                    )}
                     <div className="result-row" style={{ borderBottom: "none" }}>
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Import VAT (LU)
@@ -1054,7 +1352,7 @@ export default function CustomsCalculator({ user }) {
                             color: "#9a8e7e",
                           }}
                         >
-                          17%
+                          17% on CIF + duties
                         </span>
                       </span>
                       <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
@@ -1098,7 +1396,7 @@ export default function CustomsCalculator({ user }) {
                           lineHeight: 1.7,
                         }}
                       >
-                        Duties: {(((result.customsDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}% of goods
+                        {result.intraEU ? "Charges" : "Duties"}: {(((result.customsDuty + result.exciseDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}% of goods
                         value
                         <br />
                         VAT base: € {fmt(result.vatBase)}
@@ -1136,8 +1434,8 @@ export default function CustomsCalculator({ user }) {
                     }}
                   >
                     <strong style={{ color: "#7a6e5e" }}>⚠ Important:</strong> This is an estimate only. Actual duties
-                    are determined by Luxembourg customs (Administration des Douanes). Anti-dumping, excise, or other
-                    special duties are not included. Always verify HS code and rates in{" "}
+                    are determined by Luxembourg customs (Administration des Douanes). Anti-dumping or other
+                    special duties may not be included. Always verify HS code and rates in{" "}
                     <a
                       href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp"
                       target="_blank"

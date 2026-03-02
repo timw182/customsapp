@@ -120,9 +120,35 @@ export default function AdminPanel() {
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState(null); // { ok: bool, msg: string }
 
+  const [exciseMeta, setExciseMeta] = useState(null); // { lastChecked, source, notes }
+  const [exciseRefreshing, setExciseRefreshing] = useState(false);
+  const [exciseRefreshResult, setExciseRefreshResult] = useState(null);
+
   useEffect(() => {
     fetchCodes();
+    fetch('/api/excise-rates')
+      .then(r => r.json())
+      .then(d => setExciseMeta(d))
+      .catch(() => {});
   }, []);
+
+  async function refreshExciseRates() {
+    setExciseRefreshing(true);
+    setExciseRefreshResult(null);
+    try {
+      const res = await fetch('/api/admin/excise-rates', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setExciseMeta(m => ({ ...m, lastChecked: data.lastChecked, source: data.notes ?? m?.source }));
+        setExciseRefreshResult({ ok: true, msg: data.updated ? `${data.changes.length} rate(s) updated` : 'Rates confirmed — no changes' });
+      } else {
+        setExciseRefreshResult({ ok: false, msg: data.error ?? 'Refresh failed' });
+      }
+    } catch {
+      setExciseRefreshResult({ ok: false, msg: 'Network error' });
+    }
+    setExciseRefreshing(false);
+  }
 
   async function fetchCodes() {
     setLoading(true);
@@ -438,6 +464,52 @@ export default function AdminPanel() {
         >
           ← Back to calculator
         </a>
+      </div>
+
+      {/* Excise Rates */}
+      <div style={s.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+          <div style={s.sectionLabel}>Excise Rates</div>
+          <button
+            onClick={refreshExciseRates}
+            disabled={exciseRefreshing}
+            style={{ ...s.btnSm, color: exciseRefreshing ? "#9a8e7e" : "#2e5e8e", opacity: exciseRefreshing ? 0.7 : 1 }}
+            onMouseEnter={(e) => { if (!exciseRefreshing) e.currentTarget.style.borderColor = "#2e5e8e"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d8d2c8")}
+          >
+            {exciseRefreshing ? "Checking..." : "Refresh Now"}
+          </button>
+        </div>
+        {exciseMeta && (() => {
+          const daysOld = Math.floor((Date.now() - new Date(exciseMeta.lastChecked)) / 86400000);
+          const stale = daysOld > 14;
+          return (
+            <div style={{ fontSize: 12, fontFamily: "monospace", lineHeight: 1.8 }}>
+              <div>
+                <span style={{ color: "#9a8e7e" }}>Last checked: </span>
+                <span style={{ color: stale ? "#8e2e2e" : "#2e6e2e", fontWeight: 600 }}>
+                  {daysOld === 0 ? "today" : `${daysOld} day${daysOld !== 1 ? "s" : ""} ago`}
+                  {stale ? " ⚠ stale" : " ✓"}
+                </span>
+              </div>
+              <div style={{ color: "#9a8e7e", fontSize: 11 }}>{exciseMeta.source}</div>
+              {exciseMeta.notes && <div style={{ color: "#9a8e7e", fontSize: 11 }}>{exciseMeta.notes}</div>}
+            </div>
+          );
+        })()}
+        {exciseRefreshResult && (
+          <div style={{
+            marginTop: 12, padding: "8px 12px", borderRadius: 2, fontSize: 12,
+            background: exciseRefreshResult.ok ? "#e8f5e8" : "#fde8e8",
+            border: `1px solid ${exciseRefreshResult.ok ? "#a8d8a8" : "#e8a8a8"}`,
+            color: exciseRefreshResult.ok ? "#2e6e2e" : "#8e2e2e",
+          }}>
+            {exciseRefreshResult.msg}
+          </div>
+        )}
+        <div style={{ marginTop: 12, fontSize: 11, color: "#b0a898", fontFamily: "monospace" }}>
+          Auto-checked every 14 days via cron · source: ae.gouvernement.lu
+        </div>
       </div>
 
       {/* Send email modal */}

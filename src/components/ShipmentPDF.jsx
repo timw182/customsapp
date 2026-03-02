@@ -80,17 +80,25 @@ export function ShipmentPDF({ data }) {
         {/* Duty breakdown */}
         <Text style={styles.sectionLabel}>Duty Breakdown</Text>
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>CIF Value (customs base)</Text>
+          <Text style={styles.rowLabel}>{data.intraEU ? 'Transaction Value' : 'CIF Value (customs base)'}</Text>
           <Text style={styles.rowValue}>{fmt(data.cifEUR)}</Text>
         </View>
+        {!data.intraEU && (
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>
+              Customs Duty {dutyFree ? '(waived — CIF ≤ €150)' : ''}
+            </Text>
+            <Text style={styles.rowValue}>{fmt(data.customsDuty)}</Text>
+          </View>
+        )}
+        {data.exciseDuty > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Excise Duty (LU)</Text>
+            <Text style={styles.rowValue}>{fmt(data.exciseDuty)}</Text>
+          </View>
+        )}
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>
-            Customs Duty {dutyFree ? '(waived — CIF ≤ €150)' : ''}
-          </Text>
-          <Text style={styles.rowValue}>{fmt(data.customsDuty)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Import VAT Luxembourg (17%)</Text>
+          <Text style={styles.rowLabel}>Import VAT Luxembourg (17% on CIF + duties)</Text>
           <Text style={styles.rowValue}>{fmt(data.importVAT)}</Text>
         </View>
 

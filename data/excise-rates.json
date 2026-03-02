@@ -1,0 +1,22 @@
+{
+  "rates": {
+    "beer":                   7.74,
+    "sparkling-wine":        57.75,
+    "still-wine":             0,
+    "intermediate":          80.20,
+    "spirits":             1546.50,
+    "cigarettes_specific":   22.00,
+    "cigarettes_advalorem":   0.50,
+    "cigarettes_minimum":   120.00,
+    "cigars":                 0.16,
+    "fine_cut":              37.00,
+    "other_tobacco":         22.00,
+    "petrol":                 0.4622,
+    "diesel":                 0.3370,
+    "heating_fuel":           0.1330,
+    "lpg":                    0.07427
+  },
+  "lastChecked": "2026-03-02T00:00:00.000Z",
+  "source": "Manual — initial values from Luxembourg 2024 tariff",
+  "notes": "Verify at ae.gouvernement.lu. Auto-checked every 14 days by scripts/check-excise-rates.js"
+}
