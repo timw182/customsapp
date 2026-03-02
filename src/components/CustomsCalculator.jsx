@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { signOut } from "next-auth/react";
 
 const LUXEMBURG_VAT = 0.17;
@@ -102,6 +102,8 @@ export default function CustomsCalculator({ user }) {
   const [fxFrom, setFxFrom] = useState("USD");
   const [fxTo, setFxTo] = useState("EUR");
 
+  const resultRef = useRef(null);
+
   const hasPref = ORIGIN_AGREEMENTS[originCountry]?.pref;
 
   useEffect(() => {
@@ -110,41 +112,54 @@ export default function CustomsCalculator({ user }) {
       setRateDate(new Date().toISOString().split("T")[0]);
       return;
     }
+    const controller = new AbortController();
     setRateLoading(true);
-    fetch(`https://api.frankfurter.app/latest?from=${currency}&to=EUR`)
+    fetch(`https://api.frankfurter.app/latest?from=${currency}&to=EUR`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setExchangeRate(d.rates?.EUR);
         setRateDate(d.date);
         setRateLoading(false);
       })
-      .catch(() => {
-        setError("Could not fetch exchange rate. Check connection.");
-        setRateLoading(false);
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setError("Could not fetch exchange rate. Check connection.");
+          setRateLoading(false);
+        }
       });
+    return () => controller.abort();
   }, [currency]);
 
   useEffect(() => {
+    const controller = new AbortController();
     setAllRatesLoading(true);
-    fetch("https://api.frankfurter.app/latest?from=EUR")
+    fetch("https://api.frankfurter.app/latest?from=EUR", { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setAllRates(d.rates || {});
         setAllRatesDate(d.date);
         setAllRatesLoading(false);
       })
-      .catch(() => setAllRatesLoading(false));
+      .catch((err) => {
+        if (err.name !== "AbortError") setAllRatesLoading(false);
+      });
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
-    fetch("/api/favourites")
+    const controller = new AbortController();
+    fetch("/api/favourites", { signal: controller.signal })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
           setFavourites(data);
           setSavedCodes(new Set(data.map((f) => f.hsCode)));
         }
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") console.error("Failed to load favourites", err);
       });
+    return () => controller.abort();
   }, []);
 
   const convertFX = (amount, from, to) => {
@@ -234,6 +249,7 @@ export default function CustomsCalculator({ user }) {
       frEUR,
       insEUR,
     });
+    setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
   };
 
   const downloadPDF = async () => {
@@ -303,48 +319,49 @@ export default function CustomsCalculator({ user }) {
     <div
       style={{
         minHeight: "100vh",
+        width: "100%",
         background: "#f0ebe2",
         color: "#0e0a04",
-        fontFamily: "'DM Sans', sans-serif",
-        padding: "0",
+        fontFamily: "var(--font-dm-sans), sans-serif",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=Courier+Prime:wght@400;700&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        input, select { background: #fff; border: 1px solid #d8d2c8; color: #0e0a04; padding: 8px 12px; font-family: 'Courier Prime', monospace; font-size: 13px; border-radius: 2px; width: 100%; outline: none; transition: border-color 0.2s; }
-        input:focus, select:focus { border-color: #C8900A; }
-        select option { background: #fff; color: #0e0a04; }
-        button { cursor: pointer; font-family: 'DM Sans', sans-serif; }
-        .tag { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px; font-family: 'Courier Prime', monospace; }
+        input, select { background: #fff; border: 1px solid var(--border); color: var(--foreground); padding: 8px 12px; font-family: var(--font-courier-prime), monospace; font-size: 13px; border-radius: 2px; width: 100%; outline: none; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: var(--gold); }
+        select option { background: #fff; color: var(--foreground); }
+        button { cursor: pointer; font-family: var(--font-dm-sans), sans-serif; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px; font-family: var(--font-courier-prime), monospace; }
         .tag-green { background: #e8f5e8; border: 1px solid #a8d8a8; color: #2e6e2e; }
         .tag-red { background: #fde8e8; border: 1px solid #e8a8a8; color: #8e2e2e; }
-        .tag-amber { background: rgba(200,144,10,0.1); border: 1px solid rgba(200,144,10,0.3); color: #C8900A; }
+        .tag-amber { background: rgba(200,144,10,0.1); border: 1px solid rgba(200,144,10,0.3); color: var(--gold); }
         .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e0d8cc; }
         .result-row:last-child { border-bottom: none; }
-        .section-label { font-family: 'Oswald', sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; color: #9a8e7e; margin-bottom: 12px; font-weight: 400; }
-        .btn-gold { background: linear-gradient(135deg, #F8DA6A, #C8900A); color: #0a0600; border: none; transition: all 0.2s; cursor: pointer; }
+        .section-label { font-family: var(--font-oswald), sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; color: var(--muted); margin-bottom: 12px; font-weight: 400; }
+        .btn-gold { background: linear-gradient(135deg, var(--gold-hi), var(--gold)); color: #0a0600; border: none; transition: all 0.2s; cursor: pointer; }
         .btn-gold:hover { background: linear-gradient(135deg, #fce880, #e0a010); box-shadow: 0 4px 20px rgba(200,144,10,0.3); transform: translateY(-1px); }
         .btn-gold:active { transform: translateY(0); box-shadow: none; }
         .btn-gold:disabled { background: #e8e2d8; color: #b0a898; box-shadow: none; transform: none; cursor: default; }
         .btn-ghost { background: none; transition: color 0.2s, border-color 0.2s, transform 0.1s; cursor: pointer; }
-        .btn-ghost:hover { border-color: #C8900A !important; color: #C8900A !important; transform: translateY(-1px); }
+        .btn-ghost:hover { border-color: var(--gold) !important; color: var(--gold) !important; transform: translateY(-1px); }
         .btn-ghost:active { transform: translateY(0); }
         .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid #d8d2c8; padding: 0 16px; overflow-x: auto; scrollbar-width: none; background: #ede8e0; }
+        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid var(--border); padding: 0 16px; overflow-x: auto; scrollbar-width: none; background: #ede8e0; }
         .tabs-bar::-webkit-scrollbar { display: none; }
-        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: 'Oswald', sans-serif; font-weight: 600; }
-        .tab-btn:hover { color: #0e0a04 !important; background: rgba(0,0,0,0.03); }
-        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 2px; background: #C8900A; transition: left 0.2s, right 0.2s; }
+        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: var(--font-oswald), sans-serif; font-weight: 600; }
+        .tab-btn:hover { color: var(--foreground) !important; background: rgba(0,0,0,0.03); }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 2px; background: var(--gold); transition: left 0.2s, right 0.2s; }
         .tab-btn:hover::after { left: 16px; right: 16px; }
-        .page-header { border-bottom: 1px solid #d8d2c8; padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ede8e0; }
+        .page-header { padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ede8e0; margin-top: 20px; margin-bottom: 16px; }
         .page-content { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
         .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
         .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+        .ref-link:hover { border-color: rgba(200,144,10,0.3) !important; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .ref-link { transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s; }
         @media (max-width: 700px) {
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
@@ -382,7 +399,7 @@ export default function CustomsCalculator({ user }) {
           </svg>
           <span
             style={{
-              fontFamily: "'Oswald', sans-serif",
+              fontFamily: "var(--font-oswald), sans-serif",
               fontSize: 22,
               fontWeight: 700,
               letterSpacing: 4,
@@ -396,7 +413,7 @@ export default function CustomsCalculator({ user }) {
         <div className="header-right">
           <div
             style={{
-              fontFamily: "'Oswald', sans-serif",
+              fontFamily: "var(--font-oswald), sans-serif",
               fontSize: 10,
               color: "#b0a898",
               letterSpacing: 3,
@@ -406,7 +423,7 @@ export default function CustomsCalculator({ user }) {
             Luxembourg · VAT 17%
           </div>
           {rateDate && currency !== "EUR" && (
-            <div style={{ fontSize: 10, color: "#C8900A88", fontFamily: "'Courier Prime', monospace", marginTop: 4 }}>
+            <div style={{ fontSize: 10, color: "#C8900A88", fontFamily: "var(--font-courier-prime), monospace", marginTop: 4 }}>
               FX: {currency}/EUR {exchangeRate?.toFixed(5)} · {rateDate}
             </div>
           )}
@@ -415,7 +432,7 @@ export default function CustomsCalculator({ user }) {
               <a
                 href="/admin"
                 style={{
-                  fontFamily: "'Oswald', sans-serif",
+                  fontFamily: "var(--font-oswald), sans-serif",
                   fontSize: 10,
                   color: "#9a8e7e",
                   letterSpacing: 2,
@@ -441,7 +458,7 @@ export default function CustomsCalculator({ user }) {
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               style={{
-                fontFamily: "'Oswald', sans-serif",
+                fontFamily: "var(--font-oswald), sans-serif",
                 fontSize: 10,
                 color: "#9a8e7e",
                 letterSpacing: 2,
@@ -476,8 +493,9 @@ export default function CustomsCalculator({ user }) {
             onClick={() => setTab(t)}
             className="tab-btn"
             style={{
-              color: tab === t ? "#C8900A" : "#9a8e7e",
-              borderBottom: tab === t ? "2px solid #C8900A" : "2px solid transparent",
+              color: tab === t ? "var(--gold)" : "var(--muted)",
+              borderBottom: tab === t ? "2px solid var(--gold)" : "2px solid transparent",
+              background: tab === t ? "rgba(200,144,10,0.07)" : undefined,
             }}
           >
             {t === "calculator" ? "Calc" : t === "hs-lookup" ? "HS Lookup" : t === "fx" ? "FX Rates" : "Reference"}
@@ -525,7 +543,7 @@ export default function CustomsCalculator({ user }) {
                         fontSize: 11,
                         color: hasPref ? "#2e6e2e" : "#8a7e6e",
                         marginTop: 6,
-                        fontFamily: "'Courier Prime', monospace",
+                        fontFamily: "var(--font-courier-prime), monospace",
                       }}
                     >
                       {ORIGIN_AGREEMENTS[originCountry].note}
@@ -574,7 +592,7 @@ export default function CustomsCalculator({ user }) {
                     ))}
                   </select>
                   <div
-                    style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}
+                    style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}
                   >
                     {INCOTERMS_CIF[incoterm]?.note}
                   </div>
@@ -784,7 +802,7 @@ export default function CustomsCalculator({ user }) {
                       <span
                         style={{
                           marginLeft: 8,
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 10,
                           color: "#C8900A",
                           letterSpacing: 1,
@@ -822,7 +840,7 @@ export default function CustomsCalculator({ user }) {
                         style={{
                           fontSize: 11,
                           color: "#8a7e6e",
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           lineHeight: 1.6,
                         }}
                       >
@@ -849,7 +867,7 @@ export default function CustomsCalculator({ user }) {
                           marginTop: 8,
                           fontSize: 11,
                           color: "#C8900A",
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                         }}
                       >
                         → Verify official rate in TARIC ↗
@@ -858,14 +876,14 @@ export default function CustomsCalculator({ user }) {
                   )}
                   {dutyRateSource?.error && (
                     <div
-                      style={{ marginTop: 6, fontSize: 11, color: "#8e2e2e", fontFamily: "'Courier Prime', monospace" }}
+                      style={{ marginTop: 6, fontSize: 11, color: "#8e2e2e", fontFamily: "var(--font-courier-prime), monospace" }}
                     >
                       Could not look up rate — enter manually and verify in TARIC.
                     </div>
                   )}
                   {!dutyRateSource && !dutyRateLoading && (
                     <div
-                      style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "'Courier Prime', monospace" }}
+                      style={{ fontSize: 11, color: "#8a7e6e", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace" }}
                     >
                       Enter HS code above to auto-suggest · or{" "}
                       <a
@@ -891,7 +909,7 @@ export default function CustomsCalculator({ user }) {
                     fontWeight: 700,
                     borderRadius: 2,
                     marginTop: 8,
-                    fontFamily: "'Oswald', sans-serif",
+                    fontFamily: "var(--font-oswald), sans-serif",
                     width: "100%",
                   }}
                 >
@@ -901,21 +919,37 @@ export default function CustomsCalculator({ user }) {
             </div>
 
             {/* Right: Results */}
-            <div>
+            <div ref={resultRef}>
               <div className="section-label">Duty Breakdown</div>
               {!result && (
                 <div
                   style={{
-                    border: "1px dashed #d8d2c8",
+                    border: "1px solid var(--border)",
                     borderRadius: 2,
-                    padding: 40,
+                    padding: "44px 24px",
                     textAlign: "center",
-                    color: "#9a8e7e",
-                    fontSize: 14,
-                    fontStyle: "italic",
+                    background: "#faf7f2",
                   }}
                 >
-                  Enter shipment details and calculate to see the duty breakdown
+                  <div style={{ fontSize: 32, marginBottom: 14, opacity: 0.25, lineHeight: 1 }}>↓</div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-oswald), sans-serif",
+                      fontSize: 11,
+                      letterSpacing: 4,
+                      textTransform: "uppercase",
+                      color: "var(--muted)",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Duty Breakdown
+                  </div>
+                  <div style={{ fontSize: 13, color: "#b8ae9e", lineHeight: 1.6 }}>
+                    Fill in shipment details and click<br />
+                    <strong style={{ fontFamily: "var(--font-oswald), sans-serif", color: "var(--muted)", letterSpacing: 1 }}>
+                      Calculate Duties
+                    </strong>
+                  </div>
                 </div>
               )}
               {result && (
@@ -950,10 +984,10 @@ export default function CustomsCalculator({ user }) {
                       ✓ Preferential duty rate applied (0%) — valid proof of origin declared
                     </div>
                   )}
-                  <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 20 }}>
+                  <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
                     <div className="result-row">
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>Goods value</span>
-                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                         € {fmt(result.valEUR)}
                       </span>
                     </div>
@@ -961,13 +995,13 @@ export default function CustomsCalculator({ user }) {
                       <>
                         <div className="result-row">
                           <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Freight</span>
-                          <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                             € {fmt(result.frEUR)}
                           </span>
                         </div>
                         <div className="result-row">
                           <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Insurance</span>
-                          <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                             € {fmt(result.insEUR)}
                           </span>
                         </div>
@@ -976,7 +1010,7 @@ export default function CustomsCalculator({ user }) {
                     {incoterm === "CFR" && (
                       <div className="result-row">
                         <span style={{ color: "#8a7e6e", fontSize: 13 }}>+ Insurance</span>
-                        <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                        <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                           € {fmt(result.insEUR)}
                         </span>
                       </div>
@@ -986,7 +1020,7 @@ export default function CustomsCalculator({ user }) {
                       style={{ borderTop: "1px solid #e0d8cc", paddingTop: 14, marginTop: 4 }}
                     >
                       <span style={{ fontSize: 14, fontWeight: 600 }}>CIF Value (customs base)</span>
-                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 14, color: "#C8900A" }}>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 14, color: "#C8900A" }}>
                         € {fmt(result.cifEUR)}
                       </span>
                     </div>
@@ -996,7 +1030,7 @@ export default function CustomsCalculator({ user }) {
                         Customs duty
                         <span
                           style={{
-                            fontFamily: "'Courier Prime', monospace",
+                            fontFamily: "var(--font-courier-prime), monospace",
                             marginLeft: 8,
                             fontSize: 11,
                             color: "#9a8e7e",
@@ -1005,16 +1039,16 @@ export default function CustomsCalculator({ user }) {
                           {result.dutyFree ? "(waived)" : `${result.effectiveDutyRate.toFixed(2)}%`}
                         </span>
                       </span>
-                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                         € {fmt(result.customsDuty)}
                       </span>
                     </div>
-                    <div className="result-row" style={{ borderBottom: "1px solid #e0d8cc", paddingBottom: 14 }}>
+                    <div className="result-row" style={{ borderBottom: "none" }}>
                       <span style={{ color: "#8a7e6e", fontSize: 13 }}>
                         Import VAT (LU)
                         <span
                           style={{
-                            fontFamily: "'Courier Prime', monospace",
+                            fontFamily: "var(--font-courier-prime), monospace",
                             marginLeft: 8,
                             fontSize: 11,
                             color: "#9a8e7e",
@@ -1023,50 +1057,70 @@ export default function CustomsCalculator({ user }) {
                           17%
                         </span>
                       </span>
-                      <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13 }}>
+                      <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                         € {fmt(result.importVAT)}
                       </span>
                     </div>
-                    <div className="result-row" style={{ borderBottom: "none", paddingTop: 16 }}>
-                      <span style={{ fontSize: 16, fontWeight: 600 }}>Total landed cost</span>
-                      <span
+                  </div>
+
+                  {/* Hero total */}
+                  <div
+                    style={{
+                      marginTop: 8,
+                      background: "linear-gradient(135deg, rgba(248,218,106,0.18), rgba(200,144,10,0.08))",
+                      border: "1px solid rgba(200,144,10,0.3)",
+                      borderRadius: 2,
+                      padding: "18px 20px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 16,
+                    }}
+                  >
+                    <div>
+                      <div
                         style={{
-                          fontFamily: "'Courier Prime', monospace",
-                          fontSize: 20,
-                          color: "#C8900A",
-                          fontWeight: 700,
+                          fontSize: 10,
+                          letterSpacing: 4,
+                          textTransform: "uppercase",
+                          fontFamily: "var(--font-oswald), sans-serif",
+                          color: "var(--muted)",
+                          marginBottom: 6,
                         }}
                       >
-                        € {fmt(result.total)}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: 16, padding: "12px 16px", background: "#f5f0e8", borderRadius: 2 }}>
-                      <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
-                        Duties as % of goods value:{" "}
-                        {(((result.customsDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}%
+                        Total Landed Cost
                       </div>
                       <div
                         style={{
                           fontSize: 11,
+                          fontFamily: "var(--font-courier-prime), monospace",
                           color: "#9a8e7e",
-                          fontFamily: "'Courier Prime', monospace",
-                          marginTop: 4,
+                          lineHeight: 1.7,
                         }}
                       >
-                        VAT base: CIF + Duty = € {fmt(result.vatBase)}
+                        Duties: {(((result.customsDuty + result.importVAT) / result.valEUR) * 100).toFixed(1)}% of goods
+                        value
+                        <br />
+                        VAT base: € {fmt(result.vatBase)}
+                        {currency !== "EUR" && (
+                          <>
+                            <br />1 {currency} = {exchangeRate?.toFixed(5)} EUR · {rateDate}
+                          </>
+                        )}
                       </div>
-                      {currency !== "EUR" && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#9a8e7e",
-                            fontFamily: "'Courier Prime', monospace",
-                            marginTop: 4,
-                          }}
-                        >
-                          FX rate used: 1 {currency} = {exchangeRate?.toFixed(5)} EUR · {rateDate}
-                        </div>
-                      )}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-courier-prime), monospace",
+                        fontSize: 30,
+                        color: "var(--gold)",
+                        fontWeight: 700,
+                        letterSpacing: 1,
+                        textAlign: "right",
+                        flexShrink: 0,
+                      }}
+                    >
+                      € {fmt(result.total)}
                     </div>
                   </div>
                   <div
@@ -1108,7 +1162,7 @@ export default function CustomsCalculator({ user }) {
                       textTransform: "uppercase",
                       borderRadius: 2,
                       background: "none",
-                      fontFamily: "'Oswald', sans-serif",
+                      fontFamily: "var(--font-oswald), sans-serif",
                     }}
                   >
                     ↓ Export PDF
@@ -1138,7 +1192,7 @@ export default function CustomsCalculator({ user }) {
                   border: "1px solid #d8d2c8",
                   color: "#0e0a04",
                   padding: "12px",
-                  fontFamily: "'Courier Prime', monospace",
+                  fontFamily: "var(--font-courier-prime), monospace",
                   fontSize: 13,
                   borderRadius: 2,
                   width: "100%",
@@ -1159,7 +1213,7 @@ export default function CustomsCalculator({ user }) {
                   textTransform: "uppercase",
                   fontWeight: 700,
                   borderRadius: 2,
-                  fontFamily: "'Oswald', sans-serif",
+                  fontFamily: "var(--font-oswald), sans-serif",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1180,17 +1234,18 @@ export default function CustomsCalculator({ user }) {
 
             {hsResult && !hsResult.error && (
               <div style={{ marginTop: 24, animation: "fadeIn 0.3s ease" }}>
-                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24 }}>
+                <div style={{ background: "#fff", border: "1px solid #e0d8cc", borderRadius: 2, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
                   <div
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 20 }}
                   >
                     <div>
                       <div
                         style={{
-                          fontFamily: "'Courier Prime', monospace",
-                          fontSize: 28,
-                          color: "#C8900A",
-                          letterSpacing: 4,
+                          fontFamily: "var(--font-courier-prime), monospace",
+                          fontSize: 36,
+                          color: "var(--gold)",
+                          letterSpacing: 6,
+                          lineHeight: 1,
                         }}
                       >
                         {hsResult.hs6}
@@ -1216,7 +1271,7 @@ export default function CustomsCalculator({ user }) {
                       >
                         Standard Duty Rate
                       </div>
-                      <div style={{ fontFamily: "'Courier Prime', monospace", fontSize: 24, color: "#0e0a04" }}>
+                      <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 24, color: "#0e0a04" }}>
                         {hsResult.standardDutyRate}%
                       </div>
                       <div style={{ fontSize: 11, color: "#9a8e7e", marginTop: 4 }}>
@@ -1298,7 +1353,7 @@ export default function CustomsCalculator({ user }) {
                             style={{
                               fontSize: 13,
                               color: "#8a7e6e",
-                              fontFamily: "'Courier Prime', monospace",
+                              fontFamily: "var(--font-courier-prime), monospace",
                               padding: "6px 10px",
                               background: "#f5f0e8",
                               borderRadius: 2,
@@ -1344,7 +1399,7 @@ export default function CustomsCalculator({ user }) {
                         textTransform: "uppercase",
                         fontWeight: 700,
                         borderRadius: 2,
-                        fontFamily: "'Oswald', sans-serif",
+                        fontFamily: "var(--font-oswald), sans-serif",
                       }}
                     >
                       Use in Calculator
@@ -1433,7 +1488,7 @@ export default function CustomsCalculator({ user }) {
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <span
                             style={{
-                              fontFamily: "'Courier Prime', monospace",
+                              fontFamily: "var(--font-courier-prime), monospace",
                               fontSize: 16,
                               color: "#C8900A",
                               letterSpacing: 2,
@@ -1530,7 +1585,7 @@ export default function CustomsCalculator({ user }) {
                         border: "1px solid #d8d2c8",
                         color: "#0e0a04",
                         padding: "10px 14px",
-                        fontFamily: "'Courier Prime', monospace",
+                        fontFamily: "var(--font-courier-prime), monospace",
                         fontSize: 15,
                         borderRadius: 2,
                         width: "100%",
@@ -1568,7 +1623,7 @@ export default function CustomsCalculator({ user }) {
                           border: "1px solid #d8d2c8",
                           color: "#0e0a04",
                           padding: "10px 12px",
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 13,
                           borderRadius: 2,
                           width: "100%",
@@ -1602,7 +1657,7 @@ export default function CustomsCalculator({ user }) {
                           border: "1px solid #d8d2c8",
                           color: "#0e0a04",
                           padding: "10px 12px",
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 13,
                           borderRadius: 2,
                           width: "100%",
@@ -1623,7 +1678,7 @@ export default function CustomsCalculator({ user }) {
                       <div style={{ background: "#f5f0e8", borderRadius: 2, padding: "20px 20px" }}>
                         <div
                           style={{
-                            fontFamily: "'Courier Prime', monospace",
+                            fontFamily: "var(--font-courier-prime), monospace",
                             fontSize: 28,
                             color: "#C8900A",
                             letterSpacing: 2,
@@ -1637,7 +1692,7 @@ export default function CustomsCalculator({ user }) {
                             marginTop: 8,
                             fontSize: 12,
                             color: "#9a8e7e",
-                            fontFamily: "'Courier Prime', monospace",
+                            fontFamily: "var(--font-courier-prime), monospace",
                           }}
                         >
                           1 {fxFrom} = {rate?.toFixed(6)} {fxTo}
@@ -1648,7 +1703,7 @@ export default function CustomsCalculator({ user }) {
                               marginTop: 4,
                               fontSize: 11,
                               color: "#9a8e7e",
-                              fontFamily: "'Courier Prime', monospace",
+                              fontFamily: "var(--font-courier-prime), monospace",
                             }}
                           >
                             ECB rate · {allRatesDate}
@@ -1685,7 +1740,7 @@ export default function CustomsCalculator({ user }) {
                     marginTop: 12,
                     fontSize: 11,
                     color: "#9a8e7e",
-                    fontFamily: "'Courier Prime', monospace",
+                    fontFamily: "var(--font-courier-prime), monospace",
                     lineHeight: 1.7,
                   }}
                 >
@@ -1705,7 +1760,7 @@ export default function CustomsCalculator({ user }) {
                     Live Rates vs EUR
                   </div>
                   {allRatesDate && (
-                    <span style={{ fontSize: 10, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
+                    <span style={{ fontSize: 10, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace" }}>
                       {allRatesDate}
                     </span>
                   )}
@@ -1730,7 +1785,7 @@ export default function CustomsCalculator({ user }) {
                     >
                       <span
                         style={{
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 13,
                           color: "#C8900A",
                           fontWeight: 700,
@@ -1741,7 +1796,7 @@ export default function CustomsCalculator({ user }) {
                       <span style={{ fontSize: 11, color: "#9a8e7e" }}>Euro (base)</span>
                       <span
                         style={{
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 13,
                           color: "#8a7e6e",
                           textAlign: "right",
@@ -1752,7 +1807,7 @@ export default function CustomsCalculator({ user }) {
                       <span
                         className="fx-hide"
                         style={{
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           fontSize: 11,
                           color: "#9a8e7e",
                           textAlign: "right",
@@ -1784,13 +1839,13 @@ export default function CustomsCalculator({ user }) {
                             }}
                             title={`Click to convert ${code} → EUR`}
                           >
-                            <span style={{ fontFamily: "'Courier Prime', monospace", fontSize: 13, color: "#0e0a04" }}>
+                            <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13, color: "#0e0a04" }}>
                               {code}
                             </span>
                             <span style={{ fontSize: 11, color: "#9a8e7e" }}>1 EUR =</span>
                             <span
                               style={{
-                                fontFamily: "'Courier Prime', monospace",
+                                fontFamily: "var(--font-courier-prime), monospace",
                                 fontSize: 13,
                                 color: "#8a7e6e",
                                 textAlign: "right",
@@ -1801,7 +1856,7 @@ export default function CustomsCalculator({ user }) {
                             <span
                               className="fx-hide"
                               style={{
-                                fontFamily: "'Courier Prime', monospace",
+                                fontFamily: "var(--font-courier-prime), monospace",
                                 fontSize: 11,
                                 color: "#9a8e7e",
                                 textAlign: "right",
@@ -1859,7 +1914,7 @@ export default function CustomsCalculator({ user }) {
                       <span style={{ fontSize: 13 }}>{item.label}</span>
                       <span className={`tag tag-${item.color}`}>{item.value}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
+                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace" }}>
                       {item.note}
                     </div>
                   </div>
@@ -1884,7 +1939,7 @@ export default function CustomsCalculator({ user }) {
                       <span style={{ fontSize: 13 }}>{item.label}</span>
                       <span className="tag tag-amber">{item.value}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace" }}>
+                    <div style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace" }}>
                       {item.note}
                     </div>
                   </div>
@@ -1914,7 +1969,7 @@ export default function CustomsCalculator({ user }) {
                         style={{
                           fontSize: 11,
                           color: "#9a8e7e",
-                          fontFamily: "'Courier Prime', monospace",
+                          fontFamily: "var(--font-courier-prime), monospace",
                           marginTop: 2,
                         }}
                       >
@@ -1956,6 +2011,7 @@ export default function CustomsCalculator({ user }) {
                   href={link.url}
                   target="_blank"
                   rel="noopener"
+                  className="ref-link"
                   style={{
                     display: "block",
                     background: "#fff",
@@ -1964,12 +2020,11 @@ export default function CustomsCalculator({ user }) {
                     borderRadius: 2,
                     textDecoration: "none",
                     marginBottom: 2,
-                    transition: "border-color 0.2s",
                   }}
                 >
                   <div style={{ color: "#C8900A", fontSize: 13 }}>{link.label} ↗</div>
                   <div
-                    style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "'Courier Prime', monospace", marginTop: 2 }}
+                    style={{ fontSize: 11, color: "#9a8e7e", fontFamily: "var(--font-courier-prime), monospace", marginTop: 2 }}
                   >
                     {link.desc}
                   </div>

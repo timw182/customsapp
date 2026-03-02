@@ -31,19 +31,20 @@ export default function RegisterPage() {
   const inputStyle = {
     width: "100%",
     background: "#f5f0e8",
-    border: "1px solid #d8d2c8",
-    color: "#0e0a04",
+    border: "1px solid var(--border)",
+    color: "var(--foreground)",
     padding: "10px 12px",
-    fontFamily: "monospace",
+    fontFamily: "var(--font-courier-prime), monospace",
     fontSize: 13,
     borderRadius: 2,
     outline: "none",
     transition: "border-color 0.2s",
   };
+
   const labelStyle = {
-    fontFamily: "'Oswald', sans-serif",
+    fontFamily: "var(--font-oswald), sans-serif",
     fontSize: 10,
-    color: "#9a8e7e",
+    color: "var(--muted)",
     letterSpacing: 3,
     textTransform: "uppercase",
     display: "block",
@@ -54,11 +55,11 @@ export default function RegisterPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0ebe2",
+        background: "var(--background)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "var(--font-dm-sans), sans-serif",
       }}
     >
       <div
@@ -66,7 +67,8 @@ export default function RegisterPage() {
           width: 380,
           padding: 48,
           background: "#fff",
-          border: "1px solid #d8d2c8",
+          border: "1px solid var(--border)",
+          borderTop: "3px solid var(--gold)",
           borderRadius: 4,
           boxShadow: "0 4px 32px rgba(0,0,0,0.06)",
         }}
@@ -93,12 +95,12 @@ export default function RegisterPage() {
           </svg>
           <span
             style={{
-              fontFamily: "'Oswald', sans-serif",
+              fontFamily: "var(--font-oswald), sans-serif",
               fontSize: 22,
               fontWeight: 700,
               letterSpacing: 4,
               textTransform: "uppercase",
-              color: "#0e0a04",
+              color: "var(--foreground)",
             }}
           >
             Dutify
@@ -107,10 +109,10 @@ export default function RegisterPage() {
 
         <div
           style={{
-            fontFamily: "'Oswald', sans-serif",
+            fontFamily: "var(--font-oswald), sans-serif",
             fontSize: 10,
             letterSpacing: 5,
-            color: "#C8900A",
+            color: "var(--gold)",
             textTransform: "uppercase",
             marginBottom: 8,
           }}
@@ -119,12 +121,12 @@ export default function RegisterPage() {
         </div>
         <h1
           style={{
-            fontFamily: "'Oswald', sans-serif",
+            fontFamily: "var(--font-oswald), sans-serif",
             fontSize: 26,
             fontWeight: 700,
             letterSpacing: 2,
             textTransform: "uppercase",
-            color: "#0e0a04",
+            color: "var(--foreground)",
             marginBottom: 32,
           }}
         >
@@ -145,22 +147,31 @@ export default function RegisterPage() {
                 value={form[key]}
                 onChange={update(key)}
                 required
+                className="auth-input"
                 style={inputStyle}
-                onFocus={(e) => (e.target.style.borderColor = "#C8900A")}
-                onBlur={(e) => (e.target.style.borderColor = "#d8d2c8")}
               />
             </div>
           ))}
           {error && (
-            <p style={{ color: "#8e2e2e", fontSize: 13, marginBottom: 16, fontFamily: "monospace" }}>{error}</p>
+            <p
+              style={{
+                color: "#8e2e2e",
+                fontSize: 13,
+                marginBottom: 16,
+                fontFamily: "var(--font-courier-prime), monospace",
+              }}
+            >
+              {error}
+            </p>
           )}
           <button
             type="submit"
             disabled={loading}
+            className="auth-btn"
             style={{
               width: "100%",
               padding: "13px 0",
-              background: "linear-gradient(135deg, #F8DA6A, #C8900A)",
+              background: "linear-gradient(135deg, var(--gold-hi), var(--gold))",
               border: "none",
               color: "#0a0600",
               fontSize: 12,
@@ -169,20 +180,9 @@ export default function RegisterPage() {
               fontWeight: 700,
               borderRadius: 2,
               cursor: loading ? "default" : "pointer",
-              fontFamily: "'Oswald', sans-serif",
+              fontFamily: "var(--font-oswald), sans-serif",
               marginTop: 8,
-              opacity: loading ? 0.7 : 1,
               transition: "opacity 0.2s, box-shadow 0.2s, transform 0.1s",
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(200,144,10,0.3)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "none";
-              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
             {loading ? "Creating account..." : "Create Account →"}
@@ -196,16 +196,16 @@ export default function RegisterPage() {
             borderTop: "1px solid #e8e2d8",
             textAlign: "center",
             fontSize: 13,
-            color: "#9a8e7e",
+            color: "var(--muted)",
           }}
         >
           Already have an account?{" "}
           <a
             href="/login"
             style={{
-              color: "#C8900A",
+              color: "var(--gold)",
               textDecoration: "none",
-              fontFamily: "'Oswald', sans-serif",
+              fontFamily: "var(--font-oswald), sans-serif",
               letterSpacing: 1,
               textTransform: "uppercase",
               fontSize: 12,
