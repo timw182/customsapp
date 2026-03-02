@@ -351,7 +351,7 @@ export default function CustomsCalculator({ user }) {
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
         .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid var(--border); padding: 0 16px; overflow-x: auto; scrollbar-width: none; background: #ede8e0; }
         .tabs-bar::-webkit-scrollbar { display: none; }
-        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: var(--font-oswald), sans-serif; font-weight: 600; }
+        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; word-spacing: -3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: var(--font-oswald), sans-serif; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
         .tab-btn:hover { color: var(--foreground) !important; background: rgba(0,0,0,0.03); }
         .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 2px; background: var(--gold); transition: left 0.2s, right 0.2s; }
         .tab-btn:hover::after { left: 16px; right: 16px; }
@@ -366,7 +366,7 @@ export default function CustomsCalculator({ user }) {
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
           .tabs-bar { padding: 0 8px; justify-content: flex-start; }
-          .tab-btn { padding: 12px 14px; font-size: 10px; letter-spacing: 1px; }
+          .tab-btn { padding: 12px 14px; font-size: 10px; letter-spacing: 1px; word-spacing: -1px; }
           .page-header { padding: 0 16px; }
           .page-content { padding: 16px; }
           .header-right { display: none; }
@@ -1175,7 +1175,7 @@ export default function CustomsCalculator({ user }) {
 
         {/* HS LOOKUP TAB */}
         {tab === "hs-lookup" && (
-          <div style={{ maxWidth: 640 }}>
+          <div style={{ maxWidth: 640, margin: "0 auto" }}>
             <div className="section-label">AI-Assisted HS Code Classification</div>
             <p style={{ color: "#8a7e6e", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
               Describe your product in detail. The more specific, the better — include material composition, function,
