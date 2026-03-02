@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { signOut } from "next-auth/react";
 
 const LUXEMBURG_VAT = 0.17;
 const ORIGIN_AGREEMENTS = {
@@ -240,35 +241,6 @@ export default function CustomsCalculator({ user }) {
     });
   };
 
-  const downloadPDF = async () => {
-    if (!result) return;
-    const data = {
-      createdAt: new Date(),
-      originCountry,
-      incoterm,
-      currency,
-      exchangeRate,
-      rateDate,
-      lines: [{ description, hsCode, dutyRate, value: itemValue, freight, insurance }],
-      cifEUR: result.cifEUR,
-      customsDuty: result.customsDuty,
-      importVAT: result.importVAT,
-      total: result.total,
-    };
-    const res = await fetch("/api/export/pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `customs-${Date.now()}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const fmt = (n) => n?.toLocaleString("de-LU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
@@ -297,18 +269,45 @@ export default function CustomsCalculator({ user }) {
         .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
         .result-row:last-child { border-bottom: none; }
         .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: #666; margin-bottom: 12px; }
+        .btn-gold { background: #c8a96e; color: #0e0e0e; border: none; transition: background 0.2s, box-shadow 0.25s, transform 0.1s; cursor: pointer; }
+        .btn-gold:hover { background: #ddb97e; box-shadow: 0 0 22px #c8a96e55, 0 0 6px #c8a96e33; transform: translateY(-1px); }
+        .btn-gold:active { transform: translateY(0); box-shadow: none; }
+        .btn-gold:disabled { background: #333; color: #666; box-shadow: none; transform: none; cursor: default; }
+        .btn-ghost { background: none; transition: color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s; cursor: pointer; }
+        .btn-ghost:hover { border-color: #c8a96e88 !important; color: #ddb97e !important; box-shadow: 0 0 12px #c8a96e22; transform: translateY(-1px); }
+        .btn-ghost:active { transform: translateY(0); }
+        .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; box-shadow: none; }
+
+        /* Responsive */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid #222; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+        .tabs-bar::-webkit-scrollbar { display: none; }
+        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; }
+        .tab-btn:hover { color: #e8e0d0 !important; background: #ffffff08; }
+        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 1px; background: #c8a96e44; transition: left 0.2s, right 0.2s; }
+        .tab-btn:hover::after { left: 16px; right: 16px; }
+        .page-header { border-bottom: 1px solid #222; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .page-content { padding: 24px; max-width: 900px; margin: 0 auto; }
+        .header-right { text-align: right; flex-shrink: 0; }
+        .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
+        .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+
+        @media (max-width: 700px) {
+          .two-col { grid-template-columns: 1fr; gap: 24px; }
+          .ref-grid { grid-template-columns: 1fr; gap: 24px; }
+          .tabs-bar { padding: 0 8px; justify-content: flex-start; }
+          .tab-btn { padding: 12px 14px; font-size: 11px; letter-spacing: 1px; }
+          .page-header { padding: 16px; }
+          .page-content { padding: 16px; }
+          .header-right { display: none; }
+          .fx-two-col { grid-template-columns: 1fr !important; }
+          .fx-grid { grid-template-columns: 44px 1fr 80px; }
+          .fx-grid .fx-hide { display: none; }
+        }
       `}</style>
 
       {/* Header */}
-      <div
-        style={{
-          borderBottom: "1px solid #222",
-          padding: "24px 32px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+      <div className="page-header">
         <div>
           <div
             style={{
@@ -324,7 +323,7 @@ export default function CustomsCalculator({ user }) {
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: 1 }}>Import Duty Calculator</h1>
         </div>
-        <div style={{ textAlign: "right" }}>
+        <div className="header-right">
           <div style={{ fontSize: 10, color: "#555", fontFamily: "'Courier Prime', monospace" }}>
             COMMON CUSTOMS TARIFF
           </div>
@@ -334,43 +333,83 @@ export default function CustomsCalculator({ user }) {
               FX: {currency}/EUR {exchangeRate?.toFixed(5)} · {rateDate}
             </div>
           )}
+          <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            {user?.role === "ADMIN" && (
+              <a
+                href="/admin"
+                style={{
+                  fontSize: 10,
+                  color: "#555",
+                  fontFamily: "'Courier Prime', monospace",
+                  letterSpacing: 1,
+                  textDecoration: "none",
+                  padding: "4px 8px",
+                  border: "1px solid #222",
+                  borderRadius: 2,
+                  transition: "color 0.2s, border-color 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.color = "#c8a96e";
+                  e.target.style.borderColor = "#c8a96e44";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.color = "#555";
+                  e.target.style.borderColor = "#222";
+                }}
+              >
+                admin
+              </a>
+            )}
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              style={{
+                fontSize: 10,
+                color: "#555",
+                fontFamily: "'Courier Prime', monospace",
+                letterSpacing: 1,
+                background: "none",
+                border: "1px solid #222",
+                borderRadius: 2,
+                padding: "4px 8px",
+                cursor: "pointer",
+                transition: "color 0.2s, border-color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#c26b6b";
+                e.currentTarget.style.borderColor = "#5a2d2d";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#555";
+                e.currentTarget.style.borderColor = "#222";
+              }}
+            >
+              logout
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: "1px solid #222", padding: "0 32px" }}>
+      <div className="tabs-bar">
         {["calculator", "hs-lookup", "fx", "reference"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
+            className="tab-btn"
             style={{
-              padding: "14px 24px",
-              background: "none",
-              border: "none",
               color: tab === t ? "#c8a96e" : "#555",
               borderBottom: tab === t ? "1px solid #c8a96e" : "1px solid transparent",
-              fontSize: 12,
-              letterSpacing: 3,
-              textTransform: "uppercase",
-              marginBottom: -1,
-              transition: "color 0.2s",
             }}
           >
-            {t === "calculator"
-              ? "Calculator"
-              : t === "hs-lookup"
-                ? "HS Lookup"
-                : t === "fx"
-                  ? "Exchange Rates"
-                  : "Reference"}
+            {t === "calculator" ? "Calc" : t === "hs-lookup" ? "HS Lookup" : t === "fx" ? "FX Rates" : "Reference"}
           </button>
         ))}
       </div>
 
-      <div style={{ padding: "32px", maxWidth: 900, margin: "0 auto" }}>
+      <div className="page-content">
         {/* CALCULATOR TAB */}
         {tab === "calculator" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+          <div className="two-col">
             {/* Left: Inputs */}
             <div>
               <div className="section-label">Shipment Details</div>
@@ -609,10 +648,10 @@ export default function CustomsCalculator({ user }) {
                     <button
                       onClick={() => lookupDutyRate(hsCode)}
                       disabled={dutyRateLoading || hsCode.replace(/\D/g, "").length < 6}
+                      className="btn-ghost"
                       style={{
                         flex: "1 1 auto",
                         padding: "8px 12px",
-                        background: "none",
                         border: "1px solid #333",
                         color: dutyRateLoading ? "#555" : "#c8a96e",
                         fontSize: 11,
@@ -623,6 +662,7 @@ export default function CustomsCalculator({ user }) {
                         justifyContent: "center",
                         gap: 6,
                         whiteSpace: "nowrap",
+                        background: "none",
                       }}
                     >
                       {dutyRateLoading ? (
@@ -635,16 +675,17 @@ export default function CustomsCalculator({ user }) {
                     </button>
                     <button
                       onClick={() => setTab("hs-lookup")}
+                      className="btn-ghost"
                       style={{
                         flex: "1 1 auto",
                         padding: "8px 12px",
-                        background: "none",
                         border: "1px solid #333",
                         color: "#c8a96e",
                         fontSize: 11,
                         letterSpacing: 1,
                         borderRadius: 2,
                         whiteSpace: "nowrap",
+                        background: "none",
                       }}
                     >
                       find code
@@ -768,11 +809,9 @@ export default function CustomsCalculator({ user }) {
 
                 <button
                   onClick={calculate}
+                  className="btn-gold"
                   style={{
                     padding: "14px",
-                    background: "#c8a96e",
-                    border: "none",
-                    color: "#0e0e0e",
                     fontSize: 13,
                     letterSpacing: 3,
                     textTransform: "uppercase",
@@ -780,28 +819,10 @@ export default function CustomsCalculator({ user }) {
                     borderRadius: 2,
                     marginTop: 8,
                     fontFamily: "'Cormorant Garamond', serif",
-                    transition: "opacity 0.2s",
+                    width: "100%",
                   }}
                 >
                   Calculate Duties
-                </button>
-                <button
-                  onClick={downloadPDF}
-                  disabled={!result}
-                  style={{
-                    padding: "14px",
-                    background: "none",
-                    border: "1px solid #333",
-                    color: result ? "#c8a96e" : "#444",
-                    fontSize: 13,
-                    letterSpacing: 3,
-                    textTransform: "uppercase",
-                    borderRadius: 2,
-                    cursor: result ? "pointer" : "default",
-                    fontFamily: "'Cormorant Garamond', serif",
-                  }}
-                >
-                  ↓ Export PDF
                 </button>
               </div>
             </div>
@@ -1039,11 +1060,11 @@ export default function CustomsCalculator({ user }) {
               <button
                 onClick={lookupHS}
                 disabled={hsLoading}
+                className={hsLoading ? "" : "btn-gold"}
                 style={{
                   padding: "14px",
-                  background: hsLoading ? "#333" : "#c8a96e",
-                  border: "none",
-                  color: hsLoading ? "#888" : "#0e0e0e",
+                  background: hsLoading ? "#333" : undefined,
+                  color: hsLoading ? "#888" : undefined,
                   fontSize: 13,
                   letterSpacing: 3,
                   textTransform: "uppercase",
@@ -1054,6 +1075,8 @@ export default function CustomsCalculator({ user }) {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 10,
+                  border: "none",
+                  width: "100%",
                 }}
               >
                 {hsLoading ? (
@@ -1228,12 +1251,10 @@ export default function CustomsCalculator({ user }) {
                       onClick={() => {
                         setTab("calculator");
                       }}
+                      className="btn-gold"
                       style={{
                         flex: 1,
                         padding: "12px",
-                        background: "#c8a96e",
-                        border: "none",
-                        color: "#0e0e0e",
                         fontSize: 12,
                         letterSpacing: 2,
                         textTransform: "uppercase",
@@ -1248,10 +1269,10 @@ export default function CustomsCalculator({ user }) {
                       href={`https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=${hsResult.hs6?.replace(".", "")}`}
                       target="_blank"
                       rel="noopener"
+                      className="btn-ghost"
                       style={{
                         flex: 1,
                         padding: "12px",
-                        background: "none",
                         border: "1px solid #333",
                         color: "#c8a96e",
                         fontSize: 12,
@@ -1291,7 +1312,7 @@ export default function CustomsCalculator({ user }) {
         {/* FX RATES TAB */}
         {tab === "fx" && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+            <div className="two-col" style={{ gap: 32 }}>
               {/* Left: Converter */}
               <div>
                 <div className="section-label">Currency Converter → EUR</div>
@@ -1455,6 +1476,7 @@ export default function CustomsCalculator({ user }) {
                       setFxFrom(fxTo);
                       setFxTo(tmp);
                     }}
+                    className="btn-ghost"
                     style={{
                       marginTop: 14,
                       width: "100%",
@@ -1466,7 +1488,6 @@ export default function CustomsCalculator({ user }) {
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       borderRadius: 2,
-                      cursor: "pointer",
                     }}
                   >
                     swap currencies
@@ -1519,6 +1540,7 @@ export default function CustomsCalculator({ user }) {
                         gridTemplateColumns: "52px 1fr 1fr 1fr",
                         gap: 0,
                         background: "#1a1a14",
+                        flexShrink: 0,
                         padding: "9px 14px",
                         borderRadius: 2,
                         alignItems: "center",
@@ -1546,6 +1568,7 @@ export default function CustomsCalculator({ user }) {
                         1.000000
                       </span>
                       <span
+                        className="fx-hide"
                         style={{
                           fontFamily: "'Courier Prime', monospace",
                           fontSize: 11,
@@ -1594,6 +1617,7 @@ export default function CustomsCalculator({ user }) {
                               {eurRate.toFixed(4)}
                             </span>
                             <span
+                              className="fx-hide"
                               style={{
                                 fontFamily: "'Courier Prime', monospace",
                                 fontSize: 11,
@@ -1615,7 +1639,7 @@ export default function CustomsCalculator({ user }) {
 
         {/* REFERENCE TAB */}
         {tab === "reference" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+          <div className="two-col" style={{ gap: 32 }}>
             <div>
               <div className="section-label">EU Import Thresholds</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
