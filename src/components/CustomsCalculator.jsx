@@ -333,10 +333,10 @@ export default function CustomsCalculator({ user }) {
         input:focus, select:focus { border-color: var(--gold); }
         select option { background: #fff; color: var(--foreground); }
         button { cursor: pointer; font-family: var(--font-dm-sans), sans-serif; }
-        .tag { display: inline-block; padding: 2px 8px; border-radius: 2px; font-size: 11px; font-family: var(--font-courier-prime), monospace; }
-        .tag-green { background: #e8f5e8; border: 1px solid #a8d8a8; color: #2e6e2e; }
-        .tag-red { background: #fde8e8; border: 1px solid #e8a8a8; color: #8e2e2e; }
-        .tag-amber { background: rgba(200,144,10,0.1); border: 1px solid rgba(200,144,10,0.3); color: var(--gold); }
+        .tag { display: inline-flex; align-items: center; justify-content: center; min-width: 90px; padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: 700; font-family: var(--font-courier-prime), monospace; letter-spacing: 0.5px; backdrop-filter: blur(6px); text-align: center; }
+        .tag-green { background: rgba(46, 110, 46, 0.1); border: 1px solid #2e6e2e; color: #2e6e2e; }
+        .tag-red { background: rgba(142, 46, 46, 0.1); border: 1px solid #8e2e2e; color: #8e2e2e; }
+        .tag-amber { background: rgba(200, 144, 10, 0.1); border: 1px solid #c8900a; color: #c8900a; }
         .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e0d8cc; }
         .result-row:last-child { border-bottom: none; }
         .section-label { font-family: var(--font-oswald), sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; color: var(--muted); margin-bottom: 12px; font-weight: 400; }

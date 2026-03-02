@@ -84,4 +84,5 @@ model InviteCode {
   usedBy    String?
   createdBy String
   expiresAt DateTime?
+  sentTo    String?
 }

@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
 const styles = StyleSheet.create({
-  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#ffffff', backgroundColor: '#fff' },
+  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#0e0a04', backgroundColor: '#fff' },
   headerBar:   { backgroundColor: '#f0ebe2', padding: '16 24', marginBottom: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLabel: { fontSize: 8, color: '#c8a96e', letterSpacing: 2 },
   headerTitle: { fontSize: 18, color: '#0e0a04', fontFamily: 'Helvetica', marginTop: 2 },
@@ -115,7 +115,7 @@ export function ShipmentPDF({ data }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>EU Customs Calculator · customs.bluebrick.cloud</Text>
+          <Text>EU Customs Calculator · dutify.lu</Text>
           <Text>Generated {fmtDate(new Date())}</Text>
         </View>
 

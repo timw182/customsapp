@@ -60,6 +60,19 @@ const s = {
     textTransform: "uppercase",
     transition: "border-color 0.2s",
   },
+  btnSmSend: {
+    padding: "4px 10px",
+    background: "none",
+    border: "1px solid #d8d2c8",
+    color: "#2e5e8e",
+    fontSize: 11,
+    borderRadius: 2,
+    cursor: "pointer",
+    fontFamily: "'Oswald', sans-serif",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    transition: "border-color 0.2s, background 0.2s",
+  },
   input: {
     background: "#f5f0e8",
     border: "1px solid #d8d2c8",
@@ -101,6 +114,11 @@ export default function AdminPanel() {
   const [generating, setGenerating] = useState(false);
   const [expiresInDays, setExpiresInDays] = useState("");
   const [copied, setCopied] = useState(null);
+  // sendModal: { codeId, codeStr } | null
+  const [sendModal, setSendModal] = useState(null);
+  const [sendEmail, setSendEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null); // { ok: bool, msg: string }
 
   useEffect(() => {
     fetchCodes();
@@ -116,13 +134,14 @@ export default function AdminPanel() {
 
   async function generate() {
     setGenerating(true);
+    const body = expiresInDays ? { expiresInDays: parseInt(expiresInDays) } : {};
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expiresInDays: expiresInDays ? parseInt(expiresInDays) : null }),
+      body: JSON.stringify(body),
     });
     const code = await res.json();
-    setCodes((c) => [code, ...c]);
+    if (code.id) setCodes((c) => [code, ...c]);
     setGenerating(false);
   }
 
@@ -133,6 +152,47 @@ export default function AdminPanel() {
       body: JSON.stringify({ id }),
     });
     setCodes((c) => c.filter((x) => x.id !== id));
+  }
+
+  async function sendInviteEmail(codeId, email) {
+    const res = await fetch("/api/invites/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codeId, email }),
+    });
+    return res.ok;
+  }
+
+  function openSendModal(c) {
+    setSendModal({ codeId: c.id, codeStr: c.code });
+    setSendEmail("");
+    setSendResult(null);
+  }
+
+  function closeSendModal() {
+    setSendModal(null);
+    setSendEmail("");
+    setSendResult(null);
+    setSending(false);
+  }
+
+  async function submitSendModal() {
+    if (!sendEmail || !sendModal) return;
+    setSending(true);
+    setSendResult(null);
+    const res = await fetch("/api/invites/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codeId: sendModal.codeId, email: sendEmail }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCodes((cs) => cs.map((c) => c.id === sendModal.codeId ? { ...c, sentTo: data.invite.sentTo } : c));
+      closeSendModal();
+    } else {
+      setSendResult({ ok: false, msg: data.error ?? "Failed to send" });
+      setSending(false);
+    }
   }
 
   function copyCode(code) {
@@ -256,7 +316,7 @@ export default function AdminPanel() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 90px 100px 100px 120px 80px",
+                gridTemplateColumns: "1fr 90px 100px 100px 120px 140px",
                 gap: 12,
                 padding: "6px 12px",
                 fontFamily: "'Oswald', sans-serif",
@@ -278,7 +338,7 @@ export default function AdminPanel() {
                 key={c.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 90px 100px 100px 120px 80px",
+                  gridTemplateColumns: "1fr 90px 100px 100px 120px 140px",
                   gap: 12,
                   padding: "10px 12px",
                   alignItems: "center",
@@ -313,20 +373,51 @@ export default function AdminPanel() {
                 >
                   {c.usedBy || "—"}
                 </span>
-                <button
-                  onClick={() => deleteCode(c.id)}
-                  style={s.btnSm}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#e8a8a8";
-                    e.currentTarget.style.background = "#fde8e8";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#d8d2c8";
-                    e.currentTarget.style.background = "none";
-                  }}
-                >
-                  Delete
-                </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                  {!c.usedAt && (
+                    c.sentTo ? (
+                      <button disabled style={{ ...s.btnSmSend, color: "#9a8e7e", borderColor: "#d8d2c8", cursor: "not-allowed", opacity: 0.6 }}>
+                        Sent
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => openSendModal(c)}
+                        style={s.btnSmSend}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = "#6a9ece";
+                          e.currentTarget.style.background = "#e8f0fd";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = "#d8d2c8";
+                          e.currentTarget.style.background = "none";
+                        }}
+                      >
+                        Send
+                      </button>
+                    )
+                  )}
+                  <button
+                    onClick={() => deleteCode(c.id)}
+                    style={s.btnSm}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "#e8a8a8";
+                      e.currentTarget.style.background = "#fde8e8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "#d8d2c8";
+                      e.currentTarget.style.background = "none";
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {c.sentTo && (
+                  <span style={{ fontSize: 10, color: "#9a8e7e", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    ✉ {c.sentTo}
+                  </span>
+                )}
+                </div>
               </div>
             ))}
           </div>
@@ -348,6 +439,110 @@ export default function AdminPanel() {
           ← Back to calculator
         </a>
       </div>
+
+      {/* Send email modal */}
+      {sendModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(14,10,4,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeSendModal(); }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #d8d2c8",
+              borderRadius: 6,
+              padding: 32,
+              width: 420,
+              maxWidth: "90vw",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+            }}
+          >
+            <div style={{ ...s.sectionLabel, marginBottom: 6 }}>Send Invite by Email</div>
+            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#C8900A", letterSpacing: 4, marginBottom: 20 }}>
+              {sendModal.codeStr}
+            </div>
+
+            <label
+              style={{
+                fontFamily: "'Oswald', sans-serif",
+                fontSize: 10,
+                color: "#9a8e7e",
+                letterSpacing: 3,
+                textTransform: "uppercase",
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Recipient email
+            </label>
+            <input
+              type="email"
+              placeholder="invitee@example.com"
+              value={sendEmail}
+              onChange={(e) => setSendEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submitSendModal(); }}
+              style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 16 }}
+              onFocus={(e) => (e.target.style.borderColor = "#C8900A")}
+              onBlur={(e) => (e.target.style.borderColor = "#d8d2c8")}
+              autoFocus
+            />
+
+            {sendResult && (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: "8px 12px",
+                  borderRadius: 2,
+                  fontSize: 12,
+                  fontFamily: "'Oswald', sans-serif",
+                  letterSpacing: 1,
+                  background: sendResult.ok ? "#e8f5e8" : "#fde8e8",
+                  border: `1px solid ${sendResult.ok ? "#a8d8a8" : "#e8a8a8"}`,
+                  color: sendResult.ok ? "#2e6e2e" : "#8e2e2e",
+                }}
+              >
+                {sendResult.ok ? "✓ " : "✗ "}{sendResult.msg}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={closeSendModal}
+                style={{ ...s.btnSm, color: "#9a8e7e" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#C8900A")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d8d2c8")}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitSendModal}
+                disabled={sending || !sendEmail}
+                style={{ ...s.btn, padding: "8px 20px", opacity: sending || !sendEmail ? 0.6 : 1 }}
+                onMouseEnter={(e) => {
+                  if (!sending && sendEmail) {
+                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(200,144,10,0.3)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                {sending ? "Sending..." : "Send Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
