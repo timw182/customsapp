@@ -393,43 +393,98 @@
         line-height: 1.7;
       }
 
-      /* Features grid */
-      .features-grid {
+      /* Feature tabs layout */
+      .feature-tabs-layout {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 24px;
-      }
-      .feature-card {
-        background: white;
-        border-radius: 20px;
-        padding: 36px;
-        transition: all 0.3s;
-      }
-      .feature-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 20px 40px rgba(0,0,0,0.06);
-      }
-      .feature-icon {
-        width: 56px;
-        height: 56px;
-        background: var(--bg);
-        border-radius: 16px;
-        display: flex;
+        grid-template-columns: 1fr 1fr;
+        gap: 48px;
         align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        margin-bottom: 24px;
       }
-      .feature-title {
-        font-size: 20px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 12px;
+      .feature-tab-list { display: flex; flex-direction: column; gap: 4px; }
+      .feature-tab-btn {
+        width: 100%; text-align: left;
+        padding: 16px 18px;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        transition: background 0.22s, box-shadow 0.22s, border-color 0.22s, transform 0.18s;
+        display: flex; align-items: flex-start; gap: 14px;
       }
-      .feature-body {
-        font-size: 15px;
-        color: var(--muted);
-        line-height: 1.7;
+      .feature-tab-btn:hover { background: rgba(255,255,255,0.75); transform: translateY(-2px); }
+      .feature-tab-btn.f-active {
+        background: #fff;
+        border-color: #a7f3d0;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+        transform: none;
+      }
+      .feature-tab-icon {
+        font-size: 20px; flex-shrink: 0; margin-top: 1px;
+        opacity: 0.45; transition: opacity 0.22s;
+      }
+      .feature-tab-btn.f-active .feature-tab-icon { opacity: 1; }
+      .feature-tab-title {
+        font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.3;
+      }
+      .feature-tab-desc {
+        font-size: 13.5px; color: var(--muted); line-height: 1.6;
+        margin-top: 5px;
+        max-height: 0; overflow: hidden; opacity: 0;
+        transition: max-height 0.35s ease, opacity 0.28s ease;
+      }
+      .feature-tab-btn.f-active .feature-tab-desc { max-height: 72px; opacity: 1; }
+
+      /* Preview panel */
+      .feature-preview-panel {
+        background: #fff;
+        border-radius: 24px;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.09);
+        border: 1px solid #e2e8f0;
+        min-height: 380px;
+        position: relative;
+        overflow: hidden;
+      }
+      .fp {
+        position: absolute; inset: 0; padding: 28px 28px 24px;
+        opacity: 0; transform: translateY(10px);
+        transition: opacity 0.38s ease, transform 0.38s ease;
+        pointer-events: none;
+      }
+      .fp.f-active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+      .fp-label {
+        font-size: 10px; font-weight: 700; letter-spacing: 2.5px;
+        text-transform: uppercase; color: #10b981; margin-bottom: 16px;
+      }
+      .fp-card {
+        background: #f8fafc; border-radius: 12px;
+        padding: 0; border: 1px solid #e2e8f0; overflow: hidden;
+      }
+      .fp-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; font-size: 13px; color: var(--muted);
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .fp-row:last-child { border-bottom: none; }
+      .fp-val { font-weight: 600; color: var(--text); font-size: 13px; }
+      .fp-total {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 10px; padding: 11px 14px;
+        background: #ecfdf5; border-radius: 10px;
+        font-size: 13.5px; font-weight: 700; color: #059669;
+      }
+      .fp-badge {
+        display: inline-flex; align-items: center;
+        font-size: 11px; font-weight: 600; padding: 3px 8px;
+        border-radius: 20px; letter-spacing: 0.2px;
+      }
+      .fp-badge-g  { background: #d1fae5; color: #065f46; }
+      .fp-badge-gr { background: #f1f5f9; color: #6b7280; }
+      .fp-badge-b  { background: #dbeafe; color: #1d4ed8; }
+      .fp-badge-r  { background: #fee2e2; color: #b91c1c; }
+      .fp-hs-code  {
+        font-family: 'Courier New', monospace; font-size: 30px;
+        letter-spacing: 5px; color: #10b981; font-weight: 700; line-height: 1;
+        margin-bottom: 5px;
       }
 
       /* Steps */
@@ -588,7 +643,7 @@
 
       /* Mobile */
       @media (max-width: 1200px) {
-        .features-grid { grid-template-columns: repeat(2, 1fr); }
+        .feature-tabs-layout { gap: 32px; }
       }
       @media (max-width: 1000px) {
         .hero-grid { grid-template-columns: 1fr; gap: 48px; }
@@ -607,8 +662,8 @@
         .hero-actions .btn { text-align: center; justify-content: center; }
         .hero-stats { gap: 24px; flex-wrap: wrap; }
         .hero-stat-num { font-size: 26px; }
-        .features-grid { grid-template-columns: 1fr; gap: 16px; }
-        .feature-card { padding: 28px 24px; }
+        .feature-tabs-layout { grid-template-columns: 1fr; gap: 32px; }
+        .feature-preview-panel { min-height: 320px; }
         .steps-grid { grid-template-columns: 1fr; gap: 24px; }
         .steps-container { padding: 32px 20px; }
         .section { padding: 60px 0; }
@@ -988,48 +1043,181 @@
           <h2 class="section-title">Everything you need for<br>confident importing</h2>
           <p class="section-sub">Built specifically for companies importing into Luxembourg. No more spreadsheet guesswork.</p>
         </div>
-        <div class="features-grid">
-          <div class="feature-card">
-            <div class="feature-icon">⚡</div>
-            <h3 class="feature-title">Instant calculations</h3>
-            <p class="feature-body">Enter shipment details and get a complete cost breakdown in seconds. CIF, duty, and VAT included.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🤖</div>
-            <h3 class="feature-title">AI HS code lookup</h3>
-            <p class="feature-body">Describe your product in plain language. Our AI suggests the right HS codes with current duty rates.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">💱</div>
-            <h3 class="feature-title">Live ECB rates</h3>
-            <p class="feature-body">Real-time currency conversion from the European Central Bank. Updated daily for 30+ currencies.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🌍</div>
-            <h3 class="feature-title">FTA detection</h3>
-            <p class="feature-body">Automatically checks 27+ EU free trade agreements and applies preferential rates when valid.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">📄</div>
-            <h3 class="feature-title">PDF reports</h3>
-            <p class="feature-body">Download professional calculation reports. Share with finance, forwarders, or customs brokers.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🍺</div>
-            <h3 class="feature-title">Excise duty calculator</h3>
-            <p class="feature-body">Luxembourg ADA 2026 rates for alcohol, tobacco, energy, and more. Covers all ADA categories with automated bi-weekly rate checks.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">🌿</div>
-            <h3 class="feature-title">CBAM calculator</h3>
-            <p class="feature-body">EU Carbon Border Adjustment Mechanism estimates for steel, aluminium, cement, and fertilisers. Phase-in factors through 2034.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-icon">⭐</div>
-            <h3 class="feature-title">Save favorites</h3>
-            <p class="feature-body">Build your product library with saved HS codes. One-click reuse for repeat shipments.</p>
-          </div>
-        </div>
+        <div class="feature-tabs-layout">
+
+          <!-- Left: feature list -->
+          <div class="feature-tab-list">
+
+            <button class="feature-tab-btn" data-fi="0">
+              <span class="feature-tab-icon">⚡</span>
+              <div>
+                <div class="feature-tab-title">Instant calculations</div>
+                <div class="feature-tab-desc">Enter shipment details and get a complete duty, VAT, and landed-cost breakdown in seconds.</div>
+              </div>
+            </button>
+
+            <button class="feature-tab-btn" data-fi="1">
+              <span class="feature-tab-icon">🤖</span>
+              <div>
+                <div class="feature-tab-title">AI HS code lookup</div>
+                <div class="feature-tab-desc">Describe your product in plain language and get suggested HS codes with current duty rates.</div>
+              </div>
+            </button>
+
+            <button class="feature-tab-btn" data-fi="2">
+              <span class="feature-tab-icon">💶</span>
+              <div>
+                <div class="feature-tab-title">Live ECB rates</div>
+                <div class="feature-tab-desc">Real-time ECB currency conversion ensures accurate customs valuation across 30+ currencies.</div>
+              </div>
+            </button>
+
+            <button class="feature-tab-btn" data-fi="3">
+              <span class="feature-tab-icon">🌍</span>
+              <div>
+                <div class="feature-tab-title">FTA detection</div>
+                <div class="feature-tab-desc">Automatically apply preferential or zero-duty rates from 27+ EU free trade agreements.</div>
+              </div>
+            </button>
+
+            <button class="feature-tab-btn" data-fi="4">
+              <span class="feature-tab-icon">📄</span>
+              <div>
+                <div class="feature-tab-title">PDF reports</div>
+                <div class="feature-tab-desc">Generate professional calculation summaries ready to share with customs brokers and finance.</div>
+              </div>
+            </button>
+
+            <button class="feature-tab-btn" data-fi="5">
+              <span class="feature-tab-icon">🌱</span>
+              <div>
+                <div class="feature-tab-title">CBAM calculator</div>
+                <div class="feature-tab-desc">Estimate EU Carbon Border Adjustment costs including phase-in factors through 2034.</div>
+              </div>
+            </button>
+
+          </div><!-- /feature-tab-list -->
+
+          <!-- Right: preview panel -->
+          <div class="feature-preview-panel">
+
+            <!-- 0: Instant calculations -->
+            <div class="fp" data-fp="0">
+              <div class="fp-label">Import calculation</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <span style="font-size:13px;color:var(--muted);">Shipment value</span>
+                <span style="font-size:14px;font-weight:700;color:var(--text);">USD 14,400</span>
+              </div>
+              <div class="fp-card">
+                <div class="fp-row"><span>CIF Value</span><span class="fp-val">€ 13,283.00</span></div>
+                <div class="fp-row"><span>Customs Duty (3.5%)</span><span class="fp-val">€ 464.91</span></div>
+                <div class="fp-row"><span>Import VAT (17%)</span><span class="fp-val">€ 2,339.72</span></div>
+              </div>
+              <div class="fp-total"><span>Total Landed Cost</span><span>€ 16,087.63</span></div>
+            </div>
+
+            <!-- 1: AI HS lookup -->
+            <div class="fp" data-fp="1">
+              <div class="fp-label">AI classification</div>
+              <div style="background:#f8fafc;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted);border:1px solid #e2e8f0;margin-bottom:14px;line-height:1.5;">
+                💬 &ldquo;Wireless noise-cancelling headphones, over-ear, Bluetooth&rdquo;
+              </div>
+              <div style="background:#fff;border:1px solid #a7f3d0;border-radius:12px;padding:16px 18px;">
+                <div class="fp-hs-code">8518.30</div>
+                <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Headphones and earphones</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <span class="fp-badge fp-badge-g">✓ High confidence</span>
+                  <span class="fp-badge fp-badge-gr">Duty: 0%</span>
+                  <span class="fp-badge fp-badge-b">No excise</span>
+                </div>
+              </div>
+              <div style="margin-top:10px;font-size:12px;color:#9ca3af;">3 alternative codes available</div>
+            </div>
+
+            <!-- 2: Live ECB rates -->
+            <div class="fp" data-fp="2">
+              <div class="fp-label">ECB exchange rates</div>
+              <div class="fp-card">
+                <div class="fp-row">
+                  <span>🇺🇸 USD <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
+                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.92148</span>
+                </div>
+                <div class="fp-row">
+                  <span>🇬🇧 GBP <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
+                  <span class="fp-val" style="font-family:'Courier New',monospace;">1.19724</span>
+                </div>
+                <div class="fp-row">
+                  <span>🇨🇳 CNY <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
+                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.12896</span>
+                </div>
+                <div class="fp-row">
+                  <span>🇯🇵 JPY <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
+                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.00621</span>
+                </div>
+              </div>
+              <div style="margin-top:10px;font-size:11px;color:#9ca3af;">Updated 03.03.2026 · European Central Bank reference rates</div>
+            </div>
+
+            <!-- 3: FTA detection -->
+            <div class="fp" data-fp="3">
+              <div class="fp-label">Free trade agreement</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                <span style="font-size:22px;">🇯🇵</span>
+                <span style="font-size:13px;color:var(--muted);">Japan → Luxembourg</span>
+                <span class="fp-badge fp-badge-g" style="margin-left:auto;">✓ EU-Japan EPA</span>
+              </div>
+              <div class="fp-card">
+                <div class="fp-row"><span>HS code</span><span class="fp-val">7304.31</span></div>
+                <div class="fp-row"><span>MFN rate</span><span class="fp-val" style="color:#dc2626;">2.7 %</span></div>
+                <div class="fp-row"><span>FTA rate (EPA)</span><span class="fp-val" style="color:#10b981;">0 %</span></div>
+              </div>
+              <div style="margin-top:10px;background:#d1fae5;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:#065f46;">
+                Saving: € 842.40 on this shipment
+              </div>
+            </div>
+
+            <!-- 4: PDF reports -->
+            <div class="fp" data-fp="4">
+              <div class="fp-label">PDF export</div>
+              <div style="background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+                <div style="height:3px;background:linear-gradient(90deg,#10b981,#34d399);"></div>
+                <div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+                  <div>
+                    <div style="font-size:9px;letter-spacing:2px;color:#10b981;text-transform:uppercase;margin-bottom:2px;">Luxembourg · EU Customs</div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text);">Import Duty Calculation</div>
+                  </div>
+                  <div style="font-size:9px;color:#9ca3af;text-align:right;">Laptop shipment<br>03.03.2026</div>
+                </div>
+                <div style="padding:0 14px;">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid #f1f5f9;color:var(--muted);"><span>CIF Value</span><span style="font-weight:600;color:var(--text);">€ 12,400.00</span></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid #f1f5f9;color:var(--muted);"><span>Customs Duty</span><span style="font-weight:600;color:var(--text);">€ 0.00</span></div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;color:var(--muted);"><span>Import VAT (17%)</span><span style="font-weight:600;color:var(--text);">€ 2,108.00</span></div>
+                </div>
+                <div style="padding:10px 14px;background:#ecfdf5;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#059669;">
+                  <span>Total Landed Cost</span><span>€ 14,508.00</span>
+                </div>
+              </div>
+              <div style="margin-top:12px;">
+                <div style="display:inline-flex;align-items:center;gap:6px;background:#10b981;color:white;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;">⬇ Download PDF</div>
+              </div>
+            </div>
+
+            <!-- 5: CBAM -->
+            <div class="fp" data-fp="5">
+              <div class="fp-label">Carbon border adjustment</div>
+              <div class="fp-card">
+                <div class="fp-row"><span>Sector</span><span class="fp-val">Steel (BF/BOF)</span></div>
+                <div class="fp-row"><span>Origin</span><span class="fp-val">🇨🇳 China</span></div>
+                <div class="fp-row"><span>Embedded CO₂</span><span class="fp-val">1.54 tCO₂e/t</span></div>
+                <div class="fp-row"><span>ETS carbon price</span><span class="fp-val">€ 68.40 / t</span></div>
+                <div class="fp-row"><span>2026 phase-in factor</span><span class="fp-val">2.5 %</span></div>
+              </div>
+              <div class="fp-total"><span>CBAM cost (2026)</span><span>€ 2.63</span></div>
+            </div>
+
+          </div><!-- /feature-preview-panel -->
+
+        </div><!-- /feature-tabs-layout -->
       </div>
     </section>
 
@@ -1323,6 +1511,31 @@
     }());
   </script>
   <script>
+    /* ── Feature tabs ── */
+    (function () {
+      var tabs     = Array.from(document.querySelectorAll('.feature-tab-btn'));
+      var previews = Array.from(document.querySelectorAll('.fp'));
+      var cur = 0;
+
+      function activate(idx) {
+        if (idx === cur) return;
+        previews[cur].classList.remove('f-active');
+        tabs[cur].classList.remove('f-active');
+        cur = idx;
+        previews[cur].classList.add('f-active');
+        tabs[cur].classList.add('f-active');
+      }
+
+      tabs.forEach(function (btn, i) {
+        btn.addEventListener('click', function () { activate(i); });
+      });
+
+      if (tabs.length) {
+        tabs[0].classList.add('f-active');
+        previews[0].classList.add('f-active');
+      }
+    }());
+
     /* ── Step-cards plane animation ── */
     (function () {
       if (window.innerWidth < 640) return;
