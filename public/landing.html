@@ -411,13 +411,8 @@
         transition: background 0.22s, box-shadow 0.22s, border-color 0.22s, transform 0.18s;
         display: flex; align-items: flex-start; gap: 14px;
       }
-      .feature-tab-btn:hover { background: rgba(255,255,255,0.75); transform: translateY(-2px); }
-      .feature-tab-btn.f-active {
-        background: #fff;
-        border-color: #a7f3d0;
-        box-shadow: 0 8px 28px rgba(0,0,0,0.08);
-        transform: none;
-      }
+      .feature-tab-btn:hover { transform: translateY(-2px); }
+      .feature-tab-btn.f-active { transform: none; }
       .feature-tab-icon {
         font-size: 20px; flex-shrink: 0; margin-top: 1px;
         opacity: 0.45; transition: opacity 0.22s;
@@ -434,12 +429,38 @@
       }
       .feature-tab-btn.f-active .feature-tab-desc { max-height: 72px; opacity: 1; }
 
+      /* Features section background */
+      #features { position: relative; overflow: hidden; }
+      .features-blobs { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+      .features-blob {
+        position: absolute; border-radius: 50%;
+        filter: blur(72px); opacity: 0.55;
+      }
+      .feature-tabs-layout { position: relative; z-index: 1; }
+      #features .section-header { position: relative; z-index: 1; }
+
+      /* Active tab: frosted */
+      .feature-tab-btn.f-active {
+        background: rgba(255,255,255,0.65) !important;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-color: rgba(167,243,208,0.7) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+      }
+      .feature-tab-btn:hover:not(.f-active) {
+        background: rgba(255,255,255,0.45);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
       /* Preview panel */
       .feature-preview-panel {
-        background: #fff;
+        background: rgba(255,255,255,0.42);
+        backdrop-filter: blur(22px) saturate(180%);
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
         border-radius: 24px;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.09);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85);
+        border: 1px solid rgba(255,255,255,0.6);
         min-height: 380px;
         position: relative;
         overflow: hidden;
@@ -1038,6 +1059,12 @@
     </section>
 
     <section id="features" class="section">
+      <!-- Background blobs for glass effect -->
+      <div class="features-blobs">
+        <div class="features-blob" style="width:480px;height:480px;background:rgba(16,185,129,0.22);top:-120px;right:-80px;"></div>
+        <div class="features-blob" style="width:340px;height:340px;background:rgba(52,211,153,0.18);bottom:-60px;left:5%;"></div>
+        <div class="features-blob" style="width:260px;height:260px;background:rgba(167,243,208,0.28);top:40%;right:38%;"></div>
+      </div>
       <div class="container">
         <div class="section-header">
           <h2 class="section-title">Everything you need for<br>confident importing</h2>
