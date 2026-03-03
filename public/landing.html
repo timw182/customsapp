@@ -716,7 +716,7 @@
       .carousel-feature-name { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
       .carousel-counter { font-size: 11px; letter-spacing: 2px; color: var(--subtle); }
       .carousel-slides { display: grid; }
-      .c-slide { grid-area: 1/1; opacity: 0; transform: translateY(10px); transition: opacity 0.52s ease, transform 0.52s ease; pointer-events: none; }
+      .c-slide { grid-area: 1/1; opacity: 0; transform: translateY(10px); transition: opacity 0.52s ease, transform 0.52s ease; pointer-events: none; display: flex; flex-direction: column; }
       .c-slide.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
       .carousel-nav { display: inline-flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 18px; }
       .carousel-dots { display: flex; align-items: center; gap: 6px; }
@@ -725,11 +725,11 @@
       .carousel-progress { height: 2px; background: rgba(0,0,0,0.1); border-radius: 1px; overflow: hidden; }
       .carousel-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); width: 0%; }
       /* Calc cards */
-      .calc-preview { background: rgba(255,255,255,0.55); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); border: 1px solid rgba(255,255,255,0.55); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8); }
+      .calc-preview { background: rgba(255,255,255,0.55); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); border: 1px solid rgba(255,255,255,0.55); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.8); flex: 1; display: flex; flex-direction: column; }
       .calc-header { background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.18); }
       .calc-header-title { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: rgba(16,185,129,0.9); }
       .calc-badge { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: var(--accent); }
-      .calc-body { padding: 20px; }
+      .calc-body { padding: 20px; flex: 1; }
       .calc-field { margin-bottom: 14px; }
       .calc-field label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 5px; }
       .calc-input { background: var(--bg); border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); width: 100%; display: flex; align-items: center; justify-content: space-between; }
