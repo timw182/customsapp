@@ -437,6 +437,21 @@
         background: white;
         border-radius: 24px;
         padding: 60px;
+        position: relative;
+      }
+      #steps-plane-svg {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        overflow: visible;
+      }
+      .plane-trail {
+        fill: none;
+        stroke: #10b981;
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
+        opacity: 0;
       }
       .steps-grid {
         display: grid;
@@ -1046,6 +1061,21 @@
               <p class="step-body">Download PDF report and share with your team.</p>
             </div>
           </div>
+
+          <!-- Animated plane overlay -->
+          <svg id="steps-plane-svg" aria-hidden="true">
+            <path id="steps-plane-trail" class="plane-trail" d=""/>
+            <g id="steps-plane" transform="translate(-999,-999)">
+              <!-- Body -->
+              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
+              <!-- Wings -->
+              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
+              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
+              <!-- Tail fins -->
+              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
+              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
+            </g>
+          </svg>
         </div>
       </div>
     </section>
@@ -1290,6 +1320,128 @@
           startAuto();
         });
       });
+    }());
+  </script>
+  <script>
+    /* ── Step-cards plane animation ── */
+    (function () {
+      if (window.innerWidth < 640) return;
+
+      var container = document.querySelector('.steps-container');
+      var cards     = Array.from(document.querySelectorAll('.step-card'));
+      var svg       = document.getElementById('steps-plane-svg');
+      var trail     = document.getElementById('steps-plane-trail');
+      var plane     = document.getElementById('steps-plane');
+      if (!container || !cards.length || !svg || !trail || !plane) return;
+
+      /* Center of a card's step-num circle in SVG/container space */
+      function getCenter(card) {
+        var cr = container.getBoundingClientRect();
+        var nr = card.querySelector('.step-num').getBoundingClientRect();
+        return {
+          x: nr.left + nr.width  * 0.5 - cr.left,
+          y: nr.top  + nr.height * 0.5 - cr.top
+        };
+      }
+
+      /* Quadratic bezier at t */
+      function qbez(p0, p1, p2, t) {
+        var u = 1 - t;
+        return {
+          x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
+          y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y
+        };
+      }
+
+      /* Sub-curve from 0→t (de Casteljau split) */
+      function qbezSplit(p0, p1, p2, t) {
+        var q1 = { x: p0.x + t*(p1.x-p0.x), y: p0.y + t*(p1.y-p0.y) };
+        return [p0, q1, qbez(p0, p1, p2, t)];
+      }
+
+      var curPos    = null;
+      var raf       = null;
+      var fadeTimer = null;
+
+      function setPlane(x, y, deg) {
+        plane.setAttribute('transform',
+          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+deg.toFixed(1)+')');
+      }
+
+      function init() {
+        var c = getCenter(cards[0]);
+        curPos = { x: c.x, y: c.y };
+        setPlane(c.x, c.y, 0);
+        trail.style.opacity = '0';
+        trail.setAttribute('d', '');
+      }
+
+      function flyTo(to) {
+        var from = { x: curPos.x, y: curPos.y };
+        var dx = to.x - from.x, dy = to.y - from.y;
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+        if (raf)       { cancelAnimationFrame(raf); raf = null; }
+        if (fadeTimer) { clearTimeout(fadeTimer);   fadeTimer = null; }
+
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        /* Control point: midpoint arced upward */
+        var cp = {
+          x: (from.x + to.x) * 0.5,
+          y: (from.y + to.y) * 0.5 - Math.min(55, dist * 0.38)
+        };
+        var duration = Math.max(480, Math.min(900, dist * 1.8));
+        var startTs  = null;
+
+        trail.style.transition = '';
+        trail.style.opacity    = '0.7';
+
+        function step(ts) {
+          if (!startTs) startTs = ts;
+          var raw = Math.min((ts - startTs) / duration, 1);
+          var t   = raw * raw * (3 - 2 * raw); /* smoothstep */
+
+          var sub = qbezSplit(from, cp, to, t);
+          trail.setAttribute('d',
+            'M '+sub[0].x.toFixed(1)+','+sub[0].y.toFixed(1)+
+            ' Q '+sub[1].x.toFixed(1)+','+sub[1].y.toFixed(1)+
+            ' '+sub[2].x.toFixed(1)+','+sub[2].y.toFixed(1));
+
+          /* Plane angle = tangent direction */
+          var tA    = Math.min(t + 0.06, 1);
+          var ahead = qbez(from, cp, to, tA);
+          var ang   = Math.atan2(ahead.y - sub[2].y, ahead.x - sub[2].x) * 180 / Math.PI;
+          setPlane(sub[2].x, sub[2].y, ang);
+
+          if (raw < 1) {
+            raf = requestAnimationFrame(step);
+          } else {
+            curPos = { x: to.x, y: to.y };
+            setPlane(to.x, to.y, 0);
+            /* Fade trail after landing */
+            fadeTimer = setTimeout(function () {
+              trail.style.transition = 'opacity 0.7s';
+              trail.style.opacity    = '0';
+              fadeTimer = setTimeout(function () {
+                trail.setAttribute('d', '');
+                trail.style.transition = '';
+              }, 700);
+            }, 500);
+          }
+        }
+        raf = requestAnimationFrame(step);
+      }
+
+      cards.forEach(function (card) {
+        card.addEventListener('mouseenter', function () { flyTo(getCenter(card)); });
+      });
+
+      window.addEventListener('resize', function () {
+        if (window.innerWidth < 640) { svg.style.display = 'none'; }
+        else { svg.style.display = ''; init(); }
+      });
+
+      /* Init after first two frames so layout is settled */
+      requestAnimationFrame(function () { requestAnimationFrame(init); });
     }());
   </script>
   </body>
