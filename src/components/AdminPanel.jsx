@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 const s = {
   page: {
     minHeight: "100vh",
-    background: "#f0ebe2",
-    color: "#0e0a04",
+    background: "#f0f7f4",
+    color: "#111827",
     fontFamily: "'DM Sans', sans-serif",
     padding: 32,
   },
-  header: { borderBottom: "1px solid #d8d2c8", paddingBottom: 24, marginBottom: 32 },
+  header: { borderBottom: "1px solid #e2e8f0", paddingBottom: 24, marginBottom: 32 },
   label: {
     fontFamily: "'Oswald', sans-serif",
     fontSize: 10,
     letterSpacing: 5,
-    color: "#C8900A",
+    color: "#10b981",
     textTransform: "uppercase",
   },
   title: {
@@ -27,7 +27,7 @@ const s = {
   },
   card: {
     background: "#fff",
-    border: "1px solid #d8d2c8",
+    border: "1px solid #e2e8f0",
     borderRadius: 4,
     padding: 28,
     marginBottom: 24,
@@ -35,9 +35,9 @@ const s = {
   },
   btn: {
     padding: "11px 22px",
-    background: "linear-gradient(135deg, #F8DA6A, #C8900A)",
+    background: "linear-gradient(135deg, #34d399, #10b981)",
     border: "none",
-    color: "#0a0600",
+    color: "#111827",
     fontSize: 11,
     letterSpacing: 3,
     textTransform: "uppercase",
@@ -50,8 +50,8 @@ const s = {
   btnSm: {
     padding: "4px 10px",
     background: "none",
-    border: "1px solid #d8d2c8",
-    color: "#8e2e2e",
+    border: "1px solid #e2e8f0",
+    color: "#dc2626",
     fontSize: 11,
     borderRadius: 2,
     cursor: "pointer",
@@ -63,8 +63,8 @@ const s = {
   btnSmSend: {
     padding: "4px 10px",
     background: "none",
-    border: "1px solid #d8d2c8",
-    color: "#2e5e8e",
+    border: "1px solid #e2e8f0",
+    color: "#2563eb",
     fontSize: 11,
     borderRadius: 2,
     cursor: "pointer",
@@ -74,9 +74,9 @@ const s = {
     transition: "border-color 0.2s, background 0.2s",
   },
   input: {
-    background: "#f5f0e8",
-    border: "1px solid #d8d2c8",
-    color: "#0e0a04",
+    background: "#f0f7f4",
+    border: "1px solid #e2e8f0",
+    color: "#111827",
     padding: "8px 12px",
     fontFamily: "monospace",
     fontSize: 13,
@@ -90,10 +90,10 @@ const s = {
     fontSize: 10,
     textTransform: "uppercase",
     letterSpacing: 4,
-    color: "#9a8e7e",
+    color: "#6b7280",
     marginBottom: 14,
   },
-  code: { fontFamily: "monospace", fontSize: 14, color: "#C8900A", letterSpacing: 2 },
+  code: { fontFamily: "monospace", fontSize: 14, color: "#10b981", letterSpacing: 2 },
   tag: (used) => ({
     display: "inline-block",
     padding: "2px 10px",
@@ -102,9 +102,9 @@ const s = {
     fontFamily: "'Oswald', sans-serif",
     letterSpacing: 1,
     textTransform: "uppercase",
-    background: used ? "#fde8e8" : "#e8f5e8",
-    border: `1px solid ${used ? "#e8a8a8" : "#a8d8a8"}`,
-    color: used ? "#8e2e2e" : "#2e6e2e",
+    background: used ? "#fee2e2" : "#dcfce7",
+    border: `1px solid ${used ? "#fca5a5" : "#86efac"}`,
+    color: used ? "#dc2626" : "#15803d",
   }),
 };
 
@@ -236,7 +236,7 @@ export default function AdminPanel() {
         {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <svg width="30" height="30" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="11" fill="#1a1208" />
+            <rect width="56" height="56" rx="11" fill="#1f2937" />
             <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#aGold)" />
             <path
               d="M13 22L28 39L43 22"
@@ -248,8 +248,8 @@ export default function AdminPanel() {
             <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#aGold)" />
             <defs>
               <linearGradient id="aGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#F8DA6A" />
-                <stop offset="100%" stopColor="#D4920A" />
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#059669" />
               </linearGradient>
             </defs>
           </svg>
@@ -260,7 +260,7 @@ export default function AdminPanel() {
               fontWeight: 700,
               letterSpacing: 4,
               textTransform: "uppercase",
-              color: "#0e0a04",
+              color: "#111827",
             }}
           >
             Dutify
@@ -279,7 +279,7 @@ export default function AdminPanel() {
               style={{
                 fontFamily: "'Oswald', sans-serif",
                 fontSize: 10,
-                color: "#9a8e7e",
+                color: "#6b7280",
                 letterSpacing: 3,
                 textTransform: "uppercase",
                 display: "block",
@@ -294,8 +294,8 @@ export default function AdminPanel() {
               value={expiresInDays}
               onChange={(e) => setExpiresInDays(e.target.value)}
               style={s.input}
-              onFocus={(e) => (e.target.style.borderColor = "#C8900A")}
-              onBlur={(e) => (e.target.style.borderColor = "#d8d2c8")}
+              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
+              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
             />
           </div>
           <button
@@ -304,7 +304,7 @@ export default function AdminPanel() {
             style={{ ...s.btn, opacity: generating ? 0.7 : 1 }}
             onMouseEnter={(e) => {
               if (!generating) {
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(200,144,10,0.3)";
+                e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3)";
                 e.currentTarget.style.transform = "translateY(-1px)";
               }
             }}
@@ -324,18 +324,18 @@ export default function AdminPanel() {
           <div style={s.sectionLabel}>Invite Codes ({codes.length})</div>
           <button
             onClick={fetchCodes}
-            style={{ ...s.btnSm, color: "#9a8e7e" }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#C8900A")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d8d2c8")}
+            style={{ ...s.btnSm, color: "#6b7280" }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#10b981")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
           >
             Refresh
           </button>
         </div>
 
         {loading ? (
-          <div style={{ color: "#9a8e7e", fontSize: 13 }}>Loading...</div>
+          <div style={{ color: "#6b7280", fontSize: 13 }}>Loading...</div>
         ) : codes.length === 0 ? (
-          <div style={{ color: "#9a8e7e", fontSize: 13, fontStyle: "italic" }}>No codes yet — generate one above.</div>
+          <div style={{ color: "#6b7280", fontSize: 13, fontStyle: "italic" }}>No codes yet — generate one above.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {/* Header row */}
@@ -347,7 +347,7 @@ export default function AdminPanel() {
                 padding: "6px 12px",
                 fontFamily: "'Oswald', sans-serif",
                 fontSize: 10,
-                color: "#9a8e7e",
+                color: "#6b7280",
                 textTransform: "uppercase",
                 letterSpacing: 2,
               }}
@@ -368,20 +368,20 @@ export default function AdminPanel() {
                   gap: 12,
                   padding: "10px 12px",
                   alignItems: "center",
-                  background: i % 2 === 0 ? "#f5f0e8" : "#fff",
+                  background: i % 2 === 0 ? "#f0f7f4" : "#fff",
                   borderRadius: 2,
-                  border: "1px solid #ece6de",
+                  border: "1px solid #e2e8f0",
                 }}
               >
                 <span style={{ ...s.code, cursor: "pointer" }} onClick={() => copyCode(c.code)} title="Click to copy">
-                  {c.code} {copied === c.code ? <span style={{ color: "#2e6e2e" }}>✓</span> : ""}
+                  {c.code} {copied === c.code ? <span style={{ color: "#15803d" }}>✓</span> : ""}
                 </span>
                 <span style={s.tag(!!c.usedAt)}>{c.usedAt ? "used" : "available"}</span>
-                <span style={{ fontSize: 12, color: "#9a8e7e", fontFamily: "monospace" }}>{fmt(c.createdAt)}</span>
+                <span style={{ fontSize: 12, color: "#6b7280", fontFamily: "monospace" }}>{fmt(c.createdAt)}</span>
                 <span
                   style={{
                     fontSize: 12,
-                    color: c.expiresAt && new Date(c.expiresAt) < new Date() ? "#8e2e2e" : "#9a8e7e",
+                    color: c.expiresAt && new Date(c.expiresAt) < new Date() ? "#dc2626" : "#6b7280",
                     fontFamily: "monospace",
                   }}
                 >
@@ -390,7 +390,7 @@ export default function AdminPanel() {
                 <span
                   style={{
                     fontSize: 11,
-                    color: "#9a8e7e",
+                    color: "#6b7280",
                     fontFamily: "monospace",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -403,7 +403,7 @@ export default function AdminPanel() {
                   <div style={{ display: "flex", gap: 6 }}>
                   {!c.usedAt && (
                     c.sentTo ? (
-                      <button disabled style={{ ...s.btnSmSend, color: "#9a8e7e", borderColor: "#d8d2c8", cursor: "not-allowed", opacity: 0.6 }}>
+                      <button disabled style={{ ...s.btnSmSend, color: "#6b7280", borderColor: "#e2e8f0", cursor: "not-allowed", opacity: 0.6 }}>
                         Sent
                       </button>
                     ) : (
@@ -411,11 +411,11 @@ export default function AdminPanel() {
                         onClick={() => openSendModal(c)}
                         style={s.btnSmSend}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "#6a9ece";
-                          e.currentTarget.style.background = "#e8f0fd";
+                          e.currentTarget.style.borderColor = "#60a5fa";
+                          e.currentTarget.style.background = "#dbeafe";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = "#d8d2c8";
+                          e.currentTarget.style.borderColor = "#e2e8f0";
                           e.currentTarget.style.background = "none";
                         }}
                       >
@@ -427,11 +427,11 @@ export default function AdminPanel() {
                     onClick={() => deleteCode(c.id)}
                     style={s.btnSm}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#e8a8a8";
-                      e.currentTarget.style.background = "#fde8e8";
+                      e.currentTarget.style.borderColor = "#fca5a5";
+                      e.currentTarget.style.background = "#fee2e2";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#d8d2c8";
+                      e.currentTarget.style.borderColor = "#e2e8f0";
                       e.currentTarget.style.background = "none";
                     }}
                   >
@@ -439,7 +439,7 @@ export default function AdminPanel() {
                   </button>
                 </div>
                 {c.sentTo && (
-                  <span style={{ fontSize: 10, color: "#9a8e7e", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     ✉ {c.sentTo}
                   </span>
                 )}
@@ -458,7 +458,7 @@ export default function AdminPanel() {
             fontSize: 12,
             letterSpacing: 2,
             textTransform: "uppercase",
-            color: "#C8900A",
+            color: "#10b981",
             textDecoration: "none",
           }}
         >
@@ -473,9 +473,9 @@ export default function AdminPanel() {
           <button
             onClick={refreshExciseRates}
             disabled={exciseRefreshing}
-            style={{ ...s.btnSm, color: exciseRefreshing ? "#9a8e7e" : "#2e5e8e", opacity: exciseRefreshing ? 0.7 : 1 }}
-            onMouseEnter={(e) => { if (!exciseRefreshing) e.currentTarget.style.borderColor = "#2e5e8e"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d8d2c8")}
+            style={{ ...s.btnSm, color: exciseRefreshing ? "#6b7280" : "#2563eb", opacity: exciseRefreshing ? 0.7 : 1 }}
+            onMouseEnter={(e) => { if (!exciseRefreshing) e.currentTarget.style.borderColor = "#2563eb"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
           >
             {exciseRefreshing ? "Checking..." : "Refresh Now"}
           </button>
@@ -486,28 +486,28 @@ export default function AdminPanel() {
           return (
             <div style={{ fontSize: 12, fontFamily: "monospace", lineHeight: 1.8 }}>
               <div>
-                <span style={{ color: "#9a8e7e" }}>Last checked: </span>
-                <span style={{ color: stale ? "#8e2e2e" : "#2e6e2e", fontWeight: 600 }}>
+                <span style={{ color: "#6b7280" }}>Last checked: </span>
+                <span style={{ color: stale ? "#dc2626" : "#15803d", fontWeight: 600 }}>
                   {daysOld === 0 ? "today" : `${daysOld} day${daysOld !== 1 ? "s" : ""} ago`}
                   {stale ? " ⚠ stale" : " ✓"}
                 </span>
               </div>
-              <div style={{ color: "#9a8e7e", fontSize: 11 }}>{exciseMeta.source}</div>
-              {exciseMeta.notes && <div style={{ color: "#9a8e7e", fontSize: 11 }}>{exciseMeta.notes}</div>}
+              <div style={{ color: "#6b7280", fontSize: 11 }}>{exciseMeta.source}</div>
+              {exciseMeta.notes && <div style={{ color: "#6b7280", fontSize: 11 }}>{exciseMeta.notes}</div>}
             </div>
           );
         })()}
         {exciseRefreshResult && (
           <div style={{
             marginTop: 12, padding: "8px 12px", borderRadius: 2, fontSize: 12,
-            background: exciseRefreshResult.ok ? "#e8f5e8" : "#fde8e8",
-            border: `1px solid ${exciseRefreshResult.ok ? "#a8d8a8" : "#e8a8a8"}`,
-            color: exciseRefreshResult.ok ? "#2e6e2e" : "#8e2e2e",
+            background: exciseRefreshResult.ok ? "#dcfce7" : "#fee2e2",
+            border: `1px solid ${exciseRefreshResult.ok ? "#86efac" : "#fca5a5"}`,
+            color: exciseRefreshResult.ok ? "#15803d" : "#dc2626",
           }}>
             {exciseRefreshResult.msg}
           </div>
         )}
-        <div style={{ marginTop: 12, fontSize: 11, color: "#b0a898", fontFamily: "monospace" }}>
+        <div style={{ marginTop: 12, fontSize: 11, color: "#9ca3af", fontFamily: "monospace" }}>
           Auto-checked every 14 days via cron · source: ae.gouvernement.lu
         </div>
       </div>
@@ -518,7 +518,7 @@ export default function AdminPanel() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(14,10,4,0.55)",
+            background: "rgba(17,24,39,0.55)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -529,7 +529,7 @@ export default function AdminPanel() {
           <div
             style={{
               background: "#fff",
-              border: "1px solid #d8d2c8",
+              border: "1px solid #e2e8f0",
               borderRadius: 6,
               padding: 32,
               width: 420,
@@ -538,7 +538,7 @@ export default function AdminPanel() {
             }}
           >
             <div style={{ ...s.sectionLabel, marginBottom: 6 }}>Send Invite by Email</div>
-            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#C8900A", letterSpacing: 4, marginBottom: 20 }}>
+            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#10b981", letterSpacing: 4, marginBottom: 20 }}>
               {sendModal.codeStr}
             </div>
 
@@ -546,7 +546,7 @@ export default function AdminPanel() {
               style={{
                 fontFamily: "'Oswald', sans-serif",
                 fontSize: 10,
-                color: "#9a8e7e",
+                color: "#6b7280",
                 letterSpacing: 3,
                 textTransform: "uppercase",
                 display: "block",
@@ -562,8 +562,8 @@ export default function AdminPanel() {
               onChange={(e) => setSendEmail(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") submitSendModal(); }}
               style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 16 }}
-              onFocus={(e) => (e.target.style.borderColor = "#C8900A")}
-              onBlur={(e) => (e.target.style.borderColor = "#d8d2c8")}
+              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
+              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
               autoFocus
             />
 
@@ -576,9 +576,9 @@ export default function AdminPanel() {
                   fontSize: 12,
                   fontFamily: "'Oswald', sans-serif",
                   letterSpacing: 1,
-                  background: sendResult.ok ? "#e8f5e8" : "#fde8e8",
-                  border: `1px solid ${sendResult.ok ? "#a8d8a8" : "#e8a8a8"}`,
-                  color: sendResult.ok ? "#2e6e2e" : "#8e2e2e",
+                  background: sendResult.ok ? "#dcfce7" : "#fee2e2",
+                  border: `1px solid ${sendResult.ok ? "#86efac" : "#fca5a5"}`,
+                  color: sendResult.ok ? "#15803d" : "#dc2626",
                 }}
               >
                 {sendResult.ok ? "✓ " : "✗ "}{sendResult.msg}
@@ -588,9 +588,9 @@ export default function AdminPanel() {
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
                 onClick={closeSendModal}
-                style={{ ...s.btnSm, color: "#9a8e7e" }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#C8900A")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d8d2c8")}
+                style={{ ...s.btnSm, color: "#6b7280" }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#10b981")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
               >
                 Cancel
               </button>
@@ -600,7 +600,7 @@ export default function AdminPanel() {
                 style={{ ...s.btn, padding: "8px 20px", opacity: sending || !sendEmail ? 0.6 : 1 }}
                 onMouseEnter={(e) => {
                   if (!sending && sendEmail) {
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(200,144,10,0.3)";
+                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3)";
                     e.currentTarget.style.transform = "translateY(-1px)";
                   }
                 }}
