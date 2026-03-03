@@ -60,7 +60,7 @@ If the product could be dual-use, military, controlled, or restricted, ALWAYS in
 For sensitive goods, add to the response:
 "sensitiveGoods": {
   "category": "dual-use | military | CITES | sanctions | controlled-substance | explosives | radioactive",
-  "warning": "Clear warning in German about legal requirements",
+  "warning": "Clear warning in English about legal requirements",
   "regulations": ["Relevant EU regulations"],
   "licenceRequired": true/false,
   "licenceAuthority": "Which authority issues permits (e.g. BAFA, BMWi, ILNAS)",

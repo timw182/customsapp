@@ -2053,473 +2053,281 @@ export default function CustomsCalculator({ user }) {
 
         {/* HS LOOKUP TAB */}
         {tab === "hs-lookup" && (
-          <div style={{ maxWidth: 640, margin: "0 auto" }}>
-            <div className="section-label">AI-Assisted HS Code Classification</div>
-            <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 24, lineHeight: 1.7 }}>
-              Describe your product in detail. The more specific, the better — include material composition, function,
-              whether it's finished/unfinished, and end use.
-            </p>
-            <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ maxWidth: 500, margin: "0 auto" }}>
+            
+            {/* INPUT SECTION */}
+            <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                🔍 HS Code Lookup
+              </h2>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Laptop computer, 15-inch, Intel Core i7, 16GB RAM, for personal/commercial use. Not a gaming laptop."
-                rows={4}
+                placeholder="Describe your product... e.g. Samsung Galaxy S24 smartphone 256GB"
+                rows={3}
                 style={{
-                  background: "#f0f7f4",
-                  border: "1px solid #e2e8f0",
-                  color: "#111827",
-                  padding: "12px",
-                  fontFamily: "var(--font-courier-prime), monospace",
-                  fontSize: 13,
-                  borderRadius: 2,
                   width: "100%",
+                  padding: 14,
+                  border: "2px solid #e5e7eb",
+                  borderRadius: 8,
+                  fontSize: 15,
+                  fontFamily: "inherit",
+                  resize: "none",
+                  marginBottom: 12,
                   outline: "none",
-                  resize: "vertical",
                 }}
               />
+              <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
+                💡 Be specific: brand, model, material, function
+              </p>
               <button
                 onClick={lookupHS}
                 disabled={hsLoading}
-                className={hsLoading ? "" : "btn-gold"}
                 style={{
-                  padding: "14px",
-                  background: hsLoading ? "#e2e8f0" : undefined,
-                  color: hsLoading ? "#6b7280" : undefined,
-                  fontSize: 13,
-                  letterSpacing: 3,
-                  textTransform: "uppercase",
-                  fontWeight: 700,
-                  borderRadius: 2,
-                  fontFamily: "var(--font-oswald), sans-serif",
+                  width: "100%",
+                  padding: 14,
+                  background: hsLoading ? "#e5e7eb" : "#059669",
+                  color: hsLoading ? "#6b7280" : "white",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: hsLoading ? "default" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 10,
-                  border: "none",
-                  width: "100%",
+                  gap: 8,
                 }}
               >
-                {hsLoading ? (
-                  <>
-                    <Spinner /> Classifying...
-                  </>
-                ) : (
-                  "Classify Product"
-                )}
+                {hsLoading ? <><Spinner /> Classifying...</> : "Classify Product"}
               </button>
             </div>
 
-            {hsResult && !hsResult.error && !hsResult.needsMoreInfo && (
-              <div style={{ marginTop: 24, animation: "fadeIn 0.3s ease" }}>
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, padding: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-                  <div
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 20 }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 36,
-                          color: "var(--gold)",
-                          letterSpacing: 6,
-                          lineHeight: 1,
-                        }}
-                      >
-                        {hsResult.hs6}
-                      </div>
-                      <div style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>{hsResult.description}</div>
-                    </div>
-                    <span
-                      className={`tag tag-${hsResult.confidence === "high" ? "green" : hsResult.confidence === "medium" ? "amber" : "red"}`}
-                    >
-                      {hsResult.confidence} confidence
-                    </span>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                    <div style={{ background: "#f0f7f4", padding: 16, borderRadius: 2 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          marginBottom: 6,
-                        }}
-                      >
-                        Standard Duty Rate
-                      </div>
-                      <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 24, color: "#111827" }}>
-                        {hsResult.standardDutyRate}%
-                      </div>
-                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                        MFN (Most Favoured Nation) rate
-                      </div>
-                    </div>
-                    <div style={{ background: "#f0f7f4", padding: 16, borderRadius: 2 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Flags
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span className={`tag ${hsResult.antiDumping ? "tag-red" : "tag-green"}`}>
-                          {hsResult.antiDumping ? "⚠ Anti-dumping possible" : "✓ No anti-dumping"}
-                        </span>
-                        <span className={`tag ${hsResult.excise ? "tag-amber" : "tag-green"}`}>
-                          {hsResult.excise ? "⚠ Excise duty" : "✓ No excise duty"}
-                        </span>
-                        <span className={`tag ${hsResult.prohibitedRestricted ? "tag-red" : "tag-green"}`}>
-                          {hsResult.prohibitedRestricted ? "⚠ Restricted/controlled" : "✓ No restrictions"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  {hsResult.antiDumping && hsResult.antiDumpingNote && (
-                    <div
-                      style={{
-                        background: "#fee2e2",
-                        border: "1px solid #fca5a5",
-                        padding: 12,
-                        borderRadius: 2,
-                        marginBottom: 12,
-                        fontSize: 13,
-                        color: "#dc2626",
-                      }}
-                    >
-                      Anti-dumping: {hsResult.antiDumpingNote}
-                    </div>
-                  )}
-                  {hsResult.excise && hsResult.exciseNote && (
-                    <div
-                      style={{
-                        background: "rgba(16,185,129,0.08)",
-                        border: "1px solid rgba(16,185,129,0.3)",
-                        padding: 12,
-                        borderRadius: 2,
-                        marginBottom: 12,
-                        fontSize: 13,
-                        color: "#10b981",
-                      }}
-                    >
-                      Excise: {hsResult.exciseNote}
-                    </div>
-                  )}
-                  {hsResult.complianceNotes?.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Compliance Requirements
-                      </div>
-                      <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
-                        {hsResult.complianceNotes.map((note, i) => (
-                          <li
-                            key={i}
-                            style={{
-                              fontSize: 13,
-                              color: "#6b7280",
-                              fontFamily: "var(--font-courier-prime), monospace",
-                              padding: "6px 10px",
-                              background: "#f0f7f4",
-                              borderRadius: 2,
-                            }}
-                          >
-                            · {note}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {hsResult.alternativeHS?.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Alternative Classifications
-                      </div>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {hsResult.alternativeHS.map((code, i) => (
-                          <span key={i} className="tag tag-amber">
-                            {code}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-                    <button
-                      onClick={() => setTab("calculator")}
-                      className="btn-gold"
-                      style={{
-                        flex: 1,
-                        padding: "12px",
-                        fontSize: 12,
-                        letterSpacing: 2,
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        borderRadius: 2,
-                        fontFamily: "var(--font-oswald), sans-serif",
-                      }}
-                    >
-                      Use in Calculator
-                    </button>
-                    <button
-                      onClick={() =>
-                        savedCodes.has(hsResult.hs6)
-                          ? removeFavourite(favourites.find((f) => f.hsCode === hsResult.hs6)?.id, hsResult.hs6)
-                          : saveFavourite(hsResult)
-                      }
-                      disabled={favLoading}
-                      className="btn-ghost"
-                      style={{
-                        padding: "12px 16px",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 2,
-                        fontSize: 18,
-                        background: "none",
-                        color: savedCodes.has(hsResult.hs6) ? "#10b981" : "#6b7280",
-                      }}
-                      title={savedCodes.has(hsResult.hs6) ? "Remove from favourites" : "Save to favourites"}
-                    >
-                      {savedCodes.has(hsResult.hs6) ? "★" : "☆"}
-                    </button>
-                    <a
-                      href={`https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=${hsResult.hs6?.replace(".", "")}`}
-                      target="_blank"
-                      rel="noopener"
-                      className="btn-ghost"
-                      style={{
-                        flex: 1,
-                        padding: "12px",
-                        border: "1px solid #e2e8f0",
-                        color: "#10b981",
-                        fontSize: 12,
-                        letterSpacing: 2,
-                        textTransform: "uppercase",
-                        textAlign: "center",
-                        textDecoration: "none",
-                        borderRadius: 2,
-                        display: "block",
-                      }}
-                    >
-                      Verify in TARIC ↗
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-
+            {/* SENSITIVE GOODS WARNING */}
             {hsResult && hsResult.sensitiveGoods && (
-              <div style={{ marginTop: 16, animation: 'fadeIn 0.3s ease' }}>
-                <div style={{ background: '#fef2f2', border: '2px solid #dc2626', borderRadius: 2, padding: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <span style={{ fontSize: 32 }}>⚠️</span>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 18, color: '#dc2626', textTransform: 'uppercase' }}>Sensibles Gut — Genehmigungspflichtig!</div>
-                      <div style={{ fontSize: 14, color: '#991b1b', marginTop: 4 }}>Kategorie: {hsResult.sensitiveGoods.category}</div>
+              <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: "#dc2626", color: "white", padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ fontSize: 24 }}>⚠️</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Sensitive Goods — Licence Required
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
+                      Category: {hsResult.sensitiveGoods.category}
                     </div>
                   </div>
-                  
-                  <div style={{ background: '#fee2e2', padding: 16, borderRadius: 2, marginBottom: 16, fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
-                    {hsResult.sensitiveGoods.warning}
-                  </div>
-                  
-                  {hsResult.sensitiveGoods.regulations && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Relevante Vorschriften:</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {hsResult.sensitiveGoods.regulations.map((r, i) => (
-                          <span key={i} style={{ background: '#fecaca', padding: '4px 8px', borderRadius: 2, fontSize: 11, color: '#991b1b' }}>{r}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {hsResult.sensitiveGoods.licenceRequired && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <span style={{ fontSize: 16 }}>📋</span>
-                      <span style={{ fontSize: 14, color: '#991b1b' }}>
-                        <strong>Genehmigung erforderlich</strong> — Zuständig: {hsResult.sensitiveGoods.licenceAuthority}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {hsResult.sensitiveGoods.consequences && (
-                    <div style={{ background: '#7f1d1d', color: '#fef2f2', padding: 12, borderRadius: 2, fontSize: 13 }}>
-                      <strong>⚡ Bei Verstoß:</strong> {hsResult.sensitiveGoods.consequences}
-                    </div>
-                  )}
+                </div>
+                <div style={{ background: "#fee2e2", padding: "16px 20px", fontSize: 13, color: "#991b1b" }}>
+                  {hsResult.sensitiveGoods.warning}
+                  <ul style={{ listStyle: "none", marginTop: 12, padding: 0 }}>
+                    {hsResult.sensitiveGoods.licenceAuthority && (
+                      <li style={{ padding: "4px 0", display: "flex", gap: 8 }}>📋 Authority: {hsResult.sensitiveGoods.licenceAuthority}</li>
+                    )}
+                    {hsResult.sensitiveGoods.regulations && hsResult.sensitiveGoods.regulations.map((r, i) => (
+                      <li key={i} style={{ padding: "4px 0", display: "flex", gap: 8 }}>📜 {r}</li>
+                    ))}
+                    {hsResult.sensitiveGoods.consequences && (
+                      <li style={{ padding: "4px 0", display: "flex", gap: 8 }}>⚡ {hsResult.sensitiveGoods.consequences}</li>
+                    )}
+                  </ul>
+                </div>
+                <div style={{ padding: "16px 20px", background: "#fef2f2", borderTop: "1px solid #fecaca" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
+                    <input type="checkbox" style={{ width: 18, height: 18 }} />
+                    I understand and will verify licence requirements
+                  </label>
                 </div>
               </div>
             )}
+
+            {/* NEEDS MORE INFO */}
             {hsResult && hsResult.needsMoreInfo && (
-              <div style={{ marginTop: 24, animation: 'fadeIn 0.3s ease' }}>
-                <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 2, padding: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <span style={{ fontSize: 28 }}>🤔</span>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 16, color: '#92400e' }}>Beschreibung zu ungenau</div>
-                      <div style={{ fontSize: 13, color: '#a16207' }}>{hsResult.reason}</div>
-                    </div>
+              <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ background: "#d97706", color: "white", padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <span style={{ fontSize: 24 }}>🤔</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>More Details Needed</div>
+                    <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>{hsResult.reason}</div>
                   </div>
-                  
-                  {hsResult.questions && hsResult.questions.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Bitte ergänze:</div>
-                      <ul style={{ margin: 0, paddingLeft: 20, color: '#78350f' }}>
-                        {hsResult.questions.map((q, i) => (
-                          <li key={i} style={{ marginBottom: 4, fontSize: 14 }}>{q}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {hsResult.possibleChapters && hsResult.possibleChapters.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Mögliche Kategorien:</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                </div>
+                <div style={{ padding: 20 }}>
+                  <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>Please specify:</p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: "0 0 16px 0" }}>
+                    {hsResult.questions && hsResult.questions.map((q, i) => (
+                      <li key={i} style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 6, marginBottom: 8, fontSize: 14, color: "#92400e" }}>
+                        ❓ {q}
+                      </li>
+                    ))}
+                  </ul>
+                  {hsResult.possibleChapters && (
+                    <div>
+                      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Could be in:</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                         {hsResult.possibleChapters.map((ch, i) => (
-                          <span key={i} style={{ background: '#fde68a', padding: '4px 10px', borderRadius: 2, fontSize: 12, color: '#78350f' }}>{ch}</span>
+                          <span key={i} style={{ padding: "6px 12px", background: "#f3f4f6", borderRadius: 16, fontSize: 13, color: "#6b7280" }}>{ch}</span>
                         ))}
                       </div>
                     </div>
                   )}
-                  
                   {hsResult.hint && (
-                    <div style={{ background: '#fef9c3', padding: 12, borderRadius: 2, fontSize: 13, color: '#713f12' }}>
+                    <div style={{ marginTop: 16, padding: 12, background: "#fef9c3", borderRadius: 6, fontSize: 13, color: "#713f12" }}>
                       💡 {hsResult.hint}
                     </div>
                   )}
                 </div>
               </div>
             )}
-            {hsResult?.error && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: "12px 16px",
-                  background: "#fee2e2",
-                  border: "1px solid #fca5a5",
-                  borderRadius: 2,
-                  color: "#dc2626",
-                  fontSize: 13,
-                }}
-              >
+
+            {/* SUCCESS RESULT */}
+            {hsResult && !hsResult.error && !hsResult.needsMoreInfo && hsResult.cn8 && (
+              <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24 }}>
+                
+                {/* Code Display */}
+                <div style={{ textAlign: "center", paddingBottom: 20, borderBottom: "1px solid #e5e7eb", marginBottom: 20 }}>
+                  <div style={{ fontSize: 36, fontWeight: 700, fontFamily: "monospace", color: "#059669", letterSpacing: 2 }}>
+                    {hsResult.cn8 ? hsResult.cn8.replace(/(\d{4})(\d{2})(\d{2})/, "$1.$2.$3") : hsResult.hs6}
+                  </div>
+                  <div style={{ fontSize: 15, color: "#6b7280", marginTop: 4 }}>{hsResult.description}</div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 16 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 20, fontWeight: 600 }}>{hsResult.standardDutyRate}%</div>
+                      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>Duty</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 20, fontWeight: 600 }}>{hsResult.vatRateLU || 17}%</div>
+                      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>VAT</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 50, height: 6, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ 
+                            height: "100%", 
+                            borderRadius: 3,
+                            width: hsResult.confidence === "high" ? "90%" : hsResult.confidence === "medium" ? "60%" : "30%",
+                            background: hsResult.confidence === "high" ? "#059669" : hsResult.confidence === "medium" ? "#d97706" : "#dc2626"
+                          }} />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1, marginTop: 4 }}>Confidence</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Badge */}
+                <div style={{ 
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8, 
+                  padding: 12, borderRadius: 8, marginBottom: 20,
+                  background: (hsResult.antiDumping || hsResult.prohibitedRestricted) ? "#fee2e2" : "#d1fae5",
+                  color: (hsResult.antiDumping || hsResult.prohibitedRestricted) ? "#dc2626" : "#059669",
+                  fontSize: 14, fontWeight: 500
+                }}>
+                  {(hsResult.antiDumping || hsResult.prohibitedRestricted) 
+                    ? "⚠️ Restrictions may apply — check details"
+                    : "✅ Clear to import — no restrictions"
+                  }
+                </div>
+
+                {/* Expandable: Documents */}
+                {hsResult.requiredDocuments && hsResult.requiredDocuments.length > 0 && (
+                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <summary style={{ padding: "14px 0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, fontWeight: 500 }}>
+                      <span>📄 Required Documents</span>
+                      <span style={{ fontSize: 12, color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: 10 }}>{hsResult.requiredDocuments.length}</span>
+                    </summary>
+                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
+                      {hsResult.requiredDocuments.map((doc, i) => (
+                        <li key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", fontSize: 14, borderBottom: "1px solid #f3f4f6" }}>
+                          <span style={{ 
+                            width: 18, height: 18, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+                            background: doc.mandatory ? "#d1fae5" : "transparent",
+                            border: doc.mandatory ? "2px solid #059669" : "2px solid #e5e7eb",
+                            color: "#059669"
+                          }}>{doc.mandatory ? "✓" : ""}</span>
+                          {doc.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {/* Expandable: Preferential Rates */}
+                {hsResult.preferentialRates && hsResult.preferentialRates.length > 0 && (
+                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <summary style={{ padding: "14px 0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, fontWeight: 500 }}>
+                      <span>🌍 Preferential Rates</span>
+                      <span style={{ fontSize: 12, color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: 10 }}>{hsResult.preferentialRates.length} FTAs</span>
+                    </summary>
+                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
+                      {hsResult.preferentialRates.slice(0, 6).map((pref, i) => (
+                        <li key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", fontSize: 14, borderBottom: "1px solid #f3f4f6" }}>
+                          <span>{pref.partner}</span>
+                          <span style={{ fontWeight: 500 }}>{pref.rate}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {/* Expandable: Regulations */}
+                {hsResult.regulatoryNotes && hsResult.regulatoryNotes.length > 0 && (
+                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
+                    <summary style={{ padding: "14px 0", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 14, fontWeight: 500 }}>
+                      <span>📋 Regulations</span>
+                      <span style={{ fontSize: 12, color: "#6b7280", background: "#f3f4f6", padding: "2px 8px", borderRadius: 10 }}>{hsResult.regulatoryNotes.length}</span>
+                    </summary>
+                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
+                      {hsResult.regulatoryNotes.map((reg, i) => (
+                        <li key={i} style={{ padding: "8px 0", fontSize: 14, borderBottom: "1px solid #f3f4f6" }}>{reg}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 12, marginTop: 20, paddingTop: 20, borderTop: "1px solid #e5e7eb" }}>
+                  <button 
+                    onClick={() => addFavourite(hsResult.cn8 || hsResult.hs6, hsResult.description)}
+                    style={{ flex: 1, padding: 14, background: "#f3f4f6", color: "#1f2937", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    ★ Save
+                  </button>
+                  <button 
+                    onClick={() => { setHsCode(hsResult.cn8 || hsResult.hs6); setTab("calculator"); }}
+                    style={{ flex: 1, padding: 14, background: "#059669", color: "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 500, cursor: "pointer" }}
+                  >
+                    → Use in Calculator
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ERROR */}
+            {hsResult && hsResult.error && (
+              <div style={{ marginTop: 16, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, color: "#dc2626", fontSize: 14 }}>
                 {hsResult.error}
               </div>
             )}
 
+            {/* FAVOURITES */}
             {favourites.length > 0 && (
-              <div style={{ marginTop: 32 }}>
-                <div className="section-label">Saved HS Codes</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {favourites.map((fav) => (
-                    <div
-                      key={fav.id}
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 2,
-                        padding: "12px 16px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 12,
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <span
-                            style={{
-                              fontFamily: "var(--font-courier-prime), monospace",
-                              fontSize: 16,
-                              color: "#10b981",
-                              letterSpacing: 2,
-                            }}
-                          >
-                            {fav.hsCode}
-                          </span>
-                          <span className="tag tag-amber">{fav.dutyRate}%</span>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#6b7280",
-                            marginTop: 3,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {fav.description}
-                        </div>
+              <div style={{ marginTop: 24 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#6b7280", marginBottom: 12 }}>Saved HS Codes</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {favourites.map((fav, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 12, background: "#fff", borderRadius: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+                      <div>
+                        <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#059669" }}>{fav.code}</span>
+                        <span style={{ color: "#6b7280", marginLeft: 8, fontSize: 13 }}>{fav.description}</span>
                       </div>
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                        <button
-                          onClick={() => {
-                            setHsCode(fav.hsCode);
-                            setDutyRate(String(fav.dutyRate));
-                            setTab("calculator");
-                          }}
-                          className="btn-ghost"
-                          style={{
-                            padding: "6px 12px",
-                            border: "1px solid #e2e8f0",
-                            color: "#10b981",
-                            fontSize: 11,
-                            letterSpacing: 1,
-                            borderRadius: 2,
-                            background: "none",
-                          }}
-                        >
-                          use
-                        </button>
-                        <button
-                          onClick={() => removeFavourite(fav.id, fav.hsCode)}
-                          className="btn-ghost"
-                          style={{
-                            padding: "6px 10px",
-                            border: "1px solid #e2e8f0",
-                            color: "#6b7280",
-                            fontSize: 13,
-                            borderRadius: 2,
-                            background: "none",
-                          }}
-                          title="Remove"
-                        >
-                          ×
-                        </button>
-                      </div>
+                      <button onClick={() => removeFavourite(fav.code)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 18 }}>×</button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+
           </div>
         )}
-
-        {/* FX RATES TAB */}
         {tab === "fx" && (
           <div>
             <div className="two-col" style={{ gap: 32 }}>
