@@ -14,7 +14,7 @@ const FROM = process.env.RESEND_FROM ?? "Dutify <invites@customs.bluebrick.cloud
 
 function buildHtml(code, expiresAt) {
   const expiryLine = expiresAt
-    ? `<p style="margin:0 0 8px;color:#9a8e7e;font-size:13px;font-family:'Courier New',monospace;">
+    ? `<p style="margin:0 0 8px;color:#6b7280;font-size:13px;">
          Expires: ${new Date(expiresAt).toLocaleDateString("de-LU", { day: "2-digit", month: "2-digit", year: "numeric" })}
        </p>`
     : "";
@@ -26,61 +26,60 @@ function buildHtml(code, expiresAt) {
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Your Dutify Invite</title>
 </head>
-<body style="margin:0;padding:0;background:#f0ebe2;font-family:'DM Sans',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0ebe2;padding:40px 0;">
+<body style="margin:0;padding:0;background:#f0f7f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f7f4;padding:40px 16px;">
     <tr>
       <td align="center">
-        <table width="560" cellpadding="0" cellspacing="0" style="background:#1a1208;border-radius:8px;overflow:hidden;max-width:560px;width:100%;">
+        <table width="540" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;max-width:540px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- Green accent stripe -->
+          <tr>
+            <td style="background:linear-gradient(90deg,#10b981,#34d399);height:5px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
           <!-- Header -->
           <tr>
-            <td style="padding:36px 40px 28px;border-bottom:1px solid #2e2010;">
+            <td style="padding:32px 40px 24px;border-bottom:1px solid #e2e8f0;">
               <table cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="padding-right:12px;vertical-align:middle;">
                     <svg width="36" height="36" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect width="56" height="56" rx="11" fill="#1a1208"/>
-                      <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#gold1)"/>
-                      <path d="M13 22L28 39L43 22" stroke="url(#gold1)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-                      <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#gold1)"/>
-                      <defs>
-                        <linearGradient id="gold1" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
-                          <stop offset="0%" stop-color="#F8DA6A"/>
-                          <stop offset="100%" stop-color="#D4920A"/>
-                        </linearGradient>
-                      </defs>
+                      <rect width="56" height="56" rx="14" fill="#10b981"/>
+                      <rect x="25" y="10" width="6" height="16" rx="3" fill="white"/>
+                      <path d="M14 22L28 38L42 22" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                      <rect x="12" y="42" width="32" height="4" rx="2" fill="white"/>
                     </svg>
                   </td>
                   <td style="vertical-align:middle;">
-                    <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#f0ebe2;">
-                      DUTIFY
-                    </span>
+                    <span style="font-size:20px;font-weight:700;color:#111827;letter-spacing:-0.3px;">Dutify</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
+
           <!-- Body -->
           <tr>
             <td style="padding:36px 40px;">
-              <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;letter-spacing:5px;text-transform:uppercase;color:#C8900A;">
+              <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#10b981;">
                 You've been invited
               </p>
-              <h1 style="margin:0 0 20px;font-family:Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f0ebe2;">
-                Your Invite Code
+              <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#111827;letter-spacing:-0.5px;">
+                Your invite code
               </h1>
-              <p style="margin:0 0 24px;color:#b8a898;font-size:14px;line-height:1.6;">
-                You've been invited to access <strong style="color:#f0ebe2;">Dutify</strong> — Luxembourg's import duty calculator.
+              <p style="margin:0 0 28px;color:#6b7280;font-size:14px;line-height:1.7;">
+                You've been invited to access <strong style="color:#111827;">Dutify</strong> — Luxembourg's import duty calculator.
                 Use the code below to create your account.
               </p>
 
               <!-- Code box -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                 <tr>
-                  <td style="background:#0e0a04;border:1px solid #C8900A;border-radius:4px;padding:20px;text-align:center;">
-                    <p style="margin:0 0 6px;font-family:Arial,sans-serif;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#9a8e7e;">
+                  <td style="background:#111827;border-radius:12px;padding:24px;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#6b7280;">
                       Invite Code
                     </p>
-                    <p style="margin:0;font-family:'Courier New',monospace;font-size:26px;letter-spacing:6px;color:#F8DA6A;font-weight:700;">
+                    <p style="margin:0;font-family:'Courier New',monospace;font-size:28px;letter-spacing:8px;color:#34d399;font-weight:700;">
                       ${code}
                     </p>
                   </td>
@@ -90,32 +89,37 @@ function buildHtml(code, expiresAt) {
               ${expiryLine}
 
               <!-- CTA button -->
-              <table cellpadding="0" cellspacing="0" style="margin:28px 0 0;">
+              <table cellpadding="0" cellspacing="0" style="margin:8px 0 0;">
                 <tr>
-                  <td style="background:linear-gradient(135deg,#F8DA6A,#C8900A);border-radius:3px;">
+                  <td style="background:#10b981;border-radius:10px;">
                     <a href="${APP_URL}/register" target="_blank"
-                       style="display:inline-block;padding:14px 32px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#ffffff;text-decoration:none;">
-                      Create Account →
+                       style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
+                      Create account →
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:28px 0 0;color:#5a4e3e;font-size:12px;line-height:1.6;">
-                Or copy this link into your browser:<br/>
-                <a href="${APP_URL}/register" style="color:#C8900A;">${APP_URL}/register</a>
+              <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;line-height:1.6;">
+                Or open this link in your browser:<br/>
+                <a href="${APP_URL}/register" style="color:#10b981;">${APP_URL}/register</a>
               </p>
             </td>
           </tr>
+
           <!-- Footer -->
           <tr>
-            <td style="padding:20px 40px;border-top:1px solid #2e2010;">
-              <p style="margin:0;font-size:11px;color:#5a4e3e;line-height:1.6;">
-                This invite was sent by the Dutify admin. If you weren't expecting this email, you can safely ignore it.
+            <td style="padding:20px 40px;border-top:1px solid #e2e8f0;background:#f9fafb;">
+              <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.6;">
+                This invite was sent by the Dutify admin. If you weren't expecting this, you can safely ignore it.
               </p>
             </td>
           </tr>
+
         </table>
+
+        <!-- Sub-footer -->
+        <p style="margin:20px 0 0;font-size:11px;color:#9ca3af;">Luxembourg · Import Duties · dutify.lu</p>
       </td>
     </tr>
   </table>

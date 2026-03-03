@@ -1,25 +1,26 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
 const styles = StyleSheet.create({
-  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#0e0a04', backgroundColor: '#fff' },
-  headerBar:   { backgroundColor: '#f0ebe2', padding: '16 24', marginBottom: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLabel: { fontSize: 8, color: '#c8a96e', letterSpacing: 2 },
-  headerTitle: { fontSize: 18, color: '#0e0a04', fontFamily: 'Helvetica', marginTop: 2 },
-  headerRight: { fontSize: 8, color: '#888', textAlign: 'right' },
-  sectionLabel:{ fontSize: 8, color: '#999', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, marginTop: 20 },
-  row:         { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottom: '0.5 solid #eeeeee' },
-  rowLabel:    { color: '#666', fontSize: 10 },
-  rowValue:    { fontFamily: 'Helvetica-Bold', fontSize: 10 },
-  totalBox:    { backgroundColor: '#f9f6f0', padding: '12 16', marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', border: '1 solid #e8dcc8' },
-  totalLabel:  { fontSize: 13, fontFamily: 'Helvetica-Bold' },
-  totalValue:  { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#8a6f3e' },
-  badge:       { fontSize: 8, padding: '2 6', backgroundColor: '#1a2e1a', color: '#6bc26b', borderRadius: 2 },
-  badgeRed:    { fontSize: 8, padding: '2 6', backgroundColor: '#2e1a1a', color: '#c26b6b', borderRadius: 2 },
-  disclaimer:  { marginTop: 32, paddingTop: 12, borderTop: '0.5 solid #ddd', fontSize: 8, color: '#aaa', lineHeight: 1.6 },
-  footer:      { position: 'absolute', bottom: 32, left: 48, right: 48, flexDirection: 'row', justifyContent: 'space-between', fontSize: 8, color: '#bbb' },
-  lineItem:    { padding: '8 0', borderBottom: '0.5 solid #f0f0f0' },
-  lineTitle:   { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
-  lineDetail:  { fontSize: 9, color: '#888' },
+  page:        { padding: 48, fontFamily: 'Helvetica', fontSize: 10, color: '#111827', backgroundColor: '#fff' },
+  accentBar:   { backgroundColor: '#10b981', height: 4, marginBottom: 28 },
+  headerBar:   { backgroundColor: '#f0f7f4', padding: '16 20', marginBottom: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 6 },
+  headerLabel: { fontSize: 8, color: '#10b981', letterSpacing: 2 },
+  headerTitle: { fontSize: 18, color: '#111827', fontFamily: 'Helvetica-Bold', marginTop: 3 },
+  headerRight: { fontSize: 8, color: '#6b7280', textAlign: 'right' },
+  sectionLabel:{ fontSize: 8, color: '#10b981', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, marginTop: 20 },
+  row:         { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottom: '0.5 solid #e2e8f0' },
+  rowLabel:    { color: '#6b7280', fontSize: 10 },
+  rowValue:    { fontFamily: 'Helvetica-Bold', fontSize: 10, color: '#111827' },
+  totalBox:    { backgroundColor: '#ecfdf5', padding: '14 18', marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', border: '1 solid #a7f3d0', borderRadius: 6 },
+  totalLabel:  { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#111827' },
+  totalValue:  { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#059669' },
+  badge:       { fontSize: 8, padding: '2 6', backgroundColor: '#064e3b', color: '#34d399', borderRadius: 3 },
+  badgeRed:    { fontSize: 8, padding: '2 6', backgroundColor: '#7f1d1d', color: '#fca5a5', borderRadius: 3 },
+  disclaimer:  { marginTop: 32, paddingTop: 12, borderTop: '0.5 solid #e2e8f0', fontSize: 8, color: '#9ca3af', lineHeight: 1.6 },
+  footer:      { position: 'absolute', bottom: 32, left: 48, right: 48, flexDirection: 'row', justifyContent: 'space-between', fontSize: 8, color: '#9ca3af' },
+  lineItem:    { padding: '8 0', borderBottom: '0.5 solid #f1f5f9' },
+  lineTitle:   { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 2, color: '#111827' },
+  lineDetail:  { fontSize: 9, color: '#6b7280' },
 })
 
 const fmt = (n) => `€ ${Number(n).toLocaleString('de-LU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -30,6 +31,7 @@ export function ExcisePDF({ data }) {
     <Document>
       <Page size="A4" style={styles.page}>
 
+        <View style={styles.accentBar}/>
         <View style={styles.headerBar}>
           <View>
             <Text style={styles.headerLabel}>LUXEMBOURG · EU CUSTOMS</Text>
@@ -89,6 +91,7 @@ export function ShipmentPDF({ data }) {
       <Page size="A4" style={styles.page}>
 
         {/* Header */}
+        <View style={styles.accentBar}/>
         <View style={styles.headerBar}>
           <View>
             <Text style={styles.headerLabel}>LUXEMBOURG · EU CUSTOMS</Text>
