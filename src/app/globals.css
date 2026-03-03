@@ -19,25 +19,36 @@ body {
   box-sizing: border-box;
 }
 
-/* Auth page inputs & buttons — avoids JS onFocus/onBlur/onMouseEnter handlers */
+/* Auth page inputs & buttons */
 .auth-input:focus {
-  border-color: var(--gold) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.12) !important;
 }
 
 .auth-btn:hover:not(:disabled) {
-  box-shadow: 0 4px 20px rgba(200, 144, 10, 0.3);
+  background: #059669 !important;
+  box-shadow: 0 4px 20px rgba(16,185,129,0.35) !important;
   transform: translateY(-1px);
 }
 
 .auth-btn:active {
   transform: translateY(0);
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .auth-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: default;
 }
+
+/* Auth page blobs */
+.auth-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; }
+.auth-blob-1 { width: 420px; height: 420px; background: rgba(16,185,129,0.4); top: -10%; left: -8%; animation: authBlob1 18s ease-in-out infinite; }
+.auth-blob-2 { width: 360px; height: 360px; background: rgba(52,211,153,0.35); bottom: -8%; right: -6%; animation: authBlob2 23s ease-in-out infinite; }
+.auth-blob-3 { width: 260px; height: 260px; background: rgba(167,243,208,0.45); top: 45%; left: 58%; animation: authBlob3 20s ease-in-out infinite; }
+@keyframes authBlob1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px,30px); } }
+@keyframes authBlob2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px,-40px); } }
+@keyframes authBlob3 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-25px,35px); } }
 
 /* Print: hide chrome, show results only */
 @media print {
