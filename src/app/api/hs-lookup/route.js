@@ -42,10 +42,16 @@ If the description is too vague to confidently classify (e.g. "electronic device
 {
   "needsMoreInfo": true,
   "reason": "Brief explanation",
-  "questions": ["Question 1?", "Question 2?", "Question 3?"],
+  "questions": [
+    { "question": "Question 1?", "answers": ["Option A", "Option B", "Option C", "Option D"] },
+    { "question": "Question 2?", "answers": ["Option A", "Option B", "Option C"] },
+    { "question": "Question 3?", "answers": ["Option A", "Option B", "Option C"] }
+  ],
   "possibleChapters": ["Chapter XX — Name", "Chapter YY — Name"],
   "hint": "Tip about what details would help"
 }
+
+Each question MUST include 3–6 realistic, specific answer options relevant to EU customs classification. Answers should be the actual values a user would pick, not generic placeholders.
 
 === RULE 2: SENSITIVE GOODS — ALWAYS FLAG ===
 If the product could be dual-use, military, controlled, or restricted, ALWAYS include a sensitiveGoods warning — even if classification is clear. This applies to:

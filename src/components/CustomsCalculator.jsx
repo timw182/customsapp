@@ -1468,7 +1468,7 @@ export default function CustomsCalculator({ user }) {
 
       {/* Tabs */}
       <div className="tabs-bar">
-        {["calculator", "excise", "cbam", "hs-lookup", "fx", "reference"].map((t) => (
+        {["calculator", "excise", "cbam", "hs-lookup", "fx", "rulings", "reference"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -1489,7 +1489,9 @@ export default function CustomsCalculator({ user }) {
                     ? "HS Lookup"
                     : t === "fx"
                       ? "FX Rates"
-                      : "Reference"}
+                      : t === "rulings"
+                        ? "Rulings"
+                        : "Reference"}
           </button>
         ))}
       </div>
@@ -1514,6 +1516,44 @@ export default function CustomsCalculator({ user }) {
               label: { display: "block", fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9ca3af", marginBottom: 5, marginTop: 14 },
               hint: { fontSize: 10, color: "#9ca3af", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 },
             };
+
+            // Live preview — same logic as calculate() but pure (no setState)
+            const computePreview = () => {
+              const val = parseFloat(itemValue) || 0;
+              if (!val || !exchangeRate) return null;
+              const fr = parseFloat(freight) || 0;
+              const ins = parseFloat(insurance) || 0;
+              const rate = exchangeRate || 1;
+              const duty = parseFloat(dutyRate) || 0;
+              const valEUR = val * rate;
+              let frEUR = fr * rate;
+              const insEUR = ins * rate;
+              if (transportMode === "air") frEUR = frEUR * getAirfreightPct(originCountry);
+              const incotermDef = INCOTERMS_CIF[incoterm] || {};
+              let cifEUR = valEUR;
+              if (incotermDef.needsFreight && incotermDef.needsIns) cifEUR = valEUR + frEUR + insEUR;
+              else if (!incotermDef.needsFreight && incotermDef.needsIns) cifEUR = valEUR + insEUR;
+              let effectiveDutyRate = duty / 100;
+              if (hasPref && hasProofOfOrigin) {
+                if (dutyRateSource?.usingPref) {
+                  // already the real pref rate
+                } else {
+                  const prefType = ORIGIN_AGREEMENTS[originCountry]?.type || "";
+                  if (["eba","fta","eea","cu","atp","epa","cta"].includes(prefType)) effectiveDutyRate = 0;
+                  else if (prefType === "gsp+") effectiveDutyRate *= 0.2;
+                  else if (prefType === "gsp") effectiveDutyRate *= 0.35;
+                  else effectiveDutyRate = 0;
+                }
+              }
+              const dutyFree = cifEUR <= 150;
+              const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
+              const addDuty = dutyFree ? 0 : cifEUR * ((parseFloat(antiDumpingRate) || 0) / 100);
+              const vatRate = getLuVAT(hsCode);
+              const importVAT = (cifEUR + customsDuty + addDuty) * vatRate;
+              const totalDuties = customsDuty + addDuty + importVAT;
+              return { cifEUR, customsDuty, addDuty, importVAT, totalDuties, total: cifEUR + totalDuties, valEUR, frEUR, insEUR, vatRate, dutyFree, effectiveDutyRate: effectiveDutyRate * 100 };
+            };
+            const preview = !result ? computePreview() : null;
 
             return (
               <div style={{ maxWidth: 960, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
@@ -1674,41 +1714,38 @@ export default function CustomsCalculator({ user }) {
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
-                      <div>
-                        <label style={{ ...S.label, marginTop: 0 }}>
-                          Freight ({currency})
-                          {!INCOTERMS_CIF[incoterm]?.needsFreight && (
-                            <span style={{ color: "#10b981", marginLeft: 4 }}>✓ incl.</span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={freight}
-                          onChange={(e) => setFreight(e.target.value)}
-                          style={{ opacity: INCOTERMS_CIF[incoterm]?.needsFreight ? 1 : 0.5 }}
-                        />
+                    {needsShipping && (
+                      <div style={{ display: "grid", gridTemplateColumns: INCOTERMS_CIF[incoterm]?.needsFreight && INCOTERMS_CIF[incoterm]?.needsIns ? "1fr 1fr" : "1fr", gap: 10, marginTop: 12, animation: "slideDown 0.2s ease" }}>
                         {INCOTERMS_CIF[incoterm]?.needsFreight && (
-                          <div style={S.hint}>{getAirfreightPct(originCountry) * 100}% → customs value (air zone)</div>
+                          <div>
+                            <label style={{ ...S.label, marginTop: 0 }}>Freight ({currency})</label>
+                            <input
+                              type="number"
+                              placeholder="0.00"
+                              value={freight}
+                              onChange={(e) => setFreight(e.target.value)}
+                            />
+                            <div style={S.hint}>{getAirfreightPct(originCountry) * 100}% → customs value (air zone)</div>
+                          </div>
+                        )}
+                        {INCOTERMS_CIF[incoterm]?.needsIns && (
+                          <div>
+                            <label style={{ ...S.label, marginTop: 0 }}>Insurance ({currency})</label>
+                            <input
+                              type="number"
+                              placeholder="0.00"
+                              value={insurance}
+                              onChange={(e) => setInsurance(e.target.value)}
+                            />
+                          </div>
                         )}
                       </div>
-                      <div>
-                        <label style={{ ...S.label, marginTop: 0 }}>
-                          Insurance ({currency})
-                          {!INCOTERMS_CIF[incoterm]?.needsIns && (
-                            <span style={{ color: "#10b981", marginLeft: 4 }}>✓ incl.</span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={insurance}
-                          onChange={(e) => setInsurance(e.target.value)}
-                          style={{ opacity: INCOTERMS_CIF[incoterm]?.needsIns ? 1 : 0.5 }}
-                        />
+                    )}
+                    {!needsShipping && (
+                      <div style={{ ...S.hint, marginTop: 8 }}>
+                        Freight & insurance included in {incoterm} price
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Card 4: Duty Rates */}
@@ -1790,23 +1827,71 @@ export default function CustomsCalculator({ user }) {
                 {/* ──── RIGHT: RESULT ──── */}
                 <div ref={resultRef} style={{ position: "sticky", top: 16 }}>
                   {!result ? (
-                    <div style={S.card}>
-                      <div style={S.sectionHead}>Result</div>
-                      <div style={{ color: "#c4cdd6", fontSize: 40, textAlign: "center", padding: "16px 0", fontFamily: "var(--font-oswald), sans-serif", letterSpacing: 2 }}>€ —</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-                        {[
-                          ["🏷", "HS code → TARIC duty rate"],
-                          ["💱", "FX conversion (ECB rates)"],
-                          ["📦", "Incoterm → CIF customs value"],
-                          ["✈", "Air freight zone adjustment"],
-                          ["🤝", "FTA / GSP preferential rates"],
-                          ["🏛", "Luxembourg import VAT"],
-                        ].map(([icon, text]) => (
-                          <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#9ca3af", fontFamily: "var(--font-courier-prime), monospace" }}>
-                            <span>{icon}</span><span>{text}</span>
+                    <div style={{ ...S.card, animation: "fadeIn 0.2s ease" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                        <div style={S.sectionHead}>Live Preview</div>
+                        {preview && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 9, color: "#10b981", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block", animation: "pulse-dot 1.5s ease infinite" }} />
+                            Live
                           </div>
-                        ))}
+                        )}
                       </div>
+
+                      {!preview ? (
+                        <>
+                          <div style={{ color: "#c4cdd6", fontSize: 40, textAlign: "center", padding: "16px 0", fontFamily: "var(--font-oswald), sans-serif", letterSpacing: 2 }}>€ —</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                            {[
+                              ["🏷", "HS code → TARIC duty rate"],
+                              ["💱", "FX conversion (ECB rates)"],
+                              ["📦", "Incoterm → CIF customs value"],
+                              ["✈", "Air freight zone adjustment"],
+                              ["🤝", "FTA / GSP preferential rates"],
+                              ["🏛", "Luxembourg import VAT"],
+                            ].map(([icon, text]) => (
+                              <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#9ca3af", fontFamily: "var(--font-courier-prime), monospace" }}>
+                                <span>{icon}</span><span>{text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 4, fontFamily: "var(--font-oswald), sans-serif" }}>
+                              {preview.dutyFree ? "Duty-Free (≤€150)" : "Duties & Taxes"}
+                            </div>
+                            <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 40, color: "var(--foreground)", fontWeight: 700, lineHeight: 1, letterSpacing: -1, opacity: 0.85 }}>
+                              €{fmt(preview.totalDuties)}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+                              Landed: <strong style={{ color: "#6b7280" }}>€{fmt(preview.total)}</strong>
+                              {" · "}{((preview.totalDuties / (preview.valEUR || 1)) * 100).toFixed(1)}% on goods value
+                            </div>
+                          </div>
+                          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 0 }}>
+                            {[
+                              { label: "Goods value", value: preview.valEUR },
+                              ...(preview.frEUR > 0 ? [{ label: "Freight (air adj.)", value: preview.frEUR }] : []),
+                              ...(preview.insEUR > 0 ? [{ label: "Insurance", value: preview.insEUR }] : []),
+                              { label: "Customs Value (CIF)", value: preview.cifEUR, bold: true },
+                              { label: `Duty ${preview.dutyFree ? "(waived)" : preview.effectiveDutyRate.toFixed(1) + "%"}`, value: preview.customsDuty },
+                              ...(preview.addDuty > 0 ? [{ label: "Anti-Dumping", value: preview.addDuty }] : []),
+                              { label: `VAT ${((preview.vatRate || 0.17) * 100).toFixed(0)}%`, value: preview.importVAT },
+                              { label: "Total duties & taxes", value: preview.totalDuties, bold: true, total: true },
+                            ].map(({ label, value, bold, total }, i) => (
+                              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 0", borderTop: bold && i > 0 ? "1px solid var(--border)" : "none" }}>
+                                <span style={{ fontSize: bold ? 11 : 10, color: total ? "var(--foreground)" : "#9ca3af", fontWeight: bold ? 600 : 400 }}>{label}</span>
+                                <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: bold ? 12 : 11, color: total ? "var(--gold)" : "#6b7280", fontWeight: bold ? 700 : 400 }}>€{fmt(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 6, fontSize: 10, color: "#9ca3af", textAlign: "center" }}>
+                            Hit <strong style={{ color: "var(--gold)" }}>Calculate</strong> to confirm & export
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "fadeIn 0.3s ease" }}>
@@ -3128,42 +3213,89 @@ export default function CustomsCalculator({ user }) {
                   </div>
                 </div>
                 <div style={{ padding: 20 }}>
-                  <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>Please specify:</p>
-                  <ul style={{ listStyle: "none", padding: 0, margin: "0 0 16px 0" }}>
+                  <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 14 }}>
+                    Click an answer to refine your search:
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
                     {hsResult.questions &&
-                      hsResult.questions.map((q, i) => (
-                        <li
-                          key={i}
-                          style={{
-                            padding: "10px 14px",
-                            background: "#fef3c7",
-                            borderRadius: 6,
-                            marginBottom: 8,
-                            fontSize: 14,
-                            color: "#92400e",
-                          }}
-                        >
-                          ❓ {q}
-                        </li>
-                      ))}
-                  </ul>
+                      hsResult.questions.map((q, i) => {
+                        // Support both old string format and new {question, answers} format
+                        const questionText = typeof q === "string" ? q : q.question;
+                        const answers = typeof q === "string" ? [] : (q.answers || []);
+                        return (
+                          <div key={i}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                              <span>❓</span>
+                              <span>{questionText}</span>
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              {answers.map((answer, j) => (
+                                <button
+                                  key={j}
+                                  onClick={() => {
+                                    setDescription((prev) => `${prev.trim()} ${answer}`);
+                                  }}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: "#fef3c7",
+                                    border: "1px solid #fbbf24",
+                                    borderRadius: 20,
+                                    fontSize: 12,
+                                    color: "#92400e",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                    fontWeight: 500,
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = "#fde68a"; e.currentTarget.style.borderColor = "#f59e0b"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = "#fef3c7"; e.currentTarget.style.borderColor = "#fbbf24"; }}
+                                >
+                                  {answer}
+                                </button>
+                              ))}
+                              {answers.length === 0 && (
+                                <button
+                                  onClick={() => setDescription((prev) => `${prev.trim()} `)}
+                                  style={{ padding: "6px 12px", background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 20, fontSize: 12, color: "#92400e", cursor: "pointer" }}
+                                >
+                                  + type answer
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                   {hsResult.possibleChapters && (
                     <div>
-                      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Could be in:</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Could be classified under:</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {hsResult.possibleChapters.map((ch, i) => (
-                          <span
+                          <button
                             key={i}
+                            onClick={() => {
+                              setDescription((prev) => prev.trim() + ` (${ch})`);
+                            }}
                             style={{
                               padding: "6px 12px",
                               background: "#f3f4f6",
+                              border: "1px solid #d1d5db",
                               borderRadius: 16,
-                              fontSize: 13,
-                              color: "#6b7280",
+                              fontSize: 12,
+                              color: "#374151",
+                              cursor: "pointer",
+                              transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "#e5e7eb";
+                              e.currentTarget.style.borderColor = "#9ca3af";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "#f3f4f6";
+                              e.currentTarget.style.borderColor = "#d1d5db";
                             }}
                           >
                             {ch}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -3432,6 +3564,68 @@ export default function CustomsCalculator({ user }) {
                     </ul>
                   </details>
                 )}
+
+                {/* Verify & Sources */}
+                <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, marginTop: 4, marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9ca3af", marginBottom: 10 }}>
+                    Verify &amp; look up further
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {[
+                      {
+                        label: "TARIC — EU Tariff Database",
+                        sub: "Duty rates, measures, anti-dumping",
+                        url: `https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=${(hsResult.cn8 || "").replace(/\D/g, "")}`,
+                        icon: "🇪🇺",
+                      },
+                      {
+                        label: "Access2Markets",
+                        sub: "Required documents, rules of origin, preferential rates",
+                        url: `https://trade.ec.europa.eu/access-to-markets/en/content?nodeId=${(hsResult.cn8 || "").replace(/\D/g, "")}&lang=en`,
+                        icon: "📋",
+                      },
+                      {
+                        label: "TARLUX — Simulation Tarifaire Luxembourg",
+                        sub: "ADA Luxembourg — official duty simulation",
+                        url: "https://tarlux.public.lu/",
+                        icon: "🇱🇺",
+                      },
+                      {
+                        label: "ADA — Douanes et Accises Luxembourg",
+                        sub: "Customs authority, forms, procedures",
+                        url: "https://douanes.public.lu/",
+                        icon: "🏛",
+                      },
+                    ].map(({ label, sub, url, icon }) => (
+                      <a
+                        key={label}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 12px",
+                          background: "#f9fafb",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 8,
+                          textDecoration: "none",
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.borderColor = "#bbf7d0"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
+                      >
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{label}</div>
+                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{sub}</div>
+                        </div>
+                        <span style={{ fontSize: 11, color: "#10b981", flexShrink: 0 }}>↗</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Actions */}
                 <div
@@ -3861,6 +4055,116 @@ export default function CustomsCalculator({ user }) {
         )}
 
         {/* REFERENCE TAB */}
+        {tab === "rulings" && (
+          <div style={{ maxWidth: 720, margin: "0 auto" }}>
+            <div className="section-label">Tariff Classification Decisions</div>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 20, lineHeight: 1.6 }}>
+              Binding Tariff Information (BTI) decisions and classification rulings are legally binding determinations
+              issued by customs authorities. Use them to confirm the correct CN8 code for difficult or borderline products.
+            </p>
+
+            {/* Code search field */}
+            <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: 20, marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 10, fontFamily: "var(--font-oswald), sans-serif" }}>
+                Search by CN / HS Code
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="e.g. 8471.30 or 847130"
+                  value={hsCode}
+                  onChange={(e) => setHsCode(e.target.value.replace(/[^0-9.]/g, ""))}
+                  style={{ flex: 1, fontFamily: "var(--font-courier-prime), monospace" }}
+                />
+                <div style={{ fontSize: 11, color: "#9ca3af", alignSelf: "center", whiteSpace: "nowrap" }}>
+                  {hsCode ? `→ ${hsCode.replace(/\D/g, "").padEnd(8, "·")}` : "enter code"}
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, fontFamily: "var(--font-courier-prime), monospace" }}>
+                Shared with HS Lookup &amp; Calculator tabs
+              </div>
+            </div>
+
+            {/* Database links */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                {
+                  name: "EU EBTI — European Binding Tariff Information",
+                  authority: "European Commission / DG TAXUD",
+                  desc: "Legally binding BTI decisions issued by EU member states. Binding across the entire EU for 3 years.",
+                  url: `https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp?Lang=en${hsCode.replace(/\D/g, "").length >= 4 ? `&nomenc=${hsCode.replace(/\D/g, "").slice(0, 8)}` : ""}`,
+                  flag: "🇪🇺",
+                  badge: "Binding · EU-wide",
+                  badgeColor: "#059669",
+                },
+                {
+                  name: "TARES — Décisions de Classification Tarifaire",
+                  authority: "BAZG / Switzerland",
+                  desc: "Swiss customs authority classification decisions. Useful for CH/LI goods and for comparison with EU classifications.",
+                  url: `https://www.bazg.admin.ch/fr/decisions-classification-tarifaire-tares`,
+                  flag: "🇨🇭",
+                  badge: "Switzerland",
+                  badgeColor: "#dc2626",
+                },
+                {
+                  name: "UK BTI — Binding Tariff Information",
+                  authority: "HMRC / UK Trade Tariff",
+                  desc: "UK Customs authority BTI decisions post-Brexit. Useful for UK-origin goods and for comparison.",
+                  url: `https://www.trade-tariff.service.gov.uk/binding_tariff_information${hsCode.replace(/\D/g, "").length >= 4 ? `?commodity_code=${hsCode.replace(/\D/g, "")}` : ""}`,
+                  flag: "🇬🇧",
+                  badge: "Post-Brexit",
+                  badgeColor: "#1d4ed8",
+                },
+                {
+                  name: "WCO — Classification Opinions",
+                  authority: "World Customs Organization",
+                  desc: "International Harmonized System Committee classification opinions. Authoritative for HS6 chapter-level disputes.",
+                  url: "https://www.wcoomd.org/en/topics/nomenclature/instrument-and-tools/hs_classification_opinions.aspx",
+                  flag: "🌐",
+                  badge: "HS6 · Global",
+                  badgeColor: "#7c3aed",
+                },
+                {
+                  name: "ECICS — Chemical Substances",
+                  authority: "European Commission",
+                  desc: "EU classification of chemical substances. Essential for Chapter 28/29/38 goods.",
+                  url: `https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_consultation.jsp?Lang=en`,
+                  flag: "⚗️",
+                  badge: "Ch. 28–38",
+                  badgeColor: "#d97706",
+                },
+              ].map(({ name, authority, desc, url, flag, badge, badgeColor }) => (
+                <a
+                  key={name}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "block", background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", textDecoration: "none", transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.background = "#f0fdf4"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "#fff"; }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{flag}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{name}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "2px 7px", borderRadius: 10, background: `${badgeColor}18`, color: badgeColor, textTransform: "uppercase" }}>{badge}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, fontFamily: "var(--font-courier-prime), monospace" }}>{authority}</div>
+                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{desc}</div>
+                    </div>
+                    <span style={{ fontSize: 14, color: "#10b981", flexShrink: 0 }}>↗</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 20, padding: "12px 16px", background: "#f9fafb", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11, color: "#9ca3af", lineHeight: 1.7 }}>
+              <strong style={{ color: "#6b7280" }}>Note:</strong> BTI decisions are product- and applicant-specific. They are not universally applicable but provide strong classification guidance. For Luxembourg imports, EU EBTI decisions are directly applicable. Verify final classification with ADA or a licensed customs representative.
+            </div>
+          </div>
+        )}
+
         {tab === "reference" && (
           <div className="two-col" style={{ gap: 32 }}>
             <div>
