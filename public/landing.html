@@ -673,22 +673,59 @@
         padding: 60px;
         position: relative;
       }
-      #steps-plane-svg {
+      /* Steps: animated progress rail */
+      .steps-rail {
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 88px; /* 60px padding-top + 28px = center of step-num circles */
+        left: 15%; right: 15%;
+        height: 3px;
         pointer-events: none;
-        overflow: visible;
+        z-index: 1;
       }
-      .plane-trail {
-        fill: none;
-        stroke: #10b981;
-        stroke-width: 1.5;
-        stroke-dasharray: 6 5;
+      .steps-rail-track {
+        position: absolute; inset: 0;
+        background: #e5e7eb; border-radius: 2px;
+      }
+      .steps-rail-fill {
+        position: absolute; top: 0; left: 0; bottom: 0;
+        width: 0%;
+        background: linear-gradient(90deg, #059669, #10b981, #34d399);
+        border-radius: 2px;
+        box-shadow: 0 0 10px rgba(16,185,129,0.55);
+        transition: width 2s cubic-bezier(.4,0,.2,1);
+      }
+      .steps-rail-fill.active { width: 100%; }
+      .steps-rail-head {
+        position: absolute;
+        top: 50%; left: 0%;
+        width: 16px; height: 16px; border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7);
+        transform: translate(-50%, -50%);
+        transition: left 2s cubic-bezier(.4,0,.2,1), opacity 0.3s;
         opacity: 0;
       }
+      .steps-rail-head.active { left: 100%; opacity: 1; }
+      .steps-rail-particle {
+        position: absolute;
+        top: 50%; width: 8px; height: 8px; border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 8px rgba(52,211,153,0.8);
+        transform: translate(-50%, -50%);
+        opacity: 0;
+      }
+      @keyframes railParticle {
+        0%   { left: 0%;   opacity: 0; }
+        5%   { opacity: 1; }
+        95%  { opacity: 0.9; }
+        100% { left: 100%; opacity: 0; }
+      }
+      @keyframes stepPing {
+        0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.7), 0 2px 8px rgba(0,0,0,0.12); }
+        50%  { box-shadow: 0 0 0 10px rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
+        100% { box-shadow: 0 0 0 0   rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
+      }
+      .step-num.ping { animation: stepPing 0.65s ease-out; }
       .steps-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -1876,23 +1913,30 @@
         margin-bottom: 7px;
       }
 
-      /* SVG plane overlay */
-      #why-plane-svg {
+      /* Why section: flowing arc connector */
+      #why-arc-svg {
         position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        pointer-events: none;
-        overflow: visible;
-        z-index: 10;
+        inset: 0; width: 100%; height: 100%;
+        pointer-events: none; overflow: visible;
+        z-index: 1;
       }
-      .why-trail {
-        fill: none;
-        stroke: #10b981;
-        stroke-width: 1.5;
-        stroke-dasharray: 6 5;
+      .why-arc-track {
+        fill: none; stroke: #d1fae5; stroke-width: 1.5; stroke-dasharray: 5 4;
+      }
+      .why-arc-beam {
+        fill: none; stroke: #10b981; stroke-width: 2.5; stroke-linecap: round;
+        stroke-dasharray: 2000; stroke-dashoffset: 2000;
+        filter: drop-shadow(0 0 5px rgba(16,185,129,0.65));
+        transition: stroke-dashoffset 1.7s cubic-bezier(.4,0,.2,1);
+      }
+      .why-arc-beam.flowing { stroke-dashoffset: 0; }
+      .why-arc-node {
+        fill: #10b981;
+        filter: drop-shadow(0 0 5px rgba(16,185,129,0.9));
         opacity: 0;
         transition: opacity 0.4s;
       }
+      .why-arc-node.lit { opacity: 1; }
 
       /* FX mockup */
       .why-fx-main {
@@ -1983,195 +2027,89 @@
           </div>
 
           <!-- SVG plane layer -->
-          <svg id="why-plane-svg" aria-hidden="true">
-            <path id="why-trail" class="why-trail" d="" />
-            <g id="why-plane" transform="translate(-999,-999)">
-              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
-              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
-              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
-              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
-              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
-            </g>
+          <!-- Flowing arc connector (replaces buggy plane) -->
+          <svg id="why-arc-svg" viewBox="0 0 900 80" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <filter id="why-glow-f" x="-60%" y="-200%" width="220%" height="500%">
+                <feGaussianBlur stdDeviation="2.5" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- Dashed background track -->
+            <path class="why-arc-track" d="M 150,16 Q 325,3 450,16 Q 575,29 750,16"/>
+            <!-- Animated beam -->
+            <path id="why-beam" class="why-arc-beam" d="M 150,16 Q 325,3 450,16 Q 575,29 750,16"/>
+            <!-- Terminal glow nodes -->
+            <circle class="why-arc-node" id="why-n1" cx="150" cy="16" r="5" filter="url(#why-glow-f)"/>
+            <circle class="why-arc-node" id="why-n2" cx="450" cy="16" r="5" filter="url(#why-glow-f)"/>
+            <circle class="why-arc-node" id="why-n3" cx="750" cy="16" r="5" filter="url(#why-glow-f)"/>
+            <!-- Particles traveling the arc -->
+            <circle r="4.5" fill="#10b981" opacity="0" filter="url(#why-glow-f)">
+              <animateMotion id="why-p1" dur="2.6s" repeatCount="indefinite" begin="indefinite"
+                path="M 150,16 Q 325,3 450,16 Q 575,29 750,16"
+                calcMode="spline" keySplines="0.4 0 0.6 1"/>
+              <animate id="why-a1" attributeName="opacity" values="0;1;1;0"
+                keyTimes="0;0.08;0.88;1" dur="2.6s" begin="indefinite" repeatCount="indefinite"/>
+            </circle>
+            <circle r="3" fill="#34d399" opacity="0" filter="url(#why-glow-f)">
+              <animateMotion id="why-p2" dur="2.6s" repeatCount="indefinite" begin="indefinite"
+                path="M 150,16 Q 325,3 450,16 Q 575,29 750,16"
+                calcMode="spline" keySplines="0.4 0 0.6 1"/>
+              <animate id="why-a2" attributeName="opacity" values="0;1;1;0"
+                keyTimes="0;0.08;0.88;1" dur="2.6s" begin="indefinite" repeatCount="indefinite"/>
+            </circle>
           </svg>
         </div>
       </div>
     </section>
 
     <script>
-    /* ── Why section: plane + card reveal on scroll ── */
+    /* ── Why section: arc connector + staggered card reveal ── */
     (function () {
       if (window.innerWidth < 640) {
-        /* On mobile just reveal all cards immediately */
-        var allCards = document.querySelectorAll('#why-cards .why-card');
-        allCards.forEach(function(c){ c.classList.add('why-revealed'); });
+        document.querySelectorAll('#why-cards .why-card').forEach(function(c){ c.classList.add('why-revealed'); });
         return;
       }
 
-      var cards  = [
+      var cards = [
         document.getElementById('why-c1'),
         document.getElementById('why-c2'),
         document.getElementById('why-c3'),
       ];
-      var svg    = document.getElementById('why-plane-svg');
-      var trail  = document.getElementById('why-trail');
-      var plane  = document.getElementById('why-plane');
-      var wrap   = document.getElementById('why-cards');
-      if (!cards[0] || !svg || !trail || !plane || !wrap) return;
+      var beam  = document.getElementById('why-beam');
+      var nodes = ['why-n1','why-n2','why-n3'].map(function(id){ return document.getElementById(id); });
+      var p1    = document.getElementById('why-p1'), a1 = document.getElementById('why-a1');
+      var p2    = document.getElementById('why-p2'), a2 = document.getElementById('why-a2');
+      if (!cards[0] || !beam) return;
 
       var played = false;
-
-      /* Get icon-wrap centre in wrap-relative coords */
-      function iconCentre(card) {
-        var wr = wrap.getBoundingClientRect();
-        var ir = card.querySelector('.why-icon-wrap').getBoundingClientRect();
-        return {
-          x: ir.left + ir.width  * 0.5 - wr.left,
-          y: ir.top  + ir.height * 0.5 - wr.top,
-        };
-      }
-
-      /* Quadratic bezier point */
-      function qbez(p0,p1,p2,t){
-        var u=1-t;
-        return { x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y };
-      }
-      /* De Casteljau sub-curve 0→t */
-      function qbezSplit(p0,p1,p2,t){
-        var q1={ x:p0.x+t*(p1.x-p0.x), y:p0.y+t*(p1.y-p0.y) };
-        return [p0, q1, qbez(p0,p1,p2,t)];
-      }
-
-      function animateFlight(from, to, cp, dur, onProgress, onDone) {
-        var start = null;
-        function tick(now) {
-          if (!start) start = now;
-          var t = Math.min((now - start) / dur, 1);
-          var ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; /* ease-in-out */
-          onProgress(ease);
-          if (t < 1) requestAnimationFrame(tick);
-          else if (onDone) onDone();
-        }
-        requestAnimationFrame(tick);
-      }
-
-      function buildPath(segs) {
-        /* segs: array of {from,cp,to} */
-        if (!segs.length) return '';
-        var d = 'M ' + segs[0].from.x.toFixed(1) + ' ' + segs[0].from.y.toFixed(1);
-        segs.forEach(function(s){
-          d += ' Q ' + s.cp.x.toFixed(1)+' '+s.cp.y.toFixed(1)+
-               ' '+s.to.x.toFixed(1)+' '+s.to.y.toFixed(1);
-        });
-        return d;
-      }
-
-      function setPlane(x, y, angle) {
-        plane.setAttribute('transform',
-          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+angle.toFixed(1)+')');
-      }
-
-      function playAnimation() {
+      function play() {
         if (played) return;
         played = true;
-
-        var pts = cards.map(iconCentre);
-
-        /* Entry point: start left of card 0 */
-        var entry = { x: pts[0].x - 110, y: pts[0].y + 18 };
-
-        /* Control points: arc upward between each pair */
-        function cp(a, b) {
-          return { x: (a.x+b.x)*0.5, y: Math.min(a.y,b.y) - 48 };
-        }
-
-        var segs = [
-          { from: entry,  cp: { x:(entry.x+pts[0].x)*0.5, y:entry.y-30 }, to: pts[0] },
-          { from: pts[0], cp: cp(pts[0], pts[1]), to: pts[1] },
-          { from: pts[1], cp: cp(pts[1], pts[2]), to: pts[2] },
-        ];
-
-        trail.style.opacity = '0.55';
-        trail.setAttribute('d', '');
-
-        var completedSegs = [];
-        var revealIdx = 0;
-
-        function revealCard(i) {
-          if (cards[i]) cards[i].classList.add('why-revealed');
-        }
-
-        function flySeg(segIdx) {
-          if (segIdx >= segs.length) {
-            /* done — fade plane & trail */
-            var fade = 1;
-            (function fadeTick(){
-              fade -= 0.05;
-              plane.style.opacity = Math.max(0,fade);
-              trail.style.opacity = Math.max(0, 0.55*fade);
-              if (fade > 0) requestAnimationFrame(fadeTick);
-            })();
-            return;
-          }
-
-          var seg = segs[segIdx];
-          var dur = segIdx === 0 ? 560 : 820;
-
-          animateFlight(seg.from, seg.to, seg.cp, dur, function(t) {
-            /* Plane position */
-            var pos = qbez(seg.from, seg.cp, seg.to, t);
-
-            /* Plane heading angle from derivative */
-            var dt = Math.min(t + 0.01, 1);
-            var pos2 = qbez(seg.from, seg.cp, seg.to, dt);
-            var angle = Math.atan2(pos2.y - pos.y, pos2.x - pos.x) * 180 / Math.PI;
-
-            setPlane(pos.x, pos.y, angle);
-
-            /* Grow trail path */
-            var partSeg = { from:seg.from, cp:seg.cp, to: qbezSplit(seg.from,seg.cp,seg.to,t)[2] };
-            var partCp = qbezSplit(seg.from,seg.cp,seg.to,t)[1];
-            var d = buildPath(completedSegs) +
-              (completedSegs.length ? '' : 'M '+seg.from.x.toFixed(1)+' '+seg.from.y.toFixed(1)) +
-              ' Q '+partCp.x.toFixed(1)+' '+partCp.y.toFixed(1)+
-              ' '+partSeg.to.x.toFixed(1)+' '+partSeg.to.y.toFixed(1);
-            trail.setAttribute('d', d);
-
-          }, function() {
-            /* Segment complete: reveal card, record seg */
-            completedSegs.push({
-              from: seg.from,
-              cp: seg.cp,
-              to: seg.to,
-            });
-            /* Reveal the card the plane just arrived at */
-            if (segIdx === 0) revealCard(0);
-            else revealCard(segIdx);
-
-            /* Small pause before next segment */
-            setTimeout(function(){ flySeg(segIdx + 1); }, 180);
-          });
-        }
-
-        /* Kick off */
-        setPlane(entry.x, entry.y, 0);
-        plane.style.opacity = '1';
-        setTimeout(function(){ flySeg(0); }, 80);
+        /* Staggered card reveal */
+        cards.forEach(function(c, i) {
+          setTimeout(function(){ c.classList.add('why-revealed'); }, 100 + i * 240);
+        });
+        /* Draw the arc beam */
+        setTimeout(function(){ beam.classList.add('flowing'); }, 60);
+        /* Light up terminal nodes */
+        setTimeout(function(){ nodes[0] && nodes[0].classList.add('lit'); }, 120);
+        setTimeout(function(){ nodes[1] && nodes[1].classList.add('lit'); }, 920);
+        setTimeout(function(){ nodes[2] && nodes[2].classList.add('lit'); }, 1700);
+        /* Launch particles after beam is drawn */
+        setTimeout(function(){
+          if (p1) { p1.beginElement(); a1.beginElement(); }
+          setTimeout(function(){ if (p2) { p2.beginElement(); a2.beginElement(); } }, 1300);
+        }, 1200);
       }
 
-      /* IntersectionObserver: trigger once when 30% of section visible */
       var section = document.getElementById('why');
       if ('IntersectionObserver' in window) {
         var obs = new IntersectionObserver(function(entries) {
-          entries.forEach(function(e){
-            if (e.isIntersecting) {
-              playAnimation();
-              obs.disconnect();
-            }
-          });
-        }, { threshold: 0.3 });
+          entries.forEach(function(e){ if (e.isIntersecting) { play(); obs.disconnect(); } });
+        }, { threshold: 0.25 });
         obs.observe(section);
       } else {
-        /* Fallback: just reveal */
         cards.forEach(function(c){ c.classList.add('why-revealed'); });
       }
     })();
@@ -2519,20 +2457,14 @@
             </div>
           </div>
 
-          <!-- Animated plane overlay -->
-          <svg id="steps-plane-svg" aria-hidden="true">
-            <path id="steps-plane-trail" class="plane-trail" d="" />
-            <g id="steps-plane" transform="translate(-999,-999)">
-              <!-- Body -->
-              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981" />
-              <!-- Wings -->
-              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399" />
-              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399" />
-              <!-- Tail fins -->
-              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669" />
-              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669" />
-            </g>
-          </svg>
+          <!-- Progress rail (replaces buggy plane) -->
+          <div class="steps-rail" aria-hidden="true">
+            <div class="steps-rail-track"></div>
+            <div class="steps-rail-fill" id="steps-rail-fill"></div>
+            <div class="steps-rail-head" id="steps-rail-head"></div>
+            <div class="steps-rail-particle" id="steps-rp1" style="animation:railParticle 3.2s ease-in-out 2.4s infinite"></div>
+            <div class="steps-rail-particle" id="steps-rp2" style="animation:railParticle 3.2s ease-in-out 3.9s infinite; background:#059669"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -2831,153 +2763,37 @@
         }
       })();
 
-      /* ── Step-cards plane animation ── */
+      /* ── Step-cards progress rail ── */
       (function () {
         if (window.innerWidth < 640) return;
-
         var container = document.querySelector(".steps-container");
-        var cards = Array.from(document.querySelectorAll(".step-card"));
-        var svg = document.getElementById("steps-plane-svg");
-        var trail = document.getElementById("steps-plane-trail");
-        var plane = document.getElementById("steps-plane");
-        if (!container || !cards.length || !svg || !trail || !plane) return;
+        var fill = document.getElementById("steps-rail-fill");
+        var head = document.getElementById("steps-rail-head");
+        var stepNums = document.querySelectorAll(".step-num");
+        if (!container || !fill || !head) return;
 
-        /* Center of a card's step-num circle in SVG/container space */
-        function getCenter(card) {
-          var cr = container.getBoundingClientRect();
-          var nr = card.querySelector(".step-num").getBoundingClientRect();
-          return {
-            x: nr.left + nr.width * 0.5 - cr.left,
-            y: nr.top + nr.height * 0.5 - cr.top,
-          };
-        }
-
-        /* Quadratic bezier at t */
-        function qbez(p0, p1, p2, t) {
-          var u = 1 - t;
-          return {
-            x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
-            y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
-          };
-        }
-
-        /* Sub-curve from 0→t (de Casteljau split) */
-        function qbezSplit(p0, p1, p2, t) {
-          var q1 = { x: p0.x + t * (p1.x - p0.x), y: p0.y + t * (p1.y - p0.y) };
-          return [p0, q1, qbez(p0, p1, p2, t)];
-        }
-
-        var curPos = null;
-        var raf = null;
-        var fadeTimer = null;
-
-        function setPlane(x, y, deg) {
-          plane.setAttribute(
-            "transform",
-            "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ") rotate(" + deg.toFixed(1) + ")",
-          );
-        }
-
-        function init() {
-          var c = getCenter(cards[0]);
-          curPos = { x: c.x, y: c.y };
-          setPlane(c.x, c.y, 0);
-          trail.style.opacity = "0";
-          trail.setAttribute("d", "");
-        }
-
-        function flyTo(to) {
-          var from = { x: curPos.x, y: curPos.y };
-          var dx = to.x - from.x,
-            dy = to.y - from.y;
-          if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-          if (raf) {
-            cancelAnimationFrame(raf);
-            raf = null;
-          }
-          if (fadeTimer) {
-            clearTimeout(fadeTimer);
-            fadeTimer = null;
-          }
-
-          var dist = Math.sqrt(dx * dx + dy * dy);
-          /* Control point: midpoint arced upward */
-          var cp = {
-            x: (from.x + to.x) * 0.5,
-            y: (from.y + to.y) * 0.5 - Math.min(55, dist * 0.38),
-          };
-          var duration = Math.max(480, Math.min(900, dist * 1.8));
-          var startTs = null;
-
-          trail.style.transition = "";
-          trail.style.opacity = "0.7";
-
-          function step(ts) {
-            if (!startTs) startTs = ts;
-            var raw = Math.min((ts - startTs) / duration, 1);
-            var t = raw * raw * (3 - 2 * raw); /* smoothstep */
-
-            var sub = qbezSplit(from, cp, to, t);
-            trail.setAttribute(
-              "d",
-              "M " +
-                sub[0].x.toFixed(1) +
-                "," +
-                sub[0].y.toFixed(1) +
-                " Q " +
-                sub[1].x.toFixed(1) +
-                "," +
-                sub[1].y.toFixed(1) +
-                " " +
-                sub[2].x.toFixed(1) +
-                "," +
-                sub[2].y.toFixed(1),
-            );
-
-            /* Plane angle = tangent direction */
-            var tA = Math.min(t + 0.06, 1);
-            var ahead = qbez(from, cp, to, tA);
-            var ang = (Math.atan2(ahead.y - sub[2].y, ahead.x - sub[2].x) * 180) / Math.PI;
-            setPlane(sub[2].x, sub[2].y, ang);
-
-            if (raw < 1) {
-              raf = requestAnimationFrame(step);
-            } else {
-              curPos = { x: to.x, y: to.y };
-              setPlane(to.x, to.y, 0);
-              /* Fade trail after landing */
-              fadeTimer = setTimeout(function () {
-                trail.style.transition = "opacity 0.7s";
-                trail.style.opacity = "0";
-                fadeTimer = setTimeout(function () {
-                  trail.setAttribute("d", "");
-                  trail.style.transition = "";
-                }, 700);
-              }, 500);
-            }
-          }
-          raf = requestAnimationFrame(step);
-        }
-
-        cards.forEach(function (card) {
-          card.addEventListener("mouseenter", function () {
-            flyTo(getCenter(card));
+        var played = false;
+        function play() {
+          if (played) return;
+          played = true;
+          fill.classList.add('active');
+          head.classList.add('active');
+          /* Ping each step-num as the progress front reaches it */
+          var timings = [80, 640, 1280, 1920];
+          stepNums.forEach(function(n, i) {
+            setTimeout(function() {
+              n.classList.add('ping');
+              setTimeout(function(){ n.classList.remove('ping'); }, 700);
+            }, timings[i]);
           });
-        });
+        }
 
-        window.addEventListener("resize", function () {
-          if (window.innerWidth < 640) {
-            svg.style.display = "none";
-          } else {
-            svg.style.display = "";
-            init();
-          }
-        });
-
-        /* Init after first two frames so layout is settled */
-        requestAnimationFrame(function () {
-          requestAnimationFrame(init);
-        });
+        if ('IntersectionObserver' in window) {
+          var obs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e){ if (e.isIntersecting) { play(); obs.disconnect(); } });
+          }, { threshold: 0.4 });
+          obs.observe(container);
+        }
       })();
     </script>
   </body>
