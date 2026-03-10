@@ -680,7 +680,7 @@
         left: 15%; right: 15%;
         height: 3px;
         pointer-events: none;
-        z-index: 1;
+        z-index: 0;
       }
       .steps-rail-track {
         position: absolute; inset: 0;
@@ -692,9 +692,7 @@
         background: linear-gradient(90deg, #059669, #10b981, #34d399);
         border-radius: 2px;
         box-shadow: 0 0 10px rgba(16,185,129,0.55);
-        transition: width 2s cubic-bezier(.4,0,.2,1);
       }
-      .steps-rail-fill.active { width: 100%; }
       .steps-rail-head {
         position: absolute;
         top: 50%; left: 0%;
@@ -702,25 +700,14 @@
         background: #10b981;
         box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7);
         transform: translate(-50%, -50%);
-        transition: left 2s cubic-bezier(.4,0,.2,1), opacity 0.3s;
-        opacity: 0;
+        opacity: 1;
       }
-      .steps-rail-head.active { left: 100%; opacity: 1; }
-      .steps-rail-particle {
-        position: absolute;
-        top: 50%; width: 8px; height: 8px; border-radius: 50%;
-        background: #34d399;
-        box-shadow: 0 0 8px rgba(52,211,153,0.8);
-        transform: translate(-50%, -50%);
-        opacity: 0;
+      @keyframes headPulse {
+        0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7); }
+        50%       { box-shadow: 0 0 0 10px rgba(16,185,129,0), 0 0 28px rgba(16,185,129,0.9); }
       }
-      @keyframes railParticle {
-        0%   { left: 0%;   opacity: 0; }
-        5%   { opacity: 1; }
-        95%  { opacity: 0.9; }
-        100% { left: 100%; opacity: 0; }
-      }
-      @keyframes stepPing {
+      .steps-rail-head.pulsing { animation: headPulse 0.7s ease-in-out 2; }
+@keyframes stepPing {
         0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.7), 0 2px 8px rgba(0,0,0,0.12); }
         50%  { box-shadow: 0 0 0 10px rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
         100% { box-shadow: 0 0 0 0   rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
@@ -730,6 +717,8 @@
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 40px;
+        position: relative;
+        z-index: 1;
       }
       .step-card {
         text-align: center;
@@ -1913,30 +1902,24 @@
         margin-bottom: 7px;
       }
 
-      /* Why section: flowing arc connector */
-      #why-arc-svg {
+
+      /* SVG plane overlay */
+      #why-plane-svg {
         position: absolute;
-        inset: 0; width: 100%; height: 100%;
-        pointer-events: none; overflow: visible;
-        z-index: 1;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        overflow: visible;
+        z-index: 10;
       }
-      .why-arc-track {
-        fill: none; stroke: #d1fae5; stroke-width: 1.5; stroke-dasharray: 5 4;
-      }
-      .why-arc-beam {
-        fill: none; stroke: #10b981; stroke-width: 2.5; stroke-linecap: round;
-        stroke-dasharray: 2000; stroke-dashoffset: 2000;
-        filter: drop-shadow(0 0 5px rgba(16,185,129,0.65));
-        transition: stroke-dashoffset 1.7s cubic-bezier(.4,0,.2,1);
-      }
-      .why-arc-beam.flowing { stroke-dashoffset: 0; }
-      .why-arc-node {
-        fill: #10b981;
-        filter: drop-shadow(0 0 5px rgba(16,185,129,0.9));
+      .why-trail {
+        fill: none;
+        stroke: #10b981;
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
         opacity: 0;
         transition: opacity 0.4s;
       }
-      .why-arc-node.lit { opacity: 1; }
 
       /* FX mockup */
       .why-fx-main {
@@ -2027,87 +2010,166 @@
           </div>
 
           <!-- SVG plane layer -->
-          <!-- Flowing arc connector (replaces buggy plane) -->
-          <svg id="why-arc-svg" viewBox="0 0 900 80" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              <filter id="why-glow-f" x="-60%" y="-200%" width="220%" height="500%">
-                <feGaussianBlur stdDeviation="2.5" result="b"/>
-                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-            </defs>
-            <!-- Dashed background track -->
-            <path class="why-arc-track" d="M 150,16 Q 325,3 450,16 Q 575,29 750,16"/>
-            <!-- Animated beam -->
-            <path id="why-beam" class="why-arc-beam" d="M 150,16 Q 325,3 450,16 Q 575,29 750,16"/>
-            <!-- Terminal glow nodes -->
-            <circle class="why-arc-node" id="why-n1" cx="150" cy="16" r="5" filter="url(#why-glow-f)"/>
-            <circle class="why-arc-node" id="why-n2" cx="450" cy="16" r="5" filter="url(#why-glow-f)"/>
-            <circle class="why-arc-node" id="why-n3" cx="750" cy="16" r="5" filter="url(#why-glow-f)"/>
-            <!-- Particles traveling the arc -->
-            <circle r="4.5" fill="#10b981" opacity="0" filter="url(#why-glow-f)">
-              <animateMotion id="why-p1" dur="2.6s" repeatCount="indefinite" begin="indefinite"
-                path="M 150,16 Q 325,3 450,16 Q 575,29 750,16"
-                calcMode="spline" keySplines="0.4 0 0.6 1"/>
-              <animate id="why-a1" attributeName="opacity" values="0;1;1;0"
-                keyTimes="0;0.08;0.88;1" dur="2.6s" begin="indefinite" repeatCount="indefinite"/>
-            </circle>
-            <circle r="3" fill="#34d399" opacity="0" filter="url(#why-glow-f)">
-              <animateMotion id="why-p2" dur="2.6s" repeatCount="indefinite" begin="indefinite"
-                path="M 150,16 Q 325,3 450,16 Q 575,29 750,16"
-                calcMode="spline" keySplines="0.4 0 0.6 1"/>
-              <animate id="why-a2" attributeName="opacity" values="0;1;1;0"
-                keyTimes="0;0.08;0.88;1" dur="2.6s" begin="indefinite" repeatCount="indefinite"/>
-            </circle>
+          <svg id="why-plane-svg" aria-hidden="true">
+            <path id="why-trail" class="why-trail" d="" />
+            <g id="why-plane" transform="translate(-999,-999)">
+              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
+              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
+              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
+              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
+              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
+            </g>
           </svg>
         </div>
       </div>
     </section>
 
     <script>
-    /* ── Why section: arc connector + staggered card reveal ── */
+    /* ── Why section: plane + card reveal on scroll ── */
     (function () {
       if (window.innerWidth < 640) {
         document.querySelectorAll('#why-cards .why-card').forEach(function(c){ c.classList.add('why-revealed'); });
         return;
       }
 
-      var cards = [
+      var cards  = [
         document.getElementById('why-c1'),
         document.getElementById('why-c2'),
         document.getElementById('why-c3'),
       ];
-      var beam  = document.getElementById('why-beam');
-      var nodes = ['why-n1','why-n2','why-n3'].map(function(id){ return document.getElementById(id); });
-      var p1    = document.getElementById('why-p1'), a1 = document.getElementById('why-a1');
-      var p2    = document.getElementById('why-p2'), a2 = document.getElementById('why-a2');
-      if (!cards[0] || !beam) return;
+      var svg    = document.getElementById('why-plane-svg');
+      var trail  = document.getElementById('why-trail');
+      var plane  = document.getElementById('why-plane');
+      var wrap   = document.getElementById('why-cards');
+      if (!cards[0] || !svg || !trail || !plane || !wrap) return;
 
       var played = false;
-      function play() {
+
+      /* Get icon-wrap centre in wrap-relative coords.
+         Cards start with translateY(24px) before reveal, so subtract that offset
+         so the plane targets where icons will actually end up. */
+      function iconCentre(card) {
+        var wr = wrap.getBoundingClientRect();
+        var ir = card.querySelector('.why-icon-wrap').getBoundingClientRect();
+        var revealed = card.classList.contains('why-revealed');
+        return {
+          x: ir.left + ir.width  * 0.5 - wr.left,
+          y: ir.top  + ir.height * 0.5 - wr.top - (revealed ? 0 : 24),
+        };
+      }
+
+      function qbez(p0,p1,p2,t){
+        var u=1-t;
+        return { x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y };
+      }
+      function qbezSplit(p0,p1,p2,t){
+        var q1={ x:p0.x+t*(p1.x-p0.x), y:p0.y+t*(p1.y-p0.y) };
+        return [p0, q1, qbez(p0,p1,p2,t)];
+      }
+
+      function animateFlight(from, to, cp, dur, onProgress, onDone) {
+        var start = null;
+        function tick(now) {
+          if (!start) start = now;
+          var t = Math.min((now - start) / dur, 1);
+          var ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+          onProgress(ease);
+          if (t < 1) requestAnimationFrame(tick);
+          else if (onDone) onDone();
+        }
+        requestAnimationFrame(tick);
+      }
+
+      function buildPath(segs) {
+        if (!segs.length) return '';
+        var d = 'M ' + segs[0].from.x.toFixed(1) + ' ' + segs[0].from.y.toFixed(1);
+        segs.forEach(function(s){
+          d += ' Q ' + s.cp.x.toFixed(1)+' '+s.cp.y.toFixed(1)+
+               ' '+s.to.x.toFixed(1)+' '+s.to.y.toFixed(1);
+        });
+        return d;
+      }
+
+      function setPlane(x, y, angle) {
+        plane.setAttribute('transform',
+          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+angle.toFixed(1)+')');
+      }
+
+      function playAnimation() {
         if (played) return;
         played = true;
-        /* Staggered card reveal */
-        cards.forEach(function(c, i) {
-          setTimeout(function(){ c.classList.add('why-revealed'); }, 100 + i * 240);
-        });
-        /* Draw the arc beam */
-        setTimeout(function(){ beam.classList.add('flowing'); }, 60);
-        /* Light up terminal nodes */
-        setTimeout(function(){ nodes[0] && nodes[0].classList.add('lit'); }, 120);
-        setTimeout(function(){ nodes[1] && nodes[1].classList.add('lit'); }, 920);
-        setTimeout(function(){ nodes[2] && nodes[2].classList.add('lit'); }, 1700);
-        /* Launch particles after beam is drawn */
-        setTimeout(function(){
-          if (p1) { p1.beginElement(); a1.beginElement(); }
-          setTimeout(function(){ if (p2) { p2.beginElement(); a2.beginElement(); } }, 1300);
-        }, 1200);
+
+        var pts = cards.map(iconCentre);
+        var entry = { x: pts[0].x - 110, y: pts[0].y + 18 };
+
+        function cp(a, b) {
+          return { x: (a.x+b.x)*0.5, y: Math.min(a.y,b.y) - 48 };
+        }
+
+        var segs = [
+          { from: entry,  cp: { x:(entry.x+pts[0].x)*0.5, y:entry.y-30 }, to: pts[0] },
+          { from: pts[0], cp: cp(pts[0], pts[1]), to: pts[1] },
+          { from: pts[1], cp: cp(pts[1], pts[2]), to: pts[2] },
+        ];
+
+        trail.style.opacity = '0.55';
+        trail.setAttribute('d', '');
+        var completedSegs = [];
+
+        function revealCard(i) {
+          if (cards[i]) cards[i].classList.add('why-revealed');
+        }
+
+        function flySeg(segIdx) {
+          if (segIdx >= segs.length) {
+            var fade = 1;
+            (function fadeTick(){
+              fade -= 0.05;
+              plane.style.opacity = Math.max(0,fade);
+              trail.style.opacity = Math.max(0, 0.55*fade);
+              if (fade > 0) requestAnimationFrame(fadeTick);
+            })();
+            return;
+          }
+
+          var seg = segs[segIdx];
+          var dur = segIdx === 0 ? 560 : 820;
+
+          animateFlight(seg.from, seg.to, seg.cp, dur, function(t) {
+            var pos = qbez(seg.from, seg.cp, seg.to, t);
+            var dt = Math.min(t + 0.01, 1);
+            var pos2 = qbez(seg.from, seg.cp, seg.to, dt);
+            var angle = Math.atan2(pos2.y - pos.y, pos2.x - pos.x) * 180 / Math.PI;
+            setPlane(pos.x, pos.y, angle);
+
+            var partCp = qbezSplit(seg.from,seg.cp,seg.to,t)[1];
+            var partTo = qbezSplit(seg.from,seg.cp,seg.to,t)[2];
+            var d = buildPath(completedSegs) +
+              (completedSegs.length ? '' : 'M '+seg.from.x.toFixed(1)+' '+seg.from.y.toFixed(1)) +
+              ' Q '+partCp.x.toFixed(1)+' '+partCp.y.toFixed(1)+
+              ' '+partTo.x.toFixed(1)+' '+partTo.y.toFixed(1);
+            trail.setAttribute('d', d);
+
+          }, function() {
+            completedSegs.push({ from: seg.from, cp: seg.cp, to: seg.to });
+            if (segIdx === 0) revealCard(0);
+            else revealCard(segIdx);
+            setTimeout(function(){ flySeg(segIdx + 1); }, 180);
+          });
+        }
+
+        setPlane(entry.x, entry.y, 0);
+        plane.style.opacity = '1';
+        setTimeout(function(){ flySeg(0); }, 80);
       }
 
       var section = document.getElementById('why');
       if ('IntersectionObserver' in window) {
         var obs = new IntersectionObserver(function(entries) {
-          entries.forEach(function(e){ if (e.isIntersecting) { play(); obs.disconnect(); } });
-        }, { threshold: 0.25 });
+          entries.forEach(function(e){
+            if (e.isIntersecting) { playAnimation(); obs.disconnect(); }
+          });
+        }, { threshold: 0.3 });
         obs.observe(section);
       } else {
         cards.forEach(function(c){ c.classList.add('why-revealed'); });
@@ -2462,8 +2524,6 @@
             <div class="steps-rail-track"></div>
             <div class="steps-rail-fill" id="steps-rail-fill"></div>
             <div class="steps-rail-head" id="steps-rail-head"></div>
-            <div class="steps-rail-particle" id="steps-rp1" style="animation:railParticle 3.2s ease-in-out 2.4s infinite"></div>
-            <div class="steps-rail-particle" id="steps-rp2" style="animation:railParticle 3.2s ease-in-out 3.9s infinite; background:#059669"></div>
           </div>
         </div>
       </div>
@@ -2763,7 +2823,7 @@
         }
       })();
 
-      /* ── Step-cards progress rail ── */
+      /* ── Step-cards progress rail: hover-triggered, step by step ── */
       (function () {
         if (window.innerWidth < 640) return;
         var container = document.querySelector(".steps-container");
@@ -2772,28 +2832,78 @@
         var stepNums = document.querySelectorAll(".step-num");
         if (!container || !fill || !head) return;
 
-        var played = false;
-        function play() {
-          if (played) return;
-          played = true;
-          fill.classList.add('active');
-          head.classList.add('active');
-          /* Ping each step-num as the progress front reaches it */
-          var timings = [80, 640, 1280, 1920];
-          stepNums.forEach(function(n, i) {
-            setTimeout(function() {
-              n.classList.add('ping');
-              setTimeout(function(){ n.classList.remove('ping'); }, 700);
-            }, timings[i]);
+        var MOVE_MS  = 520;
+        var PULSE_MS = 750;
+        var playing  = false;
+
+        /* Compute actual circle-center positions as % of rail width using real layout */
+        function getPositions() {
+          var railEl   = container.querySelector('.steps-rail');
+          var railRect = railEl.getBoundingClientRect();
+          return Array.from(stepNums).map(function (n) {
+            var r = n.getBoundingClientRect();
+            return (r.left + r.width / 2 - railRect.left) / railRect.width * 100;
           });
         }
 
-        if ('IntersectionObserver' in window) {
-          var obs = new IntersectionObserver(function(entries) {
-            entries.forEach(function(e){ if (e.isIntersecting) { play(); obs.disconnect(); } });
-          }, { threshold: 0.4 });
-          obs.observe(container);
+        function setInstant(pos) {
+          head.style.transition = 'none';
+          fill.style.transition = 'none';
+          head.style.left  = pos + '%';
+          fill.style.width = pos + '%';
         }
+
+        function animateTo(pos, ms, callback) {
+          head.style.transition = 'left '  + ms + 'ms cubic-bezier(.4,0,.2,1)';
+          fill.style.transition = 'width ' + ms + 'ms cubic-bezier(.4,0,.2,1)';
+          head.style.left  = pos + '%';
+          fill.style.width = pos + '%';
+          setTimeout(callback, ms);
+        }
+
+        function pulseStep(i, callback) {
+          head.classList.remove('pulsing');
+          void head.offsetWidth;
+          head.classList.add('pulsing');
+          var n = stepNums[i];
+          if (n) {
+            n.classList.add('ping');
+            setTimeout(function () { n.classList.remove('ping'); }, 700);
+          }
+          setTimeout(callback, PULSE_MS);
+        }
+
+        /* Init: head at step 1 */
+        requestAnimationFrame(function () {
+          var pos = getPositions();
+          setInstant(pos[0]);
+        });
+
+        function play() {
+          if (playing) return;
+          playing = true;
+          var pos = getPositions();
+          setInstant(pos[0]);
+
+          setTimeout(function () {
+            animateTo(pos[1], MOVE_MS, function () {
+              pulseStep(1, function () {
+                animateTo(pos[2], MOVE_MS, function () {
+                  pulseStep(2, function () {
+                    animateTo(pos[3], MOVE_MS, function () {
+                      pulseStep(3, function () {
+                        head.classList.remove('pulsing');
+                        playing = false;
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          }, 80);
+        }
+
+        container.addEventListener('mouseenter', play);
       })();
     </script>
   </body>
