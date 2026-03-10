@@ -4,14 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dutify — Luxembourg Import Duty Calculator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --bg: #f0f7f4;
         --bg2: #e8f3ee;
         --bg-mint: #e2f0e9;
         --card: #ffffff;
-        --border: rgba(0,0,0,0.05);
+        --border: rgba(0, 0, 0, 0.05);
         --accent: #10b981;
         --accent-light: #d1fae5;
         --accent-dark: #059669;
@@ -21,18 +24,25 @@
         --subtle: #9ca3af;
       }
 
-      *, *::before, *::after {
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
       }
 
-      html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
       body {
         background: var(--bg);
         color: var(--text);
-        font-family: 'Inter', -apple-system, sans-serif;
+        font-family:
+          "Inter",
+          -apple-system,
+          sans-serif;
         font-size: 16px;
         line-height: 1.6;
         overflow-x: hidden;
@@ -54,8 +64,7 @@
         right: 0;
         z-index: 100;
         padding: 16px 32px;
-        background: rgba(240,247,244,0.85);
-        backdrop-filter: blur(20px);
+        background: linear-gradient(to bottom, var(--bg) 0%, rgba(240,247,244,0.7) 60%, transparent 100%);
       }
       .nav-inner {
         max-width: 1200px;
@@ -85,7 +94,9 @@
         text-decoration: none;
         transition: color 0.2s;
       }
-      .nav-links a:hover { color: var(--text); }
+      .nav-links a:hover {
+        color: var(--text);
+      }
       .nav-actions {
         display: flex;
         align-items: center;
@@ -111,27 +122,60 @@
       .btn-primary {
         background: var(--accent);
         color: white;
+        position: relative;
+        overflow: hidden;
+        z-index: 0;
       }
-      .btn-primary:hover {
-        background: var(--accent-dark);
-        transform: translateY(-1px);
+      .btn-primary::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: white;
+        transform: translateX(-101%);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        z-index: -1;
       }
+      .btn-primary:hover::before { transform: translateX(0); }
+      .btn-primary:hover { color: var(--accent); transform: translateY(-1px); }
+
       .btn-secondary {
         background: white;
         color: var(--text);
         border: 2px solid var(--text);
+        position: relative;
+        overflow: hidden;
+        z-index: 0;
       }
-      .btn-secondary:hover {
-        background: var(--bg2);
+      .btn-secondary::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--text);
+        transform: translateX(-101%);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        z-index: -1;
       }
+      .btn-secondary:hover::before { transform: translateX(0); }
+      .btn-secondary:hover { color: white; }
+
       .btn-accent {
         background: var(--accent);
         color: white;
+        position: relative;
+        overflow: hidden;
+        z-index: 0;
       }
-      .btn-accent:hover {
-        background: var(--accent-dark);
-        transform: translateY(-1px);
+      .btn-accent::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: white;
+        transform: translateX(-101%);
+        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        z-index: -1;
       }
+      .btn-accent:hover::before { transform: translateX(0); }
+      .btn-accent:hover { color: var(--accent); transform: translateY(-1px); }
 
       /* Hero */
       #hero {
@@ -215,7 +259,9 @@
       .hero-preview {
         background: white;
         border-radius: 24px;
-        box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 0 40px rgba(0,0,0,0.12);
+        box-shadow:
+          0 0 0 1px rgba(0, 0, 0, 0.06),
+          0 0 40px rgba(0, 0, 0, 0.12);
         overflow: hidden;
       }
       .preview-header {
@@ -236,9 +282,15 @@
         border-radius: 50%;
         background: #e5e5e5;
       }
-      .preview-dot:first-child { background: #ff5f57; }
-      .preview-dot:nth-child(2) { background: #febc2e; }
-      .preview-dot:nth-child(3) { background: #28c840; }
+      .preview-dot:first-child {
+        background: #ff5f57;
+      }
+      .preview-dot:nth-child(2) {
+        background: #febc2e;
+      }
+      .preview-dot:nth-child(3) {
+        background: #28c840;
+      }
       .preview-title {
         font-size: 13px;
         font-weight: 500;
@@ -328,7 +380,7 @@
       /* Trust bar */
       #trust {
         padding: 22px 0;
-        border-top: 1px solid rgba(0,0,0,0.07);
+        border-top: 1px solid rgba(0, 0, 0, 0.07);
       }
       .trust-inner {
         display: flex;
@@ -400,111 +452,217 @@
         gap: 48px;
         align-items: center;
       }
-      .feature-tab-list { display: flex; flex-direction: column; gap: 4px; }
+      .feature-tab-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
       .feature-tab-btn {
-        width: 100%; text-align: left;
+        width: 100%;
+        text-align: left;
         padding: 16px 18px;
         border-radius: 14px;
         border: 1px solid transparent;
         background: transparent;
         cursor: pointer;
-        transition: background 0.22s, box-shadow 0.22s, border-color 0.22s, transform 0.18s;
-        display: flex; align-items: flex-start; gap: 14px;
+        transition:
+          background 0.22s,
+          box-shadow 0.22s,
+          border-color 0.22s,
+          transform 0.18s;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
       }
-      .feature-tab-btn:hover { transform: translateY(-2px); }
-      .feature-tab-btn.f-active { transform: none; }
+      .feature-tab-btn:hover {
+        transform: translateY(-2px);
+      }
+      .feature-tab-btn.f-active {
+        transform: none;
+      }
       .feature-tab-icon {
-        font-size: 20px; flex-shrink: 0; margin-top: 1px;
-        opacity: 0.45; transition: opacity 0.22s;
+        font-size: 20px;
+        flex-shrink: 0;
+        margin-top: 1px;
+        opacity: 0.45;
+        transition: opacity 0.22s;
       }
-      .feature-tab-btn.f-active .feature-tab-icon { opacity: 1; }
+      .feature-tab-btn.f-active .feature-tab-icon {
+        opacity: 1;
+      }
       .feature-tab-title {
-        font-size: 16px; font-weight: 600; color: var(--text); line-height: 1.3;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.3;
       }
       .feature-tab-desc {
-        font-size: 13.5px; color: var(--muted); line-height: 1.6;
+        font-size: 13.5px;
+        color: var(--muted);
+        line-height: 1.6;
         margin-top: 5px;
-        max-height: 0; overflow: hidden; opacity: 0;
-        transition: max-height 0.35s ease, opacity 0.28s ease;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition:
+          max-height 0.35s ease,
+          opacity 0.28s ease;
       }
-      .feature-tab-btn.f-active .feature-tab-desc { max-height: 72px; opacity: 1; }
+      .feature-tab-btn.f-active .feature-tab-desc {
+        max-height: 72px;
+        opacity: 1;
+      }
 
       /* Features section background */
-      #features { position: relative; overflow: hidden; }
-      .features-blobs { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-      .features-blob {
-        position: absolute; border-radius: 50%;
-        filter: blur(72px); opacity: 0.55;
+      #features {
+        position: relative;
+        overflow: hidden;
       }
-      .feature-tabs-layout { position: relative; z-index: 1; }
-      #features .section-header { position: relative; z-index: 1; }
+      .features-blobs {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .features-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(72px);
+        opacity: 0.55;
+      }
+      .feature-tabs-layout {
+        position: relative;
+        z-index: 1;
+      }
+      #features .section-header {
+        position: relative;
+        z-index: 1;
+      }
 
       /* Active tab: frosted */
       .feature-tab-btn.f-active {
-        background: rgba(255,255,255,0.65) !important;
+        background: rgba(255, 255, 255, 0.65) !important;
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
-        border-color: rgba(167,243,208,0.7) !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+        border-color: rgba(167, 243, 208, 0.7) !important;
+        box-shadow:
+          0 4px 20px rgba(0, 0, 0, 0.07),
+          inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
       }
       .feature-tab-btn:hover:not(.f-active) {
-        background: rgba(255,255,255,0.45);
+        background: rgba(255, 255, 255, 0.45);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
       }
 
       /* Preview panel */
       .feature-preview-panel {
-        background: rgba(255,255,255,0.42);
+        background: rgba(255, 255, 255, 0.42);
         backdrop-filter: blur(22px) saturate(180%);
         -webkit-backdrop-filter: blur(22px) saturate(180%);
         border-radius: 24px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.85);
-        border: 1px solid rgba(255,255,255,0.6);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.08),
+          inset 0 1px 0 rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.6);
         min-height: 380px;
         position: relative;
         overflow: hidden;
       }
       .fp {
-        position: absolute; inset: 0; padding: 28px 28px 24px;
-        opacity: 0; transform: translateY(10px);
-        transition: opacity 0.38s ease, transform 0.38s ease;
+        position: absolute;
+        inset: 0;
+        padding: 28px 28px 24px;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.38s ease,
+          transform 0.38s ease;
         pointer-events: none;
       }
-      .fp.f-active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+      .fp.f-active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
       .fp-label {
-        font-size: 10px; font-weight: 700; letter-spacing: 2.5px;
-        text-transform: uppercase; color: #10b981; margin-bottom: 16px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: #10b981;
+        margin-bottom: 16px;
       }
       .fp-card {
-        background: #f8fafc; border-radius: 12px;
-        padding: 0; border: 1px solid #e2e8f0; overflow: hidden;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 0;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
       }
       .fp-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 10px 14px; font-size: 13px; color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: var(--muted);
         border-bottom: 1px solid #f1f5f9;
       }
-      .fp-row:last-child { border-bottom: none; }
-      .fp-val { font-weight: 600; color: var(--text); font-size: 13px; }
+      .fp-row:last-child {
+        border-bottom: none;
+      }
+      .fp-val {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 13px;
+      }
       .fp-total {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-top: 10px; padding: 11px 14px;
-        background: #ecfdf5; border-radius: 10px;
-        font-size: 13.5px; font-weight: 700; color: #059669;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding: 11px 14px;
+        background: #ecfdf5;
+        border-radius: 10px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #059669;
       }
       .fp-badge {
-        display: inline-flex; align-items: center;
-        font-size: 11px; font-weight: 600; padding: 3px 8px;
-        border-radius: 20px; letter-spacing: 0.2px;
+        display: inline-flex;
+        align-items: center;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 20px;
+        letter-spacing: 0.2px;
       }
-      .fp-badge-g  { background: #d1fae5; color: #065f46; }
-      .fp-badge-gr { background: #f1f5f9; color: #6b7280; }
-      .fp-badge-b  { background: #dbeafe; color: #1d4ed8; }
-      .fp-badge-r  { background: #fee2e2; color: #b91c1c; }
-      .fp-hs-code  {
-        font-family: 'Courier New', monospace; font-size: 30px;
-        letter-spacing: 5px; color: #10b981; font-weight: 700; line-height: 1;
+      .fp-badge-g {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: #065f46;
+      }
+      .fp-badge-gr {
+        background: #f1f5f9;
+        color: #6b7280;
+      }
+      .fp-badge-b {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .fp-badge-r {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      .fp-hs-code {
+        font-family: "Courier New", monospace;
+        font-size: 30px;
+        letter-spacing: 5px;
+        color: #10b981;
+        font-weight: 700;
+        line-height: 1;
         margin-bottom: 5px;
       }
 
@@ -517,8 +675,10 @@
       }
       #steps-plane-svg {
         position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         pointer-events: none;
         overflow: visible;
       }
@@ -644,7 +804,9 @@
         text-decoration: none;
         transition: color 0.2s;
       }
-      .footer-links a:hover { color: var(--text); }
+      .footer-links a:hover {
+        color: var(--text);
+      }
 
       /* Scroll hint arrow */
       .scroll-hint {
@@ -656,127 +818,572 @@
         animation: scrollBounce 2s ease-in-out infinite;
         transition: opacity 0.4s ease;
       }
-      .scroll-hint.hidden { opacity: 0; pointer-events: none; }
+      .scroll-hint.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
       @keyframes scrollBounce {
-        0%, 100% { transform: translateY(0); }
-        50%       { transform: translateY(8px); }
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(8px);
+        }
       }
 
       /* Mobile */
       @media (max-width: 1200px) {
-        .feature-tabs-layout { gap: 32px; }
+        .feature-tabs-layout {
+          gap: 32px;
+        }
       }
       @media (max-width: 1000px) {
-        .hero-grid { grid-template-columns: 1fr; gap: 48px; }
-        .carousel-wrapper { max-width: 540px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
-        .carousel-slides { width: 100%; }
-        .steps-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-        .nav-links { display: none; }
-        .section { padding: 80px 0; }
+        .hero-grid {
+          grid-template-columns: 1fr;
+          gap: 48px;
+        }
+        .carousel-wrapper {
+          max-width: 540px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .carousel-slides {
+          width: 100%;
+        }
+        .steps-grid {
+          grid-template-columns: 1fr 1fr;
+          gap: 32px;
+        }
+        .nav-links {
+          display: none;
+        }
+        .section {
+          padding: 80px 0;
+        }
       }
       @media (max-width: 640px) {
-        .container { padding: 0 20px; }
-        .hero-body { padding: 36px 0 48px; }
-        .hero-title { letter-spacing: -0.5px; }
-        .hero-sub { font-size: 16px; }
-        .hero-actions { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 36px; }
-        .hero-actions .btn { text-align: center; justify-content: center; }
-        .hero-stats { gap: 24px; flex-wrap: wrap; }
-        .hero-stat-num { font-size: 26px; }
-        .feature-tabs-layout { grid-template-columns: 1fr; gap: 32px; }
-        .feature-preview-panel { min-height: 320px; }
-        .steps-grid { grid-template-columns: 1fr; gap: 24px; }
-        .steps-container { padding: 32px 20px; }
-        .section { padding: 60px 0; }
-        .section-title { font-size: clamp(26px, 7vw, 36px); letter-spacing: -0.5px; }
-        .section-sub { font-size: 15px; }
-        .cta-card { padding: 40px 20px; }
-        .cta-title { font-size: clamp(28px, 7vw, 40px); }
-        .cta-actions { flex-direction: column; align-items: stretch; }
-        .cta-actions .btn { text-align: center; justify-content: center; }
-        .trust-inner { gap: 20px; flex-wrap: wrap; justify-content: center; }
-        .footer-inner { flex-direction: column; gap: 24px; text-align: center; }
-        .footer-links { justify-content: center; flex-wrap: wrap; gap: 20px; }
-        .nav-actions .btn { padding: 10px 16px; font-size: 14px; }
-        .calc-preview { font-size: 13px; }
+        .container {
+          padding: 0 20px;
+        }
+        .hero-body {
+          padding: 36px 0 48px;
+        }
+        .hero-title {
+          letter-spacing: -0.5px;
+        }
+        .hero-sub {
+          font-size: 16px;
+        }
+        .hero-actions {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+          margin-bottom: 36px;
+        }
+        .hero-actions .btn {
+          text-align: center;
+          justify-content: center;
+        }
+        .hero-stats {
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        .hero-stat-num {
+          font-size: 26px;
+        }
+        .feature-tabs-layout {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .feature-preview-panel {
+          min-height: 320px;
+        }
+        .steps-grid {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+        .steps-container {
+          padding: 32px 20px;
+        }
+        .section {
+          padding: 60px 0;
+        }
+        .section-title {
+          font-size: clamp(26px, 7vw, 36px);
+          letter-spacing: -0.5px;
+        }
+        .section-sub {
+          font-size: 15px;
+        }
+        .cta-card {
+          padding: 40px 20px;
+        }
+        .cta-title {
+          font-size: clamp(28px, 7vw, 40px);
+        }
+        .cta-actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .cta-actions .btn {
+          text-align: center;
+          justify-content: center;
+        }
+        .trust-inner {
+          gap: 20px;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .footer-inner {
+          flex-direction: column;
+          gap: 24px;
+          text-align: center;
+        }
+        .footer-links {
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 20px;
+        }
+        .nav-actions .btn {
+          padding: 10px 16px;
+          font-size: 14px;
+        }
+        .calc-preview {
+          font-size: 13px;
+        }
       }
-      #dotwave { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: 0.16; }
-      .blob-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-      .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.65; will-change: transform; }
-      .blob-1 { width: 600px; height: 600px; background: rgba(16,185,129,0.45); top: -15%; left: -10%; }
-      .blob-2 { width: 500px; height: 500px; background: rgba(52,211,153,0.38); top: 45%; right: -8%; }
-      .blob-3 { width: 450px; height: 450px; background: rgba(167,243,208,0.45); bottom: -8%; left: 25%; }
-      .blob-4 { width: 350px; height: 350px; background: rgba(16,185,129,0.3); top: 20%; left: 55%; }
-      .blob-5 { width: 280px; height: 280px; background: rgba(5,150,105,0.35); top: 70%; left: 10%; }
-      .blob-6 { width: 320px; height: 320px; background: rgba(110,231,183,0.3); top: 5%; right: 20%; }
+      #dotwave {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.16;
+      }
+      .blob-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        opacity: 0.65;
+        will-change: transform;
+      }
+      .blob-1 {
+        width: 600px;
+        height: 600px;
+        background: rgba(16, 185, 129, 0.45);
+        top: -15%;
+        left: -10%;
+      }
+      .blob-2 {
+        width: 500px;
+        height: 500px;
+        background: rgba(52, 211, 153, 0.38);
+        top: 45%;
+        right: -8%;
+      }
+      .blob-3 {
+        width: 450px;
+        height: 450px;
+        background: rgba(167, 243, 208, 0.45);
+        bottom: -8%;
+        left: 25%;
+      }
+      .blob-4 {
+        width: 350px;
+        height: 350px;
+        background: rgba(16, 185, 129, 0.3);
+        top: 20%;
+        left: 55%;
+      }
+      .blob-5 {
+        width: 280px;
+        height: 280px;
+        background: rgba(5, 150, 105, 0.35);
+        top: 70%;
+        left: 10%;
+      }
+      .blob-6 {
+        width: 320px;
+        height: 320px;
+        background: rgba(110, 231, 183, 0.3);
+        top: 5%;
+        right: 20%;
+      }
 
       /* Carousel */
-      .carousel-wrapper { width: 100%; }
-      .carousel-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-      .carousel-feature-name { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
-      .carousel-counter { font-size: 11px; letter-spacing: 2px; color: var(--subtle); }
-      .carousel-slides { display: grid; }
-      .c-slide { grid-area: 1/1; opacity: 0; transform: translateY(10px); transition: opacity 0.52s ease, transform 0.52s ease; pointer-events: none; display: flex; flex-direction: column; }
-      .c-slide.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
-      .carousel-nav { display: inline-flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 18px; }
-      .carousel-dots { display: flex; align-items: center; gap: 6px; }
-      .c-dot { height: 3px; width: 16px; border-radius: 2px; background: rgba(0,0,0,0.14); cursor: pointer; transition: all 0.35s ease; border: none; padding: 0; outline: none; }
-      .c-dot.active { background: var(--accent); width: 32px; }
-      .carousel-progress { height: 2px; background: rgba(0,0,0,0.1); border-radius: 1px; overflow: hidden; }
-      .carousel-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-dark), var(--accent)); width: 0%; }
+      .carousel-wrapper {
+        width: 100%;
+      }
+      .carousel-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .carousel-feature-name {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .carousel-counter {
+        font-size: 11px;
+        letter-spacing: 2px;
+        color: var(--subtle);
+      }
+      .carousel-slides {
+        display: grid;
+      }
+      .c-slide {
+        grid-area: 1/1;
+        opacity: 0;
+        transform: translateY(10px);
+        transition:
+          opacity 0.52s ease,
+          transform 0.52s ease;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+      }
+      .c-slide.active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      .carousel-nav {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        margin-top: 18px;
+        width: 100%;
+      }
+      .carousel-dots {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .c-dot {
+        height: 3px;
+        width: 16px;
+        border-radius: 2px;
+        background: rgba(0, 0, 0, 0.14);
+        cursor: pointer;
+        transition: all 0.35s ease;
+        border: none;
+        padding: 0;
+        outline: none;
+      }
+      .c-dot.active {
+        background: var(--accent);
+        width: 32px;
+      }
+      .carousel-progress {
+        height: 2px;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 1px;
+        overflow: hidden;
+        width: 80%;
+        max-width: 200px;
+      }
+      .carousel-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-dark), var(--accent));
+        width: 0%;
+      }
       /* Calc cards */
-      .calc-preview { background: #ffffff; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.07); flex: 1; display: flex; flex-direction: column; }
-      .calc-header { background: rgba(16,185,129,0.06); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(16,185,129,0.1); }
-      .calc-header-title { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: rgba(16,185,129,0.9); }
-      .calc-badge { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: var(--accent); }
-      .calc-body { padding: 20px; flex: 1; }
-      .calc-field { margin-bottom: 14px; }
-      .calc-field label { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 5px; }
-      .calc-input { background: var(--bg); border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); width: 100%; display: flex; align-items: center; justify-content: space-between; }
-      .calc-input span { color: var(--muted); font-size: 11px; }
-      .calc-divider { height: 1px; background: rgba(0,0,0,0.07); margin: 16px 0; }
-      .calc-result-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 13px; }
-      .calc-result-row:last-child { border-bottom: none; }
-      .calc-result-label { color: var(--muted); }
-      .calc-result-val { font-size: 13px; font-weight: 600; color: var(--text); }
-      .calc-result-val.accent { color: var(--accent); font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
-      .tag-g { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: var(--accent-light); color: var(--accent-dark); }
-      .calc-footer { padding: 12px 20px; background: var(--bg); border-top: 1px solid rgba(0,0,0,0.06); font-size: 11px; color: var(--muted); font-style: italic; text-align: center; }
+      .calc-preview {
+        background: rgba(245, 248, 246, 0.98);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+          0 12px 48px rgba(0, 0, 0, 0.18),
+          0 2px 8px rgba(0, 0, 0, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        z-index: 1;
+      }
+      .c-slide:nth-child(1) .calc-header {
+        background: rgba(16, 185, 129, 0.15);
+      }
+      .c-slide:nth-child(2) .calc-header {
+        background: rgba(99, 102, 241, 0.15);
+      }
+      .c-slide:nth-child(3) .calc-header {
+        background: rgba(245, 158, 11, 0.15);
+      }
+      .c-slide:nth-child(4) .calc-header {
+        background: rgba(236, 72, 153, 0.15);
+      }
+      .c-slide:nth-child(5) .calc-header {
+        background: rgba(59, 130, 246, 0.15);
+      }
+      .calc-header {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+      }
+      .calc-header-title {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: rgba(16, 185, 129, 0.9);
+      }
+      .calc-badge {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 4px;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: var(--accent);
+      }
+      .calc-body {
+        padding: 20px;
+        flex: 1;
+      }
+      .calc-field {
+        margin-bottom: 14px;
+      }
+      .calc-field label {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 5px;
+      }
+      .calc-input {
+        background: var(--bg);
+        border: 1px solid rgba(0, 0, 0, 0.07);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--text);
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .calc-input span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .calc-divider {
+        height: 1px;
+        background: rgba(0, 0, 0, 0.07);
+        margin: 16px 0;
+      }
+      .calc-result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        font-size: 13px;
+      }
+      .calc-result-row:last-child {
+        border-bottom: none;
+      }
+      .calc-result-label {
+        color: var(--muted);
+      }
+      .calc-result-val {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .calc-result-val.accent {
+        color: var(--accent);
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .tag-g {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        background: var(--accent-light);
+        color: var(--accent-dark);
+      }
+      .calc-footer {
+        padding: 12px 20px;
+        background: var(--bg);
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        font-size: 11px;
+        color: var(--muted);
+        font-style: italic;
+        text-align: center;
+      }
       /* Slide helpers */
-      .hs-result { border: 1px solid rgba(0,0,0,0.08); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; }
-      .hs-result.best { background: var(--accent-light); border-color: rgba(16,185,129,0.3); }
-      .hs-result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
-      .hs-code-mono { font-family: monospace; font-size: 14px; color: var(--text); }
-      .hs-rate-lbl { font-size: 11px; font-weight: 600; color: var(--text2); }
-      .hs-rate-lbl.zero { color: var(--accent-dark); }
-      .hs-desc-text { font-size: 11px; color: var(--muted); }
-      .fx-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
-      .fx-row:last-child { border-bottom: none; }
-      .fx-curr { font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--text2); }
-      .fx-mid { font-size: 11px; color: var(--subtle); }
-      .fx-val { font-family: monospace; font-size: 13px; color: var(--text); }
-      .fav-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
-      .fav-row:last-child { border-bottom: none; }
-      .fav-star { color: var(--accent); font-size: 12px; flex-shrink: 0; }
-      .fav-code { font-family: monospace; font-size: 13px; color: var(--text); flex-shrink: 0; min-width: 54px; }
-      .fav-desc { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .fav-pct { font-size: 11px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
-      .excise-toggle { width: 28px; height: 16px; background: var(--accent); border-radius: 8px; position: relative; flex-shrink: 0; }
-      .excise-toggle::after { content: ""; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: white; }
+      .hs-result {
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+      }
+      .hs-result.best {
+        background: var(--accent-light);
+        border-color: rgba(16, 185, 129, 0.3);
+      }
+      .hs-result-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3px;
+      }
+      .hs-code-mono {
+        font-family: monospace;
+        font-size: 14px;
+        color: var(--text);
+      }
+      .hs-rate-lbl {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text2);
+      }
+      .hs-rate-lbl.zero {
+        color: var(--accent-dark);
+      }
+      .hs-desc-text {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .fx-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .fx-row:last-child {
+        border-bottom: none;
+      }
+      .fx-curr {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: var(--text2);
+      }
+      .fx-mid {
+        font-size: 11px;
+        color: var(--subtle);
+      }
+      .fx-val {
+        font-family: monospace;
+        font-size: 13px;
+        color: var(--text);
+      }
+      .fav-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .fav-row:last-child {
+        border-bottom: none;
+      }
+      .fav-star {
+        color: var(--accent);
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+      .fav-code {
+        font-family: monospace;
+        font-size: 13px;
+        color: var(--text);
+        flex-shrink: 0;
+        min-width: 54px;
+      }
+      .fav-desc {
+        font-size: 11px;
+        color: var(--muted);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .fav-pct {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text2);
+        flex-shrink: 0;
+      }
+      .excise-toggle {
+        width: 28px;
+        height: 16px;
+        background: var(--accent);
+        border-radius: 8px;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .excise-toggle::after {
+        content: "";
+        position: absolute;
+        right: 2px;
+        top: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+      }
     </style>
   </head>
   <body>
     <canvas id="dotwave"></canvas>
-    <div class="blob-bg"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div><div class="blob blob-4"></div><div class="blob blob-5"></div><div class="blob blob-6"></div></div>
+    <div class="blob-bg">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+      <div class="blob blob-4"></div>
+      <div class="blob blob-5"></div>
+      <div class="blob blob-6"></div>
+    </div>
 
     <nav>
       <div class="nav-inner">
         <a href="#" class="nav-logo">
           <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="14" fill="#10b981"/>
-            <rect x="25" y="10" width="6" height="16" rx="3" fill="white"/>
-            <path d="M14 22L28 38L42 22" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-            <rect x="12" y="42" width="32" height="4" rx="2" fill="white"/>
+            <rect width="56" height="56" rx="14" fill="#10b981" />
+            <rect x="25" y="10" width="6" height="16" rx="3" fill="white" />
+            <path
+              d="M14 22L28 38L42 22"
+              stroke="white"
+              stroke-width="5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <rect x="12" y="42" width="32" height="4" rx="2" fill="white" />
           </svg>
           Dutify
         </a>
@@ -790,296 +1397,819 @@
 
     <section id="hero">
       <div class="hero-body">
-      <div class="container">
-        <div class="hero-grid">
-          <div class="hero-content">
-            <h1 class="hero-title">Calculate your import costs before they land</h1>
-            <p class="hero-sub">Know exactly what you'll pay in customs duties, VAT, and total landed costs. Powered by TARIC data and live ECB exchange rates.</p>
-            <div class="hero-actions">
-              <a href="/register" class="btn btn-primary">Start for free →</a>
-              <a href="#how" class="btn btn-secondary">See how it works</a>
+        <div class="container">
+          <div class="hero-grid">
+            <div class="hero-content">
+              <h1 class="hero-title">Calculate your import costs before they land</h1>
+              <p class="hero-sub">
+                Know exactly what you'll pay in customs duties, VAT, and total landed costs. Powered by TARIC data and
+                live ECB exchange rates.
+              </p>
+              <div class="hero-actions">
+                <a href="/register" class="btn btn-primary">Start here →</a>
+                <a href="#how" class="btn btn-secondary">See how it works</a>
+              </div>
+              <div class="hero-stats">
+                <div class="hero-stat">
+                  <div class="hero-stat-num">27+</div>
+                  <div class="hero-stat-label">FTA Agreements</div>
+                </div>
+                <div class="hero-stat">
+                  <div class="hero-stat-num">30+</div>
+                  <div class="hero-stat-label">Currencies</div>
+                </div>
+                <div class="hero-stat">
+                  <div class="hero-stat-num">17%</div>
+                  <div class="hero-stat-label">LU VAT Rate</div>
+                </div>
+              </div>
             </div>
-            <div class="hero-stats">
-              <div class="hero-stat">
-                <div class="hero-stat-num">27+</div>
-                <div class="hero-stat-label">FTA Agreements</div>
+            <div class="carousel-wrapper">
+              <div class="carousel-slides">
+                <!-- ① Duty Calculator -->
+                <div class="c-slide">
+                  <div class="calc-preview">
+                    <div class="calc-header">
+                      <span class="calc-header-title">Live calculation</span>
+                      <span class="calc-badge">✓ FTA Rate Applied</span>
+                    </div>
+                    <div class="calc-body">
+                      <div class="calc-field">
+                        <label>Origin Country</label>
+                        <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
+                      </div>
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+                        <div class="calc-field">
+                          <label>HS Code</label>
+                          <div class="calc-input">8471.30</div>
+                        </div>
+                        <div class="calc-field">
+                          <label>Duty Rate</label>
+                          <div class="calc-input">
+                            0% <span class="tag-g" style="font-size: 9px; padding: 1px 6px">FTA</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+                        <div class="calc-field">
+                          <label>Goods Value</label>
+                          <div class="calc-input">€ 12,400.00</div>
+                        </div>
+                        <div class="calc-field">
+                          <label>Incoterm</label>
+                          <div class="calc-input">CIF</div>
+                        </div>
+                      </div>
+                      <div class="calc-divider"></div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">CIF Value (customs base)</span>
+                        <span class="calc-result-val">€ 12,400.00</span>
+                      </div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
+                        <span class="calc-result-val">€ 0.00</span>
+                      </div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">Import VAT (LU 17%)</span>
+                        <span class="calc-result-val">€ 2,108.00</span>
+                      </div>
+                      <div class="calc-result-row" style="padding-top: 12px">
+                        <span
+                          style="
+                            font-size: 14px;
+                            font-weight: 700;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
+                            color: var(--text);
+                          "
+                          >Total landed cost</span
+                        >
+                        <span class="calc-result-val accent">€ 14,508.00</span>
+                      </div>
+                    </div>
+                    <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
+                  </div>
+                </div>
+
+                <!-- ② AI HS Lookup -->
+                <div class="c-slide">
+                  <div class="calc-preview">
+                    <div class="calc-header">
+                      <span class="calc-header-title">AI HS Classification</span>
+                      <span class="calc-badge" style="background: #16162a; border-color: #30307a; color: #9999ee"
+                        >✦ Claude AI</span
+                      >
+                    </div>
+                    <div class="calc-body">
+                      <div class="calc-field">
+                        <label>Product Description</label>
+                        <div class="calc-input" style="font-size: 12px; color: var(--text2)">
+                          Wireless noise-cancelling over-ear headphones
+                        </div>
+                      </div>
+                      <div class="calc-divider"></div>
+                      <div class="hs-result best">
+                        <div class="hs-result-row">
+                          <span class="hs-code-mono">8518.30</span>
+                          <span class="hs-rate-lbl zero">0% DUTY</span>
+                        </div>
+                        <div class="hs-desc-text">
+                          Headphones &amp; earphones &nbsp;<span style="color: var(--accent-dark)">★ Best match</span>
+                        </div>
+                      </div>
+                      <div class="hs-result">
+                        <div class="hs-result-row">
+                          <span class="hs-code-mono">8518.40</span>
+                          <span class="hs-rate-lbl">3.7%</span>
+                        </div>
+                        <div class="hs-desc-text">Audio frequency electric amplifiers</div>
+                      </div>
+                      <div class="hs-result" style="margin-bottom: 0">
+                        <div class="hs-result-row">
+                          <span class="hs-code-mono">8527.91</span>
+                          <span class="hs-rate-lbl">2.8%</span>
+                        </div>
+                        <div class="hs-desc-text">Radio receivers incorporating sound recording</div>
+                      </div>
+                      <div style="margin-top: 14px; text-align: right">
+                        <a
+                          href="#"
+                          style="
+                            font-size: 11px;
+                            font-weight: 600;
+                            letter-spacing: 1px;
+                            text-transform: uppercase;
+                            color: var(--accent-dark);
+                            text-decoration: none;
+                          "
+                          >Verify in TARIC ↗</a
+                        >
+                      </div>
+                    </div>
+                    <div class="calc-footer">AI-assisted · Always verify classifications · Not legal advice</div>
+                  </div>
+                </div>
+
+                <!-- ③ FX Converter -->
+                <div class="c-slide">
+                  <div class="calc-preview">
+                    <div class="calc-header">
+                      <span class="calc-header-title">ECB Exchange Rates</span>
+                      <span class="calc-badge">↻ Live Today</span>
+                    </div>
+                    <div class="calc-body">
+                      <div
+                        style="
+                          display: grid;
+                          grid-template-columns: 1fr auto 1fr;
+                          gap: 10px;
+                          align-items: flex-end;
+                          margin-bottom: 20px;
+                        "
+                      >
+                        <div class="calc-field" style="margin-bottom: 0">
+                          <label>Amount (USD)</label>
+                          <div class="calc-input">$ 15,000.00</div>
+                        </div>
+                        <div style="padding-bottom: 9px; color: var(--muted); font-size: 16px">→</div>
+                        <div class="calc-field" style="margin-bottom: 0">
+                          <label>EUR</label>
+                          <div class="calc-input" style="color: var(--accent-dark)">€ 13,821.00</div>
+                        </div>
+                      </div>
+                      <div class="calc-divider" style="margin-top: 0"></div>
+                      <div class="fx-row">
+                        <span class="fx-curr">USD</span><span class="fx-mid">1 USD =</span
+                        ><span class="fx-val">0.9214 EUR</span>
+                      </div>
+                      <div class="fx-row">
+                        <span class="fx-curr">GBP</span><span class="fx-mid">1 GBP =</span
+                        ><span class="fx-val">1.1732 EUR</span>
+                      </div>
+                      <div class="fx-row">
+                        <span class="fx-curr">CNY</span><span class="fx-mid">1 CNY =</span
+                        ><span class="fx-val">0.1270 EUR</span>
+                      </div>
+                      <div class="fx-row">
+                        <span class="fx-curr">JPY</span><span class="fx-mid">1 JPY =</span
+                        ><span class="fx-val">0.0061 EUR</span>
+                      </div>
+                      <div class="fx-row">
+                        <span class="fx-curr">CHF</span><span class="fx-mid">1 CHF =</span
+                        ><span class="fx-val">1.0432 EUR</span>
+                      </div>
+                      <div class="fx-row">
+                        <span class="fx-curr">KRW</span><span class="fx-mid">1 KRW =</span
+                        ><span class="fx-val">0.0006 EUR</span>
+                      </div>
+                    </div>
+                    <div class="calc-footer">Source: ECB · Updated every business day · 30+ currencies</div>
+                  </div>
+                </div>
+
+                <!-- ④ Excise Duties -->
+                <div class="c-slide">
+                  <div class="calc-preview">
+                    <div class="calc-header">
+                      <span class="calc-header-title">Excise Duties</span>
+                      <span class="calc-badge" style="background: #1e1200; border-color: #3d2600; color: #c8900a"
+                        >LU 2026 Rates</span
+                      >
+                    </div>
+                    <div class="calc-body">
+                      <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px"
+                      >
+                        <span
+                          style="
+                            font-size: 11px;
+                            font-weight: 600;
+                            letter-spacing: 2px;
+                            text-transform: uppercase;
+                            color: var(--muted);
+                          "
+                          >Include excise duties</span
+                        >
+                        <div class="excise-toggle"></div>
+                      </div>
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
+                        <div class="calc-field">
+                          <label>Category</label>
+                          <div class="calc-input">Spirits</div>
+                        </div>
+                        <div class="calc-field">
+                          <label>Volume (L)</label>
+                          <div class="calc-input">1,000 L</div>
+                        </div>
+                      </div>
+                      <div class="calc-field">
+                        <label>ABV</label>
+                        <div class="calc-input">40 %</div>
+                      </div>
+                      <div class="calc-divider"></div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">Excise duty (spirits)</span>
+                        <span class="calc-result-val">€ 6,453.20</span>
+                      </div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">Customs duty (FTA)</span>
+                        <span class="calc-result-val">€ 0.00</span>
+                      </div>
+                      <div class="calc-result-row">
+                        <span class="calc-result-label">Import VAT (17%)</span>
+                        <span class="calc-result-val">€ 3,497.04</span>
+                      </div>
+                      <div class="calc-result-row" style="padding-top: 12px">
+                        <span
+                          style="
+                            font-size: 14px;
+                            font-weight: 700;
+                            letter-spacing: 0.5px;
+                            text-transform: uppercase;
+                            color: var(--text);
+                          "
+                          >Total landed cost</span
+                        >
+                        <span class="calc-result-val accent">€ 27,550.24</span>
+                      </div>
+                    </div>
+                    <div class="calc-footer">Alcohol · Tobacco · Energy · Luxembourg Administration des Douanes</div>
+                  </div>
+                </div>
+
+                <!-- ⑤ HS Favourites -->
+                <div class="c-slide">
+                  <div class="calc-preview">
+                    <div class="calc-header">
+                      <span class="calc-header-title">Saved HS Codes</span>
+                      <span class="calc-badge" style="background: #181818; border-color: #2a2a2a; color: #666"
+                        >Your Library</span
+                      >
+                    </div>
+                    <div class="calc-body">
+                      <div class="fav-row">
+                        <span class="fav-star">★</span>
+                        <span class="fav-code">8471.30</span>
+                        <span class="fav-desc">Laptops &amp; portable computers</span>
+                        <span class="fav-pct">0.0%</span>
+                      </div>
+                      <div class="fav-row">
+                        <span class="fav-star">★</span>
+                        <span class="fav-code">6110.20</span>
+                        <span class="fav-desc">Cotton jerseys &amp; pullovers</span>
+                        <span class="fav-pct">12.0%</span>
+                      </div>
+                      <div class="fav-row">
+                        <span class="fav-star">★</span>
+                        <span class="fav-code">8517.12</span>
+                        <span class="fav-desc">Mobile phones &amp; smartphones</span>
+                        <span class="fav-pct">0.0%</span>
+                      </div>
+                      <div class="fav-row">
+                        <span class="fav-star">★</span>
+                        <span class="fav-code">9403.20</span>
+                        <span class="fav-desc">Metal furniture for offices</span>
+                        <span class="fav-pct">2.7%</span>
+                      </div>
+                      <div class="fav-row">
+                        <span class="fav-star">★</span>
+                        <span class="fav-code">2204.21</span>
+                        <span class="fav-desc">Wine of fresh grapes (≤ 2 L)</span>
+                        <span class="fav-pct">32.0%</span>
+                      </div>
+                      <div style="margin-top: 16px; text-align: center">
+                        <span
+                          style="
+                            font-size: 11px;
+                            font-weight: 600;
+                            letter-spacing: 2px;
+                            text-transform: uppercase;
+                            color: var(--accent-dark);
+                          "
+                          >+ Add from HS Lookup</span
+                        >
+                      </div>
+                    </div>
+                    <div class="calc-footer">One-click reuse · Build your product library · Verify in TARIC</div>
+                  </div>
+                </div>
               </div>
-              <div class="hero-stat">
-                <div class="hero-stat-num">30+</div>
-                <div class="hero-stat-label">Currencies</div>
+              <!-- /carousel-slides -->
+              <div class="carousel-nav">
+                <div class="carousel-dots">
+                  <button class="c-dot" aria-label="Slide 1"></button>
+                  <button class="c-dot" aria-label="Slide 2"></button>
+                  <button class="c-dot" aria-label="Slide 3"></button>
+                  <button class="c-dot" aria-label="Slide 4"></button>
+                  <button class="c-dot" aria-label="Slide 5"></button>
+                </div>
+                <div class="carousel-progress"><div class="carousel-progress-bar" id="c-progress"></div></div>
               </div>
-              <div class="hero-stat">
-                <div class="hero-stat-num">17%</div>
-                <div class="hero-stat-label">LU VAT Rate</div>
+            </div>
+            <!-- /carousel-wrapper -->
+          </div>
+        </div>
+      </div>
+      <div class="scroll-hint">
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 5v14M5 12l7 7 7-7" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         WHY SECTION — 3 pain-point cards + aircraft scroll reveal
+    ═══════════════════════════════════════════════════════════════ -->
+    <style>
+      #why {
+        padding: 120px 0;
+        position: relative;
+        overflow: visible;
+      }
+      .why-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+        position: relative;
+      }
+      .why-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 28px 28px 24px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05);
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 0.52s ease, transform 0.52s ease, box-shadow 0.25s;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .why-card.why-revealed {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .why-card:hover {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
+      }
+      /* coloured top accent stripe */
+      .why-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 20px 20px 0 0;
+      }
+      .why-card-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+      .why-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+      .why-card-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+
+      .why-icon-wrap {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px;
+        margin-bottom: 18px;
+        flex-shrink: 0;
+      }
+      .why-icon-amber  { background: rgba(245,158,11,0.12); }
+      .why-icon-blue   { background: rgba(59,130,246,0.12); }
+      .why-icon-purple { background: rgba(139,92,246,0.12); }
+
+      .why-card-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 10px;
+        line-height: 1.3;
+      }
+      .why-card-desc {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.65;
+        margin-bottom: 22px;
+        flex: 1;
+      }
+      /* Mini UI mockups */
+      .why-mockup {
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 12px 14px;
+        border: 1px solid rgba(0,0,0,0.07);
+        font-size: 12px;
+      }
+      .why-mockup-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        color: var(--muted);
+      }
+      .why-mockup-row:last-child { border-bottom: none; }
+      .why-mockup-val {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 12px;
+      }
+      .why-mockup-val.green  { color: #059669; }
+      .why-mockup-val.red    { color: #dc2626; }
+      .why-mockup-val.total  { color: #059669; font-size: 13px; }
+      .why-mockup-tag {
+        font-size: 10px; font-weight: 600;
+        padding: 2px 7px; border-radius: 4px;
+        background: #d1fae5; color: #065f46;
+      }
+      .why-mockup-label {
+        font-size: 9px; font-weight: 600;
+        letter-spacing: 1.5px; text-transform: uppercase;
+        color: var(--subtle);
+        margin-bottom: 7px;
+      }
+
+      /* SVG plane overlay */
+      #why-plane-svg {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        overflow: visible;
+        z-index: 10;
+      }
+      .why-trail {
+        fill: none;
+        stroke: #10b981;
+        stroke-width: 1.5;
+        stroke-dasharray: 6 5;
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+
+      /* FX mockup */
+      .why-fx-main {
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: 8px;
+      }
+      .why-fx-amount {
+        font-size: 16px; font-weight: 700; color: var(--text);
+      }
+      .why-fx-arrow { color: var(--muted); font-size: 14px; }
+      .why-fx-eur {
+        font-size: 16px; font-weight: 700; color: #059669;
+      }
+      .why-fx-note {
+        font-size: 10px; color: var(--subtle);
+        letter-spacing: 0.5px;
+      }
+
+      @media (max-width: 1000px) {
+        .why-cards { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+      }
+      @media (max-width: 640px) {
+        #why { padding: 60px 0; }
+      }
+    </style>
+
+    <section id="why">
+      <div class="container">
+        <div class="section-header">
+          <div class="section-badge">The problem</div>
+          <h2 class="section-title">Why import costs catch<br/>businesses off guard</h2>
+          <p class="section-sub">Three reasons companies end up surprised at the border — and how Dutify solves each one.</p>
+        </div>
+
+        <div class="why-cards" id="why-cards">
+
+          <!-- Card 1 -->
+          <div class="why-card why-card-amber" id="why-c1">
+            <div class="why-icon-wrap why-icon-amber">📋</div>
+            <div class="why-card-title">Duty rates aren't obvious</div>
+            <div class="why-card-desc">Every product has an 8-digit CN code with its own rate. Miss it and you either overpay or get hit with penalties at clearance.</div>
+            <div class="why-mockup">
+              <div class="why-mockup-label">HS lookup result</div>
+              <div class="why-mockup-row">
+                <span>HS code</span>
+                <span class="why-mockup-val" style="font-family:monospace">8471.30</span>
+              </div>
+              <div class="why-mockup-row">
+                <span>MFN rate</span>
+                <span class="why-mockup-val red">3.5 %</span>
+              </div>
+              <div class="why-mockup-row">
+                <span>FTA rate (EU-KR)</span>
+                <span class="why-mockup-val green">0 % <span class="why-mockup-tag">FTA</span></span>
               </div>
             </div>
           </div>
-          <div class="carousel-wrapper">
-            <div class="carousel-slides">
 
-              <!-- ① Duty Calculator -->
-              <div class="c-slide">
-                <div class="calc-preview">
-                  <div class="calc-header">
-                    <span class="calc-header-title">Live calculation</span>
-                    <span class="calc-badge">✓ FTA Rate Applied</span>
-                  </div>
-                  <div class="calc-body">
-                    <div class="calc-field">
-                      <label>Origin Country</label>
-                      <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                      <div class="calc-field">
-                        <label>HS Code</label>
-                        <div class="calc-input">8471.30</div>
-                      </div>
-                      <div class="calc-field">
-                        <label>Duty Rate</label>
-                        <div class="calc-input">0% <span class="tag-g" style="font-size:9px;padding:1px 6px">FTA</span></div>
-                      </div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                      <div class="calc-field">
-                        <label>Goods Value</label>
-                        <div class="calc-input">€ 12,400.00</div>
-                      </div>
-                      <div class="calc-field">
-                        <label>Incoterm</label>
-                        <div class="calc-input">CIF</div>
-                      </div>
-                    </div>
-                    <div class="calc-divider"></div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">CIF Value (customs base)</span>
-                      <span class="calc-result-val">€ 12,400.00</span>
-                    </div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
-                      <span class="calc-result-val">€ 0.00</span>
-                    </div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">Import VAT (LU 17%)</span>
-                      <span class="calc-result-val">€ 2,108.00</span>
-                    </div>
-                    <div class="calc-result-row" style="padding-top:12px">
-                      <span style="font-size:14px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)">Total landed cost</span>
-                      <span class="calc-result-val accent">€ 14,508.00</span>
-                    </div>
-                  </div>
-                  <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
-                </div>
+          <!-- Card 2 -->
+          <div class="why-card why-card-blue" id="why-c2">
+            <div class="why-icon-wrap why-icon-blue">💱</div>
+            <div class="why-card-title">Currency moves change everything</div>
+            <div class="why-card-desc">Customs value must be declared in EUR at the ECB reference rate on the declaration date. A 5 % swing can materially shift your landed cost.</div>
+            <div class="why-mockup">
+              <div class="why-mockup-label">ECB conversion today</div>
+              <div class="why-fx-main">
+                <span class="why-fx-amount">$15,000</span>
+                <span class="why-fx-arrow">→</span>
+                <span class="why-fx-eur">€ 13,821</span>
               </div>
-
-              <!-- ② AI HS Lookup -->
-              <div class="c-slide">
-                <div class="calc-preview">
-                  <div class="calc-header">
-                    <span class="calc-header-title">AI HS Classification</span>
-                    <span class="calc-badge" style="background:#16162a;border-color:#30307a;color:#9999ee">✦ Claude AI</span>
-                  </div>
-                  <div class="calc-body">
-                    <div class="calc-field">
-                      <label>Product Description</label>
-                      <div class="calc-input" style="font-size:12px;color:var(--text2)">Wireless noise-cancelling over-ear headphones</div>
-                    </div>
-                    <div class="calc-divider"></div>
-                    <div class="hs-result best">
-                      <div class="hs-result-row">
-                        <span class="hs-code-mono">8518.30</span>
-                        <span class="hs-rate-lbl zero">0% DUTY</span>
-                      </div>
-                      <div class="hs-desc-text">Headphones &amp; earphones &nbsp;<span style="color:var(--accent-dark)">★ Best match</span></div>
-                    </div>
-                    <div class="hs-result">
-                      <div class="hs-result-row">
-                        <span class="hs-code-mono">8518.40</span>
-                        <span class="hs-rate-lbl">3.7%</span>
-                      </div>
-                      <div class="hs-desc-text">Audio frequency electric amplifiers</div>
-                    </div>
-                    <div class="hs-result" style="margin-bottom:0">
-                      <div class="hs-result-row">
-                        <span class="hs-code-mono">8527.91</span>
-                        <span class="hs-rate-lbl">2.8%</span>
-                      </div>
-                      <div class="hs-desc-text">Radio receivers incorporating sound recording</div>
-                    </div>
-                    <div style="margin-top:14px;text-align:right">
-                      <a href="#" style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--accent-dark);text-decoration:none">Verify in TARIC ↗</a>
-                    </div>
-                  </div>
-                  <div class="calc-footer">AI-assisted · Always verify classifications · Not legal advice</div>
-                </div>
-              </div>
-
-              <!-- ③ FX Converter -->
-              <div class="c-slide">
-                <div class="calc-preview">
-                  <div class="calc-header">
-                    <span class="calc-header-title">ECB Exchange Rates</span>
-                    <span class="calc-badge">↻ Live Today</span>
-                  </div>
-                  <div class="calc-body">
-                    <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:flex-end;margin-bottom:20px">
-                      <div class="calc-field" style="margin-bottom:0">
-                        <label>Amount (USD)</label>
-                        <div class="calc-input">$ 15,000.00</div>
-                      </div>
-                      <div style="padding-bottom:9px;color:var(--muted);font-size:16px">→</div>
-                      <div class="calc-field" style="margin-bottom:0">
-                        <label>EUR</label>
-                        <div class="calc-input" style="color:var(--accent-dark)">€ 13,821.00</div>
-                      </div>
-                    </div>
-                    <div class="calc-divider" style="margin-top:0"></div>
-                    <div class="fx-row"><span class="fx-curr">USD</span><span class="fx-mid">1 USD =</span><span class="fx-val">0.9214 EUR</span></div>
-                    <div class="fx-row"><span class="fx-curr">GBP</span><span class="fx-mid">1 GBP =</span><span class="fx-val">1.1732 EUR</span></div>
-                    <div class="fx-row"><span class="fx-curr">CNY</span><span class="fx-mid">1 CNY =</span><span class="fx-val">0.1270 EUR</span></div>
-                    <div class="fx-row"><span class="fx-curr">JPY</span><span class="fx-mid">1 JPY =</span><span class="fx-val">0.0061 EUR</span></div>
-                    <div class="fx-row"><span class="fx-curr">CHF</span><span class="fx-mid">1 CHF =</span><span class="fx-val">1.0432 EUR</span></div>
-                    <div class="fx-row"><span class="fx-curr">KRW</span><span class="fx-mid">1 KRW =</span><span class="fx-val">0.0006 EUR</span></div>
-                  </div>
-                  <div class="calc-footer">Source: ECB · Updated every business day · 30+ currencies</div>
-                </div>
-              </div>
-
-              <!-- ④ Excise Duties -->
-              <div class="c-slide">
-                <div class="calc-preview">
-                  <div class="calc-header">
-                    <span class="calc-header-title">Excise Duties</span>
-                    <span class="calc-badge" style="background:#1e1200;border-color:#3d2600;color:#c8900a">LU 2026 Rates</span>
-                  </div>
-                  <div class="calc-body">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-                      <span style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Include excise duties</span>
-                      <div class="excise-toggle"></div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                      <div class="calc-field">
-                        <label>Category</label>
-                        <div class="calc-input">Spirits</div>
-                      </div>
-                      <div class="calc-field">
-                        <label>Volume (L)</label>
-                        <div class="calc-input">1,000 L</div>
-                      </div>
-                    </div>
-                    <div class="calc-field">
-                      <label>ABV</label>
-                      <div class="calc-input">40 %</div>
-                    </div>
-                    <div class="calc-divider"></div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">Excise duty (spirits)</span>
-                      <span class="calc-result-val">€ 6,453.20</span>
-                    </div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">Customs duty (FTA)</span>
-                      <span class="calc-result-val">€ 0.00</span>
-                    </div>
-                    <div class="calc-result-row">
-                      <span class="calc-result-label">Import VAT (17%)</span>
-                      <span class="calc-result-val">€ 3,497.04</span>
-                    </div>
-                    <div class="calc-result-row" style="padding-top:12px">
-                      <span style="font-size:14px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text)">Total landed cost</span>
-                      <span class="calc-result-val accent">€ 27,550.24</span>
-                    </div>
-                  </div>
-                  <div class="calc-footer">Alcohol · Tobacco · Energy · Luxembourg Administration des Douanes</div>
-                </div>
-              </div>
-
-              <!-- ⑤ HS Favourites -->
-              <div class="c-slide">
-                <div class="calc-preview">
-                  <div class="calc-header">
-                    <span class="calc-header-title">Saved HS Codes</span>
-                    <span class="calc-badge" style="background:#181818;border-color:#2a2a2a;color:#666">Your Library</span>
-                  </div>
-                  <div class="calc-body">
-                    <div class="fav-row">
-                      <span class="fav-star">★</span>
-                      <span class="fav-code">8471.30</span>
-                      <span class="fav-desc">Laptops &amp; portable computers</span>
-                      <span class="fav-pct">0.0%</span>
-                    </div>
-                    <div class="fav-row">
-                      <span class="fav-star">★</span>
-                      <span class="fav-code">6110.20</span>
-                      <span class="fav-desc">Cotton jerseys &amp; pullovers</span>
-                      <span class="fav-pct">12.0%</span>
-                    </div>
-                    <div class="fav-row">
-                      <span class="fav-star">★</span>
-                      <span class="fav-code">8517.12</span>
-                      <span class="fav-desc">Mobile phones &amp; smartphones</span>
-                      <span class="fav-pct">0.0%</span>
-                    </div>
-                    <div class="fav-row">
-                      <span class="fav-star">★</span>
-                      <span class="fav-code">9403.20</span>
-                      <span class="fav-desc">Metal furniture for offices</span>
-                      <span class="fav-pct">2.7%</span>
-                    </div>
-                    <div class="fav-row">
-                      <span class="fav-star">★</span>
-                      <span class="fav-code">2204.21</span>
-                      <span class="fav-desc">Wine of fresh grapes (≤ 2 L)</span>
-                      <span class="fav-pct">32.0%</span>
-                    </div>
-                    <div style="margin-top:16px;text-align:center">
-                      <span style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--accent-dark)">+ Add from HS Lookup</span>
-                    </div>
-                  </div>
-                  <div class="calc-footer">One-click reuse · Build your product library · Verify in TARIC</div>
-                </div>
-              </div>
-
-            </div><!-- /carousel-slides -->
-            <div class="carousel-nav">
-              <div class="carousel-dots">
-                <button class="c-dot" aria-label="Slide 1"></button>
-                <button class="c-dot" aria-label="Slide 2"></button>
-                <button class="c-dot" aria-label="Slide 3"></button>
-                <button class="c-dot" aria-label="Slide 4"></button>
-                <button class="c-dot" aria-label="Slide 5"></button>
-              </div>
-              <div class="carousel-progress"><div class="carousel-progress-bar" id="c-progress"></div></div>
+              <div class="why-fx-note">Rate: 0.9214 · European Central Bank</div>
             </div>
-          </div><!-- /carousel-wrapper -->
+          </div>
+
+          <!-- Card 3 -->
+          <div class="why-card why-card-purple" id="why-c3">
+            <div class="why-icon-wrap why-icon-purple">⚡</div>
+            <div class="why-card-title">VAT, excise &amp; CBAM stack up fast</div>
+            <div class="why-card-desc">Beyond customs duty, Luxembourg adds 17 % VAT, excise on alcohol and tobacco, and from 2026 CBAM carbon costs on heavy industry goods.</div>
+            <div class="why-mockup">
+              <div class="why-mockup-label">Cost breakdown</div>
+              <div class="why-mockup-row"><span>Customs duty</span><span class="why-mockup-val">€ 464</span></div>
+              <div class="why-mockup-row"><span>Import VAT 17 %</span><span class="why-mockup-val">€ 2,340</span></div>
+              <div class="why-mockup-row"><span>Excise</span><span class="why-mockup-val">€ 180</span></div>
+              <div class="why-mockup-row"><span>CBAM (2026)</span><span class="why-mockup-val">€ 12</span></div>
+              <div class="why-mockup-row"><span style="font-weight:600;color:var(--text)">Total extra costs</span><span class="why-mockup-val total">€ 2,996</span></div>
+            </div>
+          </div>
+
+          <!-- SVG plane layer -->
+          <svg id="why-plane-svg" aria-hidden="true">
+            <path id="why-trail" class="why-trail" d="" />
+            <g id="why-plane" transform="translate(-999,-999)">
+              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
+              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
+              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
+              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
+              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
+            </g>
+          </svg>
         </div>
       </div>
-      </div>
-      <div class="scroll-hint">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-      </div>
     </section>
+
+    <script>
+    /* ── Why section: plane + card reveal on scroll ── */
+    (function () {
+      if (window.innerWidth < 640) {
+        /* On mobile just reveal all cards immediately */
+        var allCards = document.querySelectorAll('#why-cards .why-card');
+        allCards.forEach(function(c){ c.classList.add('why-revealed'); });
+        return;
+      }
+
+      var cards  = [
+        document.getElementById('why-c1'),
+        document.getElementById('why-c2'),
+        document.getElementById('why-c3'),
+      ];
+      var svg    = document.getElementById('why-plane-svg');
+      var trail  = document.getElementById('why-trail');
+      var plane  = document.getElementById('why-plane');
+      var wrap   = document.getElementById('why-cards');
+      if (!cards[0] || !svg || !trail || !plane || !wrap) return;
+
+      var played = false;
+
+      /* Get icon-wrap centre in wrap-relative coords */
+      function iconCentre(card) {
+        var wr = wrap.getBoundingClientRect();
+        var ir = card.querySelector('.why-icon-wrap').getBoundingClientRect();
+        return {
+          x: ir.left + ir.width  * 0.5 - wr.left,
+          y: ir.top  + ir.height * 0.5 - wr.top,
+        };
+      }
+
+      /* Quadratic bezier point */
+      function qbez(p0,p1,p2,t){
+        var u=1-t;
+        return { x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y };
+      }
+      /* De Casteljau sub-curve 0→t */
+      function qbezSplit(p0,p1,p2,t){
+        var q1={ x:p0.x+t*(p1.x-p0.x), y:p0.y+t*(p1.y-p0.y) };
+        return [p0, q1, qbez(p0,p1,p2,t)];
+      }
+
+      function animateFlight(from, to, cp, dur, onProgress, onDone) {
+        var start = null;
+        function tick(now) {
+          if (!start) start = now;
+          var t = Math.min((now - start) / dur, 1);
+          var ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; /* ease-in-out */
+          onProgress(ease);
+          if (t < 1) requestAnimationFrame(tick);
+          else if (onDone) onDone();
+        }
+        requestAnimationFrame(tick);
+      }
+
+      function buildPath(segs) {
+        /* segs: array of {from,cp,to} */
+        if (!segs.length) return '';
+        var d = 'M ' + segs[0].from.x.toFixed(1) + ' ' + segs[0].from.y.toFixed(1);
+        segs.forEach(function(s){
+          d += ' Q ' + s.cp.x.toFixed(1)+' '+s.cp.y.toFixed(1)+
+               ' '+s.to.x.toFixed(1)+' '+s.to.y.toFixed(1);
+        });
+        return d;
+      }
+
+      function setPlane(x, y, angle) {
+        plane.setAttribute('transform',
+          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+angle.toFixed(1)+')');
+      }
+
+      function playAnimation() {
+        if (played) return;
+        played = true;
+
+        var pts = cards.map(iconCentre);
+
+        /* Entry point: start left of card 0 */
+        var entry = { x: pts[0].x - 110, y: pts[0].y + 18 };
+
+        /* Control points: arc upward between each pair */
+        function cp(a, b) {
+          return { x: (a.x+b.x)*0.5, y: Math.min(a.y,b.y) - 48 };
+        }
+
+        var segs = [
+          { from: entry,  cp: { x:(entry.x+pts[0].x)*0.5, y:entry.y-30 }, to: pts[0] },
+          { from: pts[0], cp: cp(pts[0], pts[1]), to: pts[1] },
+          { from: pts[1], cp: cp(pts[1], pts[2]), to: pts[2] },
+        ];
+
+        trail.style.opacity = '0.55';
+        trail.setAttribute('d', '');
+
+        var completedSegs = [];
+        var revealIdx = 0;
+
+        function revealCard(i) {
+          if (cards[i]) cards[i].classList.add('why-revealed');
+        }
+
+        function flySeg(segIdx) {
+          if (segIdx >= segs.length) {
+            /* done — fade plane & trail */
+            var fade = 1;
+            (function fadeTick(){
+              fade -= 0.05;
+              plane.style.opacity = Math.max(0,fade);
+              trail.style.opacity = Math.max(0, 0.55*fade);
+              if (fade > 0) requestAnimationFrame(fadeTick);
+            })();
+            return;
+          }
+
+          var seg = segs[segIdx];
+          var dur = segIdx === 0 ? 560 : 820;
+
+          animateFlight(seg.from, seg.to, seg.cp, dur, function(t) {
+            /* Plane position */
+            var pos = qbez(seg.from, seg.cp, seg.to, t);
+
+            /* Plane heading angle from derivative */
+            var dt = Math.min(t + 0.01, 1);
+            var pos2 = qbez(seg.from, seg.cp, seg.to, dt);
+            var angle = Math.atan2(pos2.y - pos.y, pos2.x - pos.x) * 180 / Math.PI;
+
+            setPlane(pos.x, pos.y, angle);
+
+            /* Grow trail path */
+            var partSeg = { from:seg.from, cp:seg.cp, to: qbezSplit(seg.from,seg.cp,seg.to,t)[2] };
+            var partCp = qbezSplit(seg.from,seg.cp,seg.to,t)[1];
+            var d = buildPath(completedSegs) +
+              (completedSegs.length ? '' : 'M '+seg.from.x.toFixed(1)+' '+seg.from.y.toFixed(1)) +
+              ' Q '+partCp.x.toFixed(1)+' '+partCp.y.toFixed(1)+
+              ' '+partSeg.to.x.toFixed(1)+' '+partSeg.to.y.toFixed(1);
+            trail.setAttribute('d', d);
+
+          }, function() {
+            /* Segment complete: reveal card, record seg */
+            completedSegs.push({
+              from: seg.from,
+              cp: seg.cp,
+              to: seg.to,
+            });
+            /* Reveal the card the plane just arrived at */
+            if (segIdx === 0) revealCard(0);
+            else revealCard(segIdx);
+
+            /* Small pause before next segment */
+            setTimeout(function(){ flySeg(segIdx + 1); }, 180);
+          });
+        }
+
+        /* Kick off */
+        setPlane(entry.x, entry.y, 0);
+        plane.style.opacity = '1';
+        setTimeout(function(){ flySeg(0); }, 80);
+      }
+
+      /* IntersectionObserver: trigger once when 30% of section visible */
+      var section = document.getElementById('why');
+      if ('IntersectionObserver' in window) {
+        var obs = new IntersectionObserver(function(entries) {
+          entries.forEach(function(e){
+            if (e.isIntersecting) {
+              playAnimation();
+              obs.disconnect();
+            }
+          });
+        }, { threshold: 0.3 });
+        obs.observe(section);
+      } else {
+        /* Fallback: just reveal */
+        cards.forEach(function(c){ c.classList.add('why-revealed'); });
+      }
+    })();
+    </script>
 
     <section id="features" class="section">
       <!-- Background blobs for glass effect -->
       <div class="features-blobs">
-        <div class="features-blob" style="width:480px;height:480px;background:rgba(16,185,129,0.22);top:-120px;right:-80px;"></div>
-        <div class="features-blob" style="width:340px;height:340px;background:rgba(52,211,153,0.18);bottom:-60px;left:5%;"></div>
-        <div class="features-blob" style="width:260px;height:260px;background:rgba(167,243,208,0.28);top:40%;right:38%;"></div>
+        <div
+          class="features-blob"
+          style="width: 480px; height: 480px; background: rgba(16, 185, 129, 0.22); top: -120px; right: -80px"
+        ></div>
+        <div
+          class="features-blob"
+          style="width: 340px; height: 340px; background: rgba(52, 211, 153, 0.18); bottom: -60px; left: 5%"
+        ></div>
+        <div
+          class="features-blob"
+          style="width: 260px; height: 260px; background: rgba(167, 243, 208, 0.28); top: 40%; right: 38%"
+        ></div>
       </div>
       <div class="container">
         <div class="section-header">
-          <h2 class="section-title">Everything you need for<br>confident importing</h2>
-          <p class="section-sub">Built specifically for companies importing into Luxembourg. No more spreadsheet guesswork.</p>
+          <h2 class="section-title">Everything you need for<br />confident importing</h2>
+          <p class="section-sub">
+            Built specifically for companies importing into Luxembourg. No more spreadsheet guesswork.
+          </p>
         </div>
         <div class="feature-tabs-layout">
-
           <!-- Left: feature list -->
           <div class="feature-tab-list">
-
             <button class="feature-tab-btn" data-fi="0">
               <span class="feature-tab-icon">⚡</span>
               <div>
                 <div class="feature-tab-title">Instant calculations</div>
-                <div class="feature-tab-desc">Enter shipment details and get a complete duty, VAT, and landed-cost breakdown in seconds.</div>
+                <div class="feature-tab-desc">
+                  Enter shipment details and get a complete duty, VAT, and landed-cost breakdown in seconds.
+                </div>
               </div>
             </button>
 
@@ -1087,7 +2217,9 @@
               <span class="feature-tab-icon">🤖</span>
               <div>
                 <div class="feature-tab-title">AI HS code lookup</div>
-                <div class="feature-tab-desc">Describe your product in plain language and get suggested HS codes with current duty rates.</div>
+                <div class="feature-tab-desc">
+                  Describe your product in plain language and get suggested HS codes with current duty rates.
+                </div>
               </div>
             </button>
 
@@ -1095,7 +2227,9 @@
               <span class="feature-tab-icon">💶</span>
               <div>
                 <div class="feature-tab-title">Live ECB rates</div>
-                <div class="feature-tab-desc">Real-time ECB currency conversion ensures accurate customs valuation across 30+ currencies.</div>
+                <div class="feature-tab-desc">
+                  Real-time ECB currency conversion ensures accurate customs valuation across 30+ currencies.
+                </div>
               </div>
             </button>
 
@@ -1103,7 +2237,9 @@
               <span class="feature-tab-icon">🌍</span>
               <div>
                 <div class="feature-tab-title">FTA detection</div>
-                <div class="feature-tab-desc">Automatically apply preferential or zero-duty rates from 27+ EU free trade agreements.</div>
+                <div class="feature-tab-desc">
+                  Automatically apply preferential or zero-duty rates from 27+ EU free trade agreements.
+                </div>
               </div>
             </button>
 
@@ -1111,7 +2247,9 @@
               <span class="feature-tab-icon">📄</span>
               <div>
                 <div class="feature-tab-title">PDF reports</div>
-                <div class="feature-tab-desc">Generate professional calculation summaries ready to share with customs brokers and finance.</div>
+                <div class="feature-tab-desc">
+                  Generate professional calculation summaries ready to share with customs brokers and finance.
+                </div>
               </div>
             </button>
 
@@ -1119,21 +2257,22 @@
               <span class="feature-tab-icon">🌱</span>
               <div>
                 <div class="feature-tab-title">CBAM calculator</div>
-                <div class="feature-tab-desc">Estimate EU Carbon Border Adjustment costs including phase-in factors through 2034.</div>
+                <div class="feature-tab-desc">
+                  Estimate EU Carbon Border Adjustment costs including phase-in factors through 2034.
+                </div>
               </div>
             </button>
-
-          </div><!-- /feature-tab-list -->
+          </div>
+          <!-- /feature-tab-list -->
 
           <!-- Right: preview panel -->
           <div class="feature-preview-panel">
-
             <!-- 0: Instant calculations -->
             <div class="fp" data-fp="0">
               <div class="fp-label">Import calculation</div>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                <span style="font-size:13px;color:var(--muted);">Shipment value</span>
-                <span style="font-size:14px;font-weight:700;color:var(--text);">USD 14,400</span>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px">
+                <span style="font-size: 13px; color: var(--muted)">Shipment value</span>
+                <span style="font-size: 14px; font-weight: 700; color: var(--text)">USD 14,400</span>
               </div>
               <div class="fp-card">
                 <div class="fp-row"><span>CIF Value</span><span class="fp-val">€ 13,283.00</span></div>
@@ -1146,19 +2285,30 @@
             <!-- 1: AI HS lookup -->
             <div class="fp" data-fp="1">
               <div class="fp-label">AI classification</div>
-              <div style="background:#f8fafc;border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted);border:1px solid #e2e8f0;margin-bottom:14px;line-height:1.5;">
+              <div
+                style="
+                  background: #f8fafc;
+                  border-radius: 10px;
+                  padding: 12px 14px;
+                  font-size: 13px;
+                  color: var(--muted);
+                  border: 1px solid #e2e8f0;
+                  margin-bottom: 14px;
+                  line-height: 1.5;
+                "
+              >
                 💬 &ldquo;Wireless noise-cancelling headphones, over-ear, Bluetooth&rdquo;
               </div>
-              <div style="background:#fff;border:1px solid #a7f3d0;border-radius:12px;padding:16px 18px;">
+              <div style="background: #fff; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px 18px">
                 <div class="fp-hs-code">8518.30</div>
-                <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Headphones and earphones</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <div style="font-size: 13px; color: var(--muted); margin-bottom: 12px">Headphones and earphones</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap">
                   <span class="fp-badge fp-badge-g">✓ High confidence</span>
                   <span class="fp-badge fp-badge-gr">Duty: 0%</span>
                   <span class="fp-badge fp-badge-b">No excise</span>
                 </div>
               </div>
-              <div style="margin-top:10px;font-size:12px;color:#9ca3af;">3 alternative codes available</div>
+              <div style="margin-top: 10px; font-size: 12px; color: #9ca3af">3 alternative codes available</div>
             </div>
 
             <!-- 2: Live ECB rates -->
@@ -1166,39 +2316,53 @@
               <div class="fp-label">ECB exchange rates</div>
               <div class="fp-card">
                 <div class="fp-row">
-                  <span>🇺🇸 USD <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
-                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.92148</span>
+                  <span>🇺🇸 USD <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
+                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.92148</span>
                 </div>
                 <div class="fp-row">
-                  <span>🇬🇧 GBP <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
-                  <span class="fp-val" style="font-family:'Courier New',monospace;">1.19724</span>
+                  <span>🇬🇧 GBP <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
+                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">1.19724</span>
                 </div>
                 <div class="fp-row">
-                  <span>🇨🇳 CNY <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
-                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.12896</span>
+                  <span>🇨🇳 CNY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
+                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.12896</span>
                 </div>
                 <div class="fp-row">
-                  <span>🇯🇵 JPY <span style="color:var(--text);font-weight:600;margin-left:4px;">→ EUR</span></span>
-                  <span class="fp-val" style="font-family:'Courier New',monospace;">0.00621</span>
+                  <span>🇯🇵 JPY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
+                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.00621</span>
                 </div>
               </div>
-              <div style="margin-top:10px;font-size:11px;color:#9ca3af;">Updated 03.03.2026 · European Central Bank reference rates</div>
+              <div style="margin-top: 10px; font-size: 11px; color: #9ca3af">
+                Updated 03.03.2026 · European Central Bank reference rates
+              </div>
             </div>
 
             <!-- 3: FTA detection -->
             <div class="fp" data-fp="3">
               <div class="fp-label">Free trade agreement</div>
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-                <span style="font-size:22px;">🇯🇵</span>
-                <span style="font-size:13px;color:var(--muted);">Japan → Luxembourg</span>
-                <span class="fp-badge fp-badge-g" style="margin-left:auto;">✓ EU-Japan EPA</span>
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px">
+                <span style="font-size: 22px">🇯🇵</span>
+                <span style="font-size: 13px; color: var(--muted)">Japan → Luxembourg</span>
+                <span class="fp-badge fp-badge-g" style="margin-left: auto">✓ EU-Japan EPA</span>
               </div>
               <div class="fp-card">
                 <div class="fp-row"><span>HS code</span><span class="fp-val">7304.31</span></div>
-                <div class="fp-row"><span>MFN rate</span><span class="fp-val" style="color:#dc2626;">2.7 %</span></div>
-                <div class="fp-row"><span>FTA rate (EPA)</span><span class="fp-val" style="color:#10b981;">0 %</span></div>
+                <div class="fp-row"><span>MFN rate</span><span class="fp-val" style="color: #dc2626">2.7 %</span></div>
+                <div class="fp-row">
+                  <span>FTA rate (EPA)</span><span class="fp-val" style="color: #10b981">0 %</span>
+                </div>
               </div>
-              <div style="margin-top:10px;background:#d1fae5;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;color:#065f46;">
+              <div
+                style="
+                  margin-top: 10px;
+                  background: #d1fae5;
+                  border-radius: 10px;
+                  padding: 10px 14px;
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: #065f46;
+                "
+              >
                 Saving: € 842.40 on this shipment
               </div>
             </div>
@@ -1206,26 +2370,100 @@
             <!-- 4: PDF reports -->
             <div class="fp" data-fp="4">
               <div class="fp-label">PDF export</div>
-              <div style="background:#f8fafc;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
-                <div style="height:3px;background:linear-gradient(90deg,#10b981,#34d399);"></div>
-                <div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;">
+              <div style="background: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0">
+                <div style="height: 3px; background: linear-gradient(90deg, #10b981, #34d399)"></div>
+                <div
+                  style="
+                    padding: 12px 14px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #e2e8f0;
+                  "
+                >
                   <div>
-                    <div style="font-size:9px;letter-spacing:2px;color:#10b981;text-transform:uppercase;margin-bottom:2px;">Luxembourg · EU Customs</div>
-                    <div style="font-size:13px;font-weight:700;color:var(--text);">Import Duty Calculation</div>
+                    <div
+                      style="
+                        font-size: 9px;
+                        letter-spacing: 2px;
+                        color: #10b981;
+                        text-transform: uppercase;
+                        margin-bottom: 2px;
+                      "
+                    >
+                      Luxembourg · EU Customs
+                    </div>
+                    <div style="font-size: 13px; font-weight: 700; color: var(--text)">Import Duty Calculation</div>
                   </div>
-                  <div style="font-size:9px;color:#9ca3af;text-align:right;">Laptop shipment<br>03.03.2026</div>
+                  <div style="font-size: 9px; color: #9ca3af; text-align: right">Laptop shipment<br />03.03.2026</div>
                 </div>
-                <div style="padding:0 14px;">
-                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid #f1f5f9;color:var(--muted);"><span>CIF Value</span><span style="font-weight:600;color:var(--text);">€ 12,400.00</span></div>
-                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px solid #f1f5f9;color:var(--muted);"><span>Customs Duty</span><span style="font-weight:600;color:var(--text);">€ 0.00</span></div>
-                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:7px 0;color:var(--muted);"><span>Import VAT (17%)</span><span style="font-weight:600;color:var(--text);">€ 2,108.00</span></div>
+                <div style="padding: 0 14px">
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 12px;
+                      padding: 7px 0;
+                      border-bottom: 1px solid #f1f5f9;
+                      color: var(--muted);
+                    "
+                  >
+                    <span>CIF Value</span><span style="font-weight: 600; color: var(--text)">€ 12,400.00</span>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 12px;
+                      padding: 7px 0;
+                      border-bottom: 1px solid #f1f5f9;
+                      color: var(--muted);
+                    "
+                  >
+                    <span>Customs Duty</span><span style="font-weight: 600; color: var(--text)">€ 0.00</span>
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 12px;
+                      padding: 7px 0;
+                      color: var(--muted);
+                    "
+                  >
+                    <span>Import VAT (17%)</span><span style="font-weight: 600; color: var(--text)">€ 2,108.00</span>
+                  </div>
                 </div>
-                <div style="padding:10px 14px;background:#ecfdf5;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#059669;">
+                <div
+                  style="
+                    padding: 10px 14px;
+                    background: #ecfdf5;
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #059669;
+                  "
+                >
                   <span>Total Landed Cost</span><span>€ 14,508.00</span>
                 </div>
               </div>
-              <div style="margin-top:12px;">
-                <div style="display:inline-flex;align-items:center;gap:6px;background:#10b981;color:white;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;">⬇ Download PDF</div>
+              <div style="margin-top: 12px">
+                <div
+                  style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    background: #10b981;
+                    color: white;
+                    border-radius: 8px;
+                    padding: 8px 16px;
+                    font-size: 13px;
+                    font-weight: 600;
+                  "
+                >
+                  ⬇ Download PDF
+                </div>
               </div>
             </div>
 
@@ -1241,17 +2479,21 @@
               </div>
               <div class="fp-total"><span>CBAM cost (2026)</span><span>€ 2.63</span></div>
             </div>
-
-          </div><!-- /feature-preview-panel -->
-
-        </div><!-- /feature-tabs-layout -->
+          </div>
+          <!-- /feature-preview-panel -->
+        </div>
+        <!-- /feature-tabs-layout -->
       </div>
     </section>
 
-    <section id="how" class="section" style="background: white; margin: 0 -100vw; padding-left: 100vw; padding-right: 100vw;">
+    <section
+      id="how"
+      class="section"
+      style="background: transparent; margin: 0 -100vw; padding-left: 100vw; padding-right: 100vw"
+    >
       <div class="container">
         <div class="section-header">
-          <h2 class="section-title">From product to cost<br>in four simple steps</h2>
+          <h2 class="section-title">From product to cost<br />in four simple steps</h2>
         </div>
         <div class="steps-container">
           <div class="steps-grid">
@@ -1279,16 +2521,16 @@
 
           <!-- Animated plane overlay -->
           <svg id="steps-plane-svg" aria-hidden="true">
-            <path id="steps-plane-trail" class="plane-trail" d=""/>
+            <path id="steps-plane-trail" class="plane-trail" d="" />
             <g id="steps-plane" transform="translate(-999,-999)">
               <!-- Body -->
-              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
+              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981" />
               <!-- Wings -->
-              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
-              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
+              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399" />
+              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399" />
               <!-- Tail fins -->
-              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
-              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
+              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669" />
+              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669" />
             </g>
           </svg>
         </div>
@@ -1298,10 +2540,10 @@
     <section id="cta">
       <div class="container">
         <div class="cta-card">
-          <h2 class="cta-title">Ready to know your<br>landed costs?</h2>
+          <h2 class="cta-title">Ready to know your<br />landed costs?</h2>
           <p class="cta-sub">Join companies in Luxembourg using Dutify to import smarter.</p>
           <div class="cta-actions">
-            <a href="/register" class="btn btn-cta">Start for free →</a>
+            <a href="/register" class="btn btn-cta">Start here →</a>
             <a href="mailto:hello@dutify.eu" class="btn btn-cta-ghost">Contact us</a>
           </div>
         </div>
@@ -1325,10 +2567,16 @@
           <div>
             <div class="footer-logo">
               <svg width="24" height="24" viewBox="0 0 56 56" fill="none">
-                <rect width="56" height="56" rx="14" fill="#10b981"/>
-                <rect x="25" y="10" width="6" height="16" rx="3" fill="#10b981"/>
-                <path d="M14 22L28 38L42 22" stroke="#10b981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-                <rect x="12" y="42" width="32" height="4" rx="2" fill="#10b981"/>
+                <rect width="56" height="56" rx="14" fill="#10b981" />
+                <rect x="25" y="10" width="6" height="16" rx="3" fill="#10b981" />
+                <path
+                  d="M14 22L28 38L42 22"
+                  stroke="#10b981"
+                  stroke-width="5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <rect x="12" y="42" width="32" height="4" rx="2" fill="#10b981" />
               </svg>
               Dutify
             </div>
@@ -1343,346 +2591,394 @@
         </div>
       </div>
     </footer>
-  <script>
-    (function () {
-      var cv = document.getElementById('dotwave');
-      var ctx = cv.getContext('2d');
-      var W, H, t = 0;
+    <script>
+      (function () {
+                var cv = document.getElementById("dotwave");
+        var ctx = cv.getContext("2d");
+        var W,
+          H,
+          t = 0;
 
-      // Three wide sweeping wave bands — matching the image reference
-      var WAVES = [
-        { y: 0.18, amp: 0.22, freq: 1.4, speed:  0.30, phase: 0.00 },
-        { y: 0.55, amp: 0.20, freq: 1.7, speed: -0.25, phase: 2.20 },
-        { y: 0.86, amp: 0.15, freq: 1.2, speed:  0.20, phase: 4.50 },
-      ];
-      var GAP = 7;    // dot grid spacing (px)
-      var R   = 0.9;  // dot radius (px)
+        // Three wide sweeping wave bands — matching the image reference
+        var WAVES = [
+          { y: 0.18, amp: 0.22, freq: 1.4, speed: 0.3, phase: 0.0 },
+          { y: 0.55, amp: 0.2, freq: 1.7, speed: -0.25, phase: 2.2 },
+          { y: 0.86, amp: 0.15, freq: 1.2, speed: 0.2, phase: 4.5 },
+        ];
+        var GAP = 7; // dot grid spacing (px)
+        var R = 0.9; // dot radius (px)
 
-      function resize() {
-        W = cv.width  = window.innerWidth;
-        H = cv.height = window.innerHeight;
-      }
+        function resize() {
+          W = cv.width = window.innerWidth;
+          H = cv.height = window.innerHeight;
+        }
 
-      function frame() {
-        ctx.clearRect(0, 0, W, H);
-        ctx.fillStyle = '#0d2b1e'; // dark forest-green dots
+        function frame() {
+          ctx.clearRect(0, 0, W, H);
+          ctx.fillStyle = "#0d2b1e"; // dark forest-green dots
 
-        var cols = Math.ceil(W / GAP) + 1;
-        var rows = Math.ceil(H / GAP) + 1;
-        var band = H * 0.13; // soft band half-width
+          var cols = Math.ceil(W / GAP) + 1;
+          var rows = Math.ceil(H / GAP) + 1;
+          var band = H * 0.13; // soft band half-width
 
-        // Single beginPath per frame — one fill() call for all dots.
-        // Dot radius varies with density so we still get the gradient look.
-        ctx.beginPath();
-        for (var ri = 0; ri < rows; ri++) {
-          var y = ri * GAP;
-          for (var ci = 0; ci < cols; ci++) {
-            var x  = ci * GAP;
-            var nx = x / W;
-            var a  = 0;
+          // Single beginPath per frame — one fill() call for all dots.
+          // Dot radius varies with density so we still get the gradient look.
+          ctx.beginPath();
+          for (var ri = 0; ri < rows; ri++) {
+            var y = ri * GAP;
+            for (var ci = 0; ci < cols; ci++) {
+              var x = ci * GAP;
+              var nx = x / W;
+              var a = 0;
 
-            for (var wi = 0; wi < WAVES.length; wi++) {
-              var wv = WAVES[wi];
-              var wy = (wv.y + Math.sin(nx * Math.PI * wv.freq + wv.phase + t * wv.speed) * wv.amp) * H;
-              var d  = Math.abs(y - wy) / band;
-              if (d < 1) {
-                // smooth-step falloff
-                var s = 1 - d;
-                s = s * s * (3 - 2 * s);
-                if (s > a) a = s;
+              for (var wi = 0; wi < WAVES.length; wi++) {
+                var wv = WAVES[wi];
+                var wy = (wv.y + Math.sin(nx * Math.PI * wv.freq + wv.phase + t * wv.speed) * wv.amp) * H;
+                var d = Math.abs(y - wy) / band;
+                if (d < 1) {
+                  // smooth-step falloff
+                  var s = 1 - d;
+                  s = s * s * (3 - 2 * s);
+                  if (s > a) a = s;
+                }
+              }
+
+              if (a > 0.05) {
+                var r = R * (0.3 + 0.7 * a); // smaller dots fade at edges
+                ctx.moveTo(x + r, y);
+                ctx.arc(x, y, r, 0, 6.2832);
               }
             }
+          }
+          ctx.fill();
 
-            if (a > 0.05) {
-              var r = R * (0.3 + 0.7 * a); // smaller dots fade at edges
-              ctx.moveTo(x + r, y);
-              ctx.arc(x, y, r, 0, 6.2832);
+          t += 0.006;
+          requestAnimationFrame(frame);
+        }
+
+        window.addEventListener("resize", resize);
+        resize();
+        frame();
+      })();
+    </script>
+    <script>
+      /* ── Parallax ── */
+      (function () {
+        if (window.innerWidth < 768) return; /* skip on mobile */
+        var scrollY = 0;
+
+        /* Blob definitions: parallax rate, float freq, float amps, phase offset */
+        var blobDefs = [
+          { sel: ".blob-1", px: 0.22, fs: 0.38, fa: [55, 35], fp: 0.0 },
+          { sel: ".blob-2", px: -0.14, fs: 0.31, fa: [-48, 50], fp: 1.1 },
+          { sel: ".blob-3", px: 0.1, fs: 0.35, fa: [50, -46], fp: 2.3 },
+          { sel: ".blob-4", px: -0.18, fs: 0.27, fa: [-38, 32], fp: 3.5 },
+          { sel: ".blob-5", px: 0.15, fs: 0.42, fa: [60, -44], fp: 4.7 },
+          { sel: ".blob-6", px: -0.08, fs: 0.23, fa: [-30, 52], fp: 5.9 },
+        ];
+        var blobs = blobDefs.map(function (d) {
+          return { el: document.querySelector(d.sel), px: d.px, fs: d.fs, fa: d.fa, fp: d.fp };
+        });
+
+        /* Blob animation loop: float (sin/cos) + scroll parallax */
+        function tickBlobs(now) {
+          var t = now * 0.001;
+          blobs.forEach(function (b) {
+            if (!b.el) return;
+            var fx = Math.sin(t * b.fs + b.fp) * b.fa[0];
+            var fy = Math.cos(t * b.fs * 0.75 + b.fp) * b.fa[1];
+            var py = scrollY * b.px;
+            b.el.style.transform = "translate(" + fx.toFixed(1) + "px," + (fy + py).toFixed(1) + "px)";
+          });
+          requestAnimationFrame(tickBlobs);
+        }
+        requestAnimationFrame(tickBlobs);
+
+        /* Section parallax on scroll */
+        var heroContent = document.querySelector(".hero-content");
+        var carouselWrap = document.querySelector(".carousel-wrapper");
+        var scrollHint = document.querySelector(".scroll-hint");
+        var sectionHeaders = document.querySelectorAll(".section-header");
+        var stepCards = document.querySelectorAll(".step-card");
+        var ctaCard = document.querySelector(".cta-card");
+
+        function updateParallax() {
+          var vy = window.innerHeight;
+
+          /* Hide scroll hint once user scrolls */
+          if (scrollHint) scrollHint.classList.toggle("hidden", scrollY > 40);
+
+          /* Hero: both sides drift at the same rate */
+          if (heroContent) heroContent.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
+          if (carouselWrap) carouselWrap.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
+
+          /* Section elements: subtle offset relative to viewport centre */
+          function vpParallax(el, factor) {
+            if (!el) return;
+            var r = el.getBoundingClientRect();
+            var off = (r.top + r.height * 0.5 - vy * 0.5) * factor;
+            el.style.transform = "translateY(" + off.toFixed(1) + "px)";
+          }
+
+          sectionHeaders.forEach(function (h) {
+            vpParallax(h, 0.07);
+          });
+          stepCards.forEach(function (s, i) {
+            vpParallax(s, 0.05 + i * 0.015);
+          });
+          vpParallax(ctaCard, 0.06);
+        }
+
+        var ticking = false;
+        window.addEventListener(
+          "scroll",
+          function () {
+            scrollY = window.scrollY;
+            if (!ticking) {
+              requestAnimationFrame(function () {
+                updateParallax();
+                ticking = false;
+              });
+              ticking = true;
+            }
+          },
+          { passive: true },
+        );
+
+        updateParallax();
+      })();
+    </script>
+    <script>
+      (function () {
+        var DURATION = 4200;
+        var slides = document.querySelectorAll(".c-slide");
+        var dots = document.querySelectorAll(".c-dot");
+        var progressBar = document.getElementById("c-progress");
+        var current = 0;
+        var autoTimer = null;
+        var progressRaf = null;
+        var progressStart = null;
+
+        function showSlide(n) {
+          slides[current].classList.remove("active");
+          dots[current].classList.remove("active");
+          current = ((n % slides.length) + slides.length) % slides.length;
+          slides[current].classList.add("active");
+          dots[current].classList.add("active");
+          startProgress();
+        }
+
+        function startProgress() {
+          cancelAnimationFrame(progressRaf);
+          if (progressBar) progressBar.style.width = "0%";
+          progressStart = performance.now();
+          function tick(now) {
+            var pct = Math.min(((now - progressStart) / DURATION) * 100, 100);
+            if (progressBar) progressBar.style.width = pct + "%";
+            if (pct < 100) progressRaf = requestAnimationFrame(tick);
+          }
+          progressRaf = requestAnimationFrame(tick);
+        }
+
+        function startAuto() {
+          clearInterval(autoTimer);
+          autoTimer = setInterval(function () {
+            showSlide(current + 1);
+          }, DURATION);
+        }
+
+        if (slides.length) {
+          slides[0].classList.add("active");
+          dots[0].classList.add("active");
+          startProgress();
+          startAuto();
+        }
+
+        dots.forEach(function (dot, i) {
+          dot.addEventListener("click", function () {
+            clearInterval(autoTimer);
+            showSlide(i);
+            startAuto();
+          });
+        });
+      })();
+    </script>
+    <script>
+      /* ── Feature tabs ── */
+      (function () {
+        var tabs = Array.from(document.querySelectorAll(".feature-tab-btn"));
+        var previews = Array.from(document.querySelectorAll(".fp"));
+        var cur = 0;
+
+        function activate(idx) {
+          if (idx === cur) return;
+          previews[cur].classList.remove("f-active");
+          tabs[cur].classList.remove("f-active");
+          cur = idx;
+          previews[cur].classList.add("f-active");
+          tabs[cur].classList.add("f-active");
+        }
+
+        tabs.forEach(function (btn, i) {
+          btn.addEventListener("click", function () {
+            activate(i);
+          });
+        });
+
+        if (tabs.length) {
+          tabs[0].classList.add("f-active");
+          previews[0].classList.add("f-active");
+        }
+      })();
+
+      /* ── Step-cards plane animation ── */
+      (function () {
+        if (window.innerWidth < 640) return;
+
+        var container = document.querySelector(".steps-container");
+        var cards = Array.from(document.querySelectorAll(".step-card"));
+        var svg = document.getElementById("steps-plane-svg");
+        var trail = document.getElementById("steps-plane-trail");
+        var plane = document.getElementById("steps-plane");
+        if (!container || !cards.length || !svg || !trail || !plane) return;
+
+        /* Center of a card's step-num circle in SVG/container space */
+        function getCenter(card) {
+          var cr = container.getBoundingClientRect();
+          var nr = card.querySelector(".step-num").getBoundingClientRect();
+          return {
+            x: nr.left + nr.width * 0.5 - cr.left,
+            y: nr.top + nr.height * 0.5 - cr.top,
+          };
+        }
+
+        /* Quadratic bezier at t */
+        function qbez(p0, p1, p2, t) {
+          var u = 1 - t;
+          return {
+            x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+            y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+          };
+        }
+
+        /* Sub-curve from 0→t (de Casteljau split) */
+        function qbezSplit(p0, p1, p2, t) {
+          var q1 = { x: p0.x + t * (p1.x - p0.x), y: p0.y + t * (p1.y - p0.y) };
+          return [p0, q1, qbez(p0, p1, p2, t)];
+        }
+
+        var curPos = null;
+        var raf = null;
+        var fadeTimer = null;
+
+        function setPlane(x, y, deg) {
+          plane.setAttribute(
+            "transform",
+            "translate(" + x.toFixed(1) + "," + y.toFixed(1) + ") rotate(" + deg.toFixed(1) + ")",
+          );
+        }
+
+        function init() {
+          var c = getCenter(cards[0]);
+          curPos = { x: c.x, y: c.y };
+          setPlane(c.x, c.y, 0);
+          trail.style.opacity = "0";
+          trail.setAttribute("d", "");
+        }
+
+        function flyTo(to) {
+          var from = { x: curPos.x, y: curPos.y };
+          var dx = to.x - from.x,
+            dy = to.y - from.y;
+          if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+          if (raf) {
+            cancelAnimationFrame(raf);
+            raf = null;
+          }
+          if (fadeTimer) {
+            clearTimeout(fadeTimer);
+            fadeTimer = null;
+          }
+
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          /* Control point: midpoint arced upward */
+          var cp = {
+            x: (from.x + to.x) * 0.5,
+            y: (from.y + to.y) * 0.5 - Math.min(55, dist * 0.38),
+          };
+          var duration = Math.max(480, Math.min(900, dist * 1.8));
+          var startTs = null;
+
+          trail.style.transition = "";
+          trail.style.opacity = "0.7";
+
+          function step(ts) {
+            if (!startTs) startTs = ts;
+            var raw = Math.min((ts - startTs) / duration, 1);
+            var t = raw * raw * (3 - 2 * raw); /* smoothstep */
+
+            var sub = qbezSplit(from, cp, to, t);
+            trail.setAttribute(
+              "d",
+              "M " +
+                sub[0].x.toFixed(1) +
+                "," +
+                sub[0].y.toFixed(1) +
+                " Q " +
+                sub[1].x.toFixed(1) +
+                "," +
+                sub[1].y.toFixed(1) +
+                " " +
+                sub[2].x.toFixed(1) +
+                "," +
+                sub[2].y.toFixed(1),
+            );
+
+            /* Plane angle = tangent direction */
+            var tA = Math.min(t + 0.06, 1);
+            var ahead = qbez(from, cp, to, tA);
+            var ang = (Math.atan2(ahead.y - sub[2].y, ahead.x - sub[2].x) * 180) / Math.PI;
+            setPlane(sub[2].x, sub[2].y, ang);
+
+            if (raw < 1) {
+              raf = requestAnimationFrame(step);
+            } else {
+              curPos = { x: to.x, y: to.y };
+              setPlane(to.x, to.y, 0);
+              /* Fade trail after landing */
+              fadeTimer = setTimeout(function () {
+                trail.style.transition = "opacity 0.7s";
+                trail.style.opacity = "0";
+                fadeTimer = setTimeout(function () {
+                  trail.setAttribute("d", "");
+                  trail.style.transition = "";
+                }, 700);
+              }, 500);
             }
           }
+          raf = requestAnimationFrame(step);
         }
-        ctx.fill();
 
-        t += 0.006;
-        requestAnimationFrame(frame);
-      }
-
-      window.addEventListener('resize', resize);
-      resize();
-      frame();
-    }());
-  </script>
-  <script>
-    /* ── Parallax ── */
-    (function () {
-      if (window.innerWidth < 768) return; /* skip on mobile */
-      var scrollY = 0;
-
-      /* Blob definitions: parallax rate, float freq, float amps, phase offset */
-      var blobDefs = [
-        { sel: '.blob-1', px: 0.22,  fs: 0.38, fa: [ 55,  35], fp: 0.0 },
-        { sel: '.blob-2', px: -0.14, fs: 0.31, fa: [-48,  50], fp: 1.1 },
-        { sel: '.blob-3', px: 0.10,  fs: 0.35, fa: [ 50, -46], fp: 2.3 },
-        { sel: '.blob-4', px: -0.18, fs: 0.27, fa: [-38,  32], fp: 3.5 },
-        { sel: '.blob-5', px: 0.15,  fs: 0.42, fa: [ 60, -44], fp: 4.7 },
-        { sel: '.blob-6', px: -0.08, fs: 0.23, fa: [-30,  52], fp: 5.9 },
-      ];
-      var blobs = blobDefs.map(function (d) {
-        return { el: document.querySelector(d.sel), px: d.px, fs: d.fs, fa: d.fa, fp: d.fp };
-      });
-
-      /* Blob animation loop: float (sin/cos) + scroll parallax */
-      function tickBlobs(now) {
-        var t = now * 0.001;
-        blobs.forEach(function (b) {
-          if (!b.el) return;
-          var fx = Math.sin(t * b.fs + b.fp) * b.fa[0];
-          var fy = Math.cos(t * b.fs * 0.75 + b.fp) * b.fa[1];
-          var py = scrollY * b.px;
-          b.el.style.transform = 'translate(' + fx.toFixed(1) + 'px,' + (fy + py).toFixed(1) + 'px)';
+        cards.forEach(function (card) {
+          card.addEventListener("mouseenter", function () {
+            flyTo(getCenter(card));
+          });
         });
-        requestAnimationFrame(tickBlobs);
-      }
-      requestAnimationFrame(tickBlobs);
 
-      /* Section parallax on scroll */
-      var heroContent    = document.querySelector('.hero-content');
-      var carouselWrap   = document.querySelector('.carousel-wrapper');
-      var scrollHint     = document.querySelector('.scroll-hint');
-      var sectionHeaders = document.querySelectorAll('.section-header');
-      var stepCards      = document.querySelectorAll('.step-card');
-      var ctaCard        = document.querySelector('.cta-card');
-
-      function updateParallax() {
-        var vy = window.innerHeight;
-
-        /* Hide scroll hint once user scrolls */
-        if (scrollHint) scrollHint.classList.toggle('hidden', scrollY > 40);
-
-        /* Hero: both sides drift at the same rate */
-        if (heroContent)  heroContent.style.transform  = 'translateY(' + (scrollY * 0.13).toFixed(1) + 'px)';
-        if (carouselWrap) carouselWrap.style.transform = 'translateY(' + (scrollY * 0.13).toFixed(1) + 'px)';
-
-        /* Section elements: subtle offset relative to viewport centre */
-        function vpParallax(el, factor) {
-          if (!el) return;
-          var r   = el.getBoundingClientRect();
-          var off = ((r.top + r.height * 0.5) - vy * 0.5) * factor;
-          el.style.transform = 'translateY(' + off.toFixed(1) + 'px)';
-        }
-
-        sectionHeaders.forEach(function (h) { vpParallax(h, 0.07); });
-        stepCards.forEach(function (s, i)   { vpParallax(s, 0.05 + i * 0.015); });
-        vpParallax(ctaCard, 0.06);
-      }
-
-      var ticking = false;
-      window.addEventListener('scroll', function () {
-        scrollY = window.scrollY;
-        if (!ticking) { requestAnimationFrame(function () { updateParallax(); ticking = false; }); ticking = true; }
-      }, { passive: true });
-
-      updateParallax();
-    }());
-  </script>
-  <script>
-    (function () {
-      var DURATION = 4200;
-      var slides = document.querySelectorAll('.c-slide');
-      var dots = document.querySelectorAll('.c-dot');
-      var progressBar = document.getElementById('c-progress');
-      var current = 0;
-      var autoTimer = null;
-      var progressRaf = null;
-      var progressStart = null;
-
-      function showSlide(n) {
-        slides[current].classList.remove('active');
-        dots[current].classList.remove('active');
-        current = ((n % slides.length) + slides.length) % slides.length;
-        slides[current].classList.add('active');
-        dots[current].classList.add('active');
-          startProgress();
-      }
-
-      function startProgress() {
-        cancelAnimationFrame(progressRaf);
-        if (progressBar) progressBar.style.width = '0%';
-        progressStart = performance.now();
-        function tick(now) {
-          var pct = Math.min(((now - progressStart) / DURATION) * 100, 100);
-          if (progressBar) progressBar.style.width = pct + '%';
-          if (pct < 100) progressRaf = requestAnimationFrame(tick);
-        }
-        progressRaf = requestAnimationFrame(tick);
-      }
-
-      function startAuto() {
-        clearInterval(autoTimer);
-        autoTimer = setInterval(function () { showSlide(current + 1); }, DURATION);
-      }
-
-      if (slides.length) {
-        slides[0].classList.add('active');
-        dots[0].classList.add('active');
-        startProgress();
-        startAuto();
-      }
-
-      dots.forEach(function (dot, i) {
-        dot.addEventListener('click', function () {
-          clearInterval(autoTimer);
-          showSlide(i);
-          startAuto();
-        });
-      });
-    }());
-  </script>
-  <script>
-    /* ── Feature tabs ── */
-    (function () {
-      var tabs     = Array.from(document.querySelectorAll('.feature-tab-btn'));
-      var previews = Array.from(document.querySelectorAll('.fp'));
-      var cur = 0;
-
-      function activate(idx) {
-        if (idx === cur) return;
-        previews[cur].classList.remove('f-active');
-        tabs[cur].classList.remove('f-active');
-        cur = idx;
-        previews[cur].classList.add('f-active');
-        tabs[cur].classList.add('f-active');
-      }
-
-      tabs.forEach(function (btn, i) {
-        btn.addEventListener('click', function () { activate(i); });
-      });
-
-      if (tabs.length) {
-        tabs[0].classList.add('f-active');
-        previews[0].classList.add('f-active');
-      }
-    }());
-
-    /* ── Step-cards plane animation ── */
-    (function () {
-      if (window.innerWidth < 640) return;
-
-      var container = document.querySelector('.steps-container');
-      var cards     = Array.from(document.querySelectorAll('.step-card'));
-      var svg       = document.getElementById('steps-plane-svg');
-      var trail     = document.getElementById('steps-plane-trail');
-      var plane     = document.getElementById('steps-plane');
-      if (!container || !cards.length || !svg || !trail || !plane) return;
-
-      /* Center of a card's step-num circle in SVG/container space */
-      function getCenter(card) {
-        var cr = container.getBoundingClientRect();
-        var nr = card.querySelector('.step-num').getBoundingClientRect();
-        return {
-          x: nr.left + nr.width  * 0.5 - cr.left,
-          y: nr.top  + nr.height * 0.5 - cr.top
-        };
-      }
-
-      /* Quadratic bezier at t */
-      function qbez(p0, p1, p2, t) {
-        var u = 1 - t;
-        return {
-          x: u*u*p0.x + 2*u*t*p1.x + t*t*p2.x,
-          y: u*u*p0.y + 2*u*t*p1.y + t*t*p2.y
-        };
-      }
-
-      /* Sub-curve from 0→t (de Casteljau split) */
-      function qbezSplit(p0, p1, p2, t) {
-        var q1 = { x: p0.x + t*(p1.x-p0.x), y: p0.y + t*(p1.y-p0.y) };
-        return [p0, q1, qbez(p0, p1, p2, t)];
-      }
-
-      var curPos    = null;
-      var raf       = null;
-      var fadeTimer = null;
-
-      function setPlane(x, y, deg) {
-        plane.setAttribute('transform',
-          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+deg.toFixed(1)+')');
-      }
-
-      function init() {
-        var c = getCenter(cards[0]);
-        curPos = { x: c.x, y: c.y };
-        setPlane(c.x, c.y, 0);
-        trail.style.opacity = '0';
-        trail.setAttribute('d', '');
-      }
-
-      function flyTo(to) {
-        var from = { x: curPos.x, y: curPos.y };
-        var dx = to.x - from.x, dy = to.y - from.y;
-        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-        if (raf)       { cancelAnimationFrame(raf); raf = null; }
-        if (fadeTimer) { clearTimeout(fadeTimer);   fadeTimer = null; }
-
-        var dist = Math.sqrt(dx*dx + dy*dy);
-        /* Control point: midpoint arced upward */
-        var cp = {
-          x: (from.x + to.x) * 0.5,
-          y: (from.y + to.y) * 0.5 - Math.min(55, dist * 0.38)
-        };
-        var duration = Math.max(480, Math.min(900, dist * 1.8));
-        var startTs  = null;
-
-        trail.style.transition = '';
-        trail.style.opacity    = '0.7';
-
-        function step(ts) {
-          if (!startTs) startTs = ts;
-          var raw = Math.min((ts - startTs) / duration, 1);
-          var t   = raw * raw * (3 - 2 * raw); /* smoothstep */
-
-          var sub = qbezSplit(from, cp, to, t);
-          trail.setAttribute('d',
-            'M '+sub[0].x.toFixed(1)+','+sub[0].y.toFixed(1)+
-            ' Q '+sub[1].x.toFixed(1)+','+sub[1].y.toFixed(1)+
-            ' '+sub[2].x.toFixed(1)+','+sub[2].y.toFixed(1));
-
-          /* Plane angle = tangent direction */
-          var tA    = Math.min(t + 0.06, 1);
-          var ahead = qbez(from, cp, to, tA);
-          var ang   = Math.atan2(ahead.y - sub[2].y, ahead.x - sub[2].x) * 180 / Math.PI;
-          setPlane(sub[2].x, sub[2].y, ang);
-
-          if (raw < 1) {
-            raf = requestAnimationFrame(step);
+        window.addEventListener("resize", function () {
+          if (window.innerWidth < 640) {
+            svg.style.display = "none";
           } else {
-            curPos = { x: to.x, y: to.y };
-            setPlane(to.x, to.y, 0);
-            /* Fade trail after landing */
-            fadeTimer = setTimeout(function () {
-              trail.style.transition = 'opacity 0.7s';
-              trail.style.opacity    = '0';
-              fadeTimer = setTimeout(function () {
-                trail.setAttribute('d', '');
-                trail.style.transition = '';
-              }, 700);
-            }, 500);
+            svg.style.display = "";
+            init();
           }
-        }
-        raf = requestAnimationFrame(step);
-      }
+        });
 
-      cards.forEach(function (card) {
-        card.addEventListener('mouseenter', function () { flyTo(getCenter(card)); });
-      });
-
-      window.addEventListener('resize', function () {
-        if (window.innerWidth < 640) { svg.style.display = 'none'; }
-        else { svg.style.display = ''; init(); }
-      });
-
-      /* Init after first two frames so layout is settled */
-      requestAnimationFrame(function () { requestAnimationFrame(init); });
-    }());
-  </script>
+        /* Init after first two frames so layout is settled */
+        requestAnimationFrame(function () {
+          requestAnimationFrame(init);
+        });
+      })();
+    </script>
   </body>
 </html>

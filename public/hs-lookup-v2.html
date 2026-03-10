@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HS Lookup — Clean Design</title>
+  <style>
+    :root {
+      --bg: #f8faf9;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --green: #059669;
+      --green-light: #d1fae5;
+      --yellow: #d97706;
+      --yellow-light: #fef3c7;
+      --red: #dc2626;
+      --red-light: #fee2e2;
+      --blue: #2563eb;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container { max-width: 500px; margin: 0 auto; }
+    
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    
+    /* Input Section */
+    .input-section { padding: 24px; }
+    .input-section h2 { font-size: 18px; margin-bottom: 16px; }
+    
+    .search-box {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    
+    .search-box textarea {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      resize: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    
+    .search-box textarea:focus {
+      outline: none;
+      border-color: var(--green);
+    }
+    
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--green);
+      color: white;
+    }
+    
+    .btn-primary:hover { background: #047857; }
+    
+    /* Result Card */
+    .result-card { padding: 24px; }
+    
+    .code-display {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    
+    .code-number {
+      font-size: 36px;
+      font-weight: 700;
+      font-family: 'SF Mono', monospace;
+      color: var(--green);
+      letter-spacing: 2px;
+    }
+    
+    .code-desc {
+      font-size: 15px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 16px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .confidence {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .confidence-bar {
+      width: 60px;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    
+    .confidence-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 3px;
+    }
+    
+    .confidence-fill.medium { background: var(--yellow); }
+    .confidence-fill.low { background: var(--red); }
+    
+    /* Status Badge */
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+    
+    .status.clear {
+      background: var(--green-light);
+      color: var(--green);
+    }
+    
+    .status.warning {
+      background: var(--red-light);
+      color: var(--red);
+    }
+    
+    /* Expandable Sections */
+    .expandable {
+      border-top: 1px solid var(--border);
+    }
+    
+    .expand-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .expand-header:hover { color: var(--green); }
+    
+    .expand-title {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .expand-badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: #f3f4f6;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    
+    .expand-icon {
+      font-size: 12px;
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+    
+    .expand-content {
+      display: none;
+      padding-bottom: 16px;
+    }
+    
+    .expandable.open .expand-content { display: block; }
+    .expandable.open .expand-icon { transform: rotate(90deg); }
+    
+    .doc-list {
+      list-style: none;
+    }
+    
+    .doc-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .doc-list li:last-child { border-bottom: none; }
+    
+    .doc-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--green);
+    }
+    
+    .doc-check.required {
+      background: var(--green-light);
+      border-color: var(--green);
+    }
+    
+    /* Actions */
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .btn-secondary {
+      flex: 1;
+      background: #f3f4f6;
+      color: var(--text);
+    }
+    
+    .btn-secondary:hover { background: #e5e7eb; }
+    
+    /* Warning Banner */
+    .warning-banner {
+      background: var(--red);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .warning-banner .icon { font-size: 24px; }
+    
+    .warning-banner h3 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .warning-banner p {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    
+    .warning-details {
+      background: var(--red-light);
+      padding: 16px 20px;
+      font-size: 13px;
+      color: #991b1b;
+    }
+    
+    .warning-details ul {
+      list-style: none;
+      margin-top: 8px;
+    }
+    
+    .warning-details li {
+      padding: 4px 0;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .acknowledge {
+      padding: 16px 20px;
+      background: #fef2f2;
+      border-top: 1px solid #fecaca;
+    }
+    
+    .acknowledge label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    .acknowledge input {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Needs Info State */
+    .needs-info-banner {
+      background: var(--yellow);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .needs-info-content {
+      padding: 20px;
+    }
+    
+    .question-list {
+      list-style: none;
+      margin: 16px 0;
+    }
+    
+    .question-list li {
+      padding: 10px 14px;
+      background: var(--yellow-light);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #92400e;
+    }
+    
+    .chapter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    
+    .chip {
+      padding: 6px 12px;
+      background: #f3f4f6;
+      border-radius: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    
+    /* Demo Navigation */
+    .demo-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .demo-nav button {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    
+    .demo-nav button.active {
+      background: var(--green);
+      color: white;
+      border-color: var(--green);
+    }
+    
+    .screen { display: none; }
+    .screen.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="demo-nav">
+      <button class="active" onclick="show('input')">Input</button>
+      <button onclick="show('success')">✅ Success</button>
+      <button onclick="show('warning')">⚠️ Sensitive</button>
+      <button onclick="show('needsinfo')">🤔 Needs Info</button>
+    </div>
+    
+    <!-- INPUT STATE -->
+    <div id="input" class="screen active">
+      <div class="card">
+        <div class="input-section">
+          <h2>🔍 HS Code Lookup</h2>
+          <div class="search-box">
+            <textarea rows="3" placeholder="Describe your product...">Samsung Galaxy S24 smartphone 256GB unlocked</textarea>
+          </div>
+          <p class="hint">💡 Be specific: brand, model, material, function</p>
+          <button class="btn btn-primary">Classify Product</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SUCCESS STATE -->
+    <div id="success" class="screen">
+      <div class="card">
+        <div class="result-card">
+          <div class="code-display">
+            <div class="code-number">8517.13.00</div>
+            <div class="code-desc">Smartphones for cellular networks</div>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Duty</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">17%</div>
+                <div class="stat-label">VAT</div>
+              </div>
+              <div class="stat">
+                <div class="confidence">
+                  <div class="confidence-bar"><div class="confidence-fill" style="width:90%"></div></div>
+                </div>
+                <div class="stat-label">Confidence</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="status clear">
+            ✅ Clear to import — no restrictions
+          </div>
+          
+          <div class="expandable" onclick="this.classList.toggle('open')">
+            <div class="expand-header">
+              <span class="expand-title">📄 Required Documents</span>
+              <span class="expand-badge">3</span>
+              <span class="expand-icon">▶</span>
+            </div>
+            <div class="expand-content">
+              <ul class="doc-list">
+                <li><span class="doc-check required">✓</span> Commercial Invoice</li>
+                <li><span class="doc-check required">✓</span> Packing List</li>
+                <li><span class="doc-check">○</span> CE Declaration (if electrical)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="expandable" onclick="this.classList.toggle('open')">
+            <div class="expand-header">
+              <span class="expand-title">🌍 Preferential Rates</span>
+              <span class="expand-badge">12 FTAs</span>
+              <span class="expand-icon">▶</span>
+            </div>
+            <div class="expand-content">
+              <ul class="doc-list">
+                <li><span>🇬🇧</span> UK (TCA) — 0%</li>
+                <li><span>🇯🇵</span> Japan (EPA) — 0%</li>
+                <li><span>🇰🇷</span> South Korea (FTA) — 0%</li>
+                <li><span>🇨🇦</span> Canada (CETA) — 0%</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="expandable" onclick="this.classList.toggle('open')">
+            <div class="expand-header">
+              <span class="expand-title">📋 Regulations</span>
+              <span class="expand-badge">4</span>
+              <span class="expand-icon">▶</span>
+            </div>
+            <div class="expand-content">
+              <ul class="doc-list">
+                <li>CE Marking (Dir 2014/30/EU)</li>
+                <li>RoHS (Dir 2011/65/EU)</li>
+                <li>WEEE Registration</li>
+                <li>Radio Equipment (Dir 2014/53/EU)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="actions">
+            <button class="btn btn-secondary">★ Save</button>
+            <button class="btn btn-primary">→ Use in Calculator</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- WARNING STATE (Sensitive Goods) -->
+    <div id="warning" class="screen">
+      <div class="card">
+        <div class="warning-banner">
+          <span class="icon">⚠️</span>
+          <div>
+            <h3>Sensitive Goods — Licence Required</h3>
+            <p>This product is classified as dual-use</p>
+          </div>
+        </div>
+        
+        <div class="warning-details">
+          <strong>Before importing, verify:</strong>
+          <ul>
+            <li>📋 Authority: BAFA (Germany) or relevant NCA</li>
+            <li>📜 Regulation: EU 2021/821 (Dual-Use)</li>
+            <li>⚡ Penalties: Up to 5 years imprisonment</li>
+          </ul>
+        </div>
+        
+        <div class="acknowledge">
+          <label>
+            <input type="checkbox" id="ack">
+            I understand and will verify licence requirements
+          </label>
+        </div>
+        
+        <div class="result-card">
+          <div class="code-display">
+            <div class="code-number">8543.70.90</div>
+            <div class="code-desc">Encryption devices NES</div>
+            <div class="stats">
+              <div class="stat">
+                <div class="stat-value">0%</div>
+                <div class="stat-label">Duty</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">17%</div>
+                <div class="stat-label">VAT</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="actions">
+            <button class="btn btn-secondary">★ Save</button>
+            <button class="btn btn-primary" disabled style="opacity:0.5">→ Acknowledge First</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- NEEDS INFO STATE -->
+    <div id="needsinfo" class="screen">
+      <div class="card">
+        <div class="needs-info-banner">
+          <span class="icon">🤔</span>
+          <div>
+            <h3 style="font-size:14px;font-weight:600;">More Details Needed</h3>
+            <p style="font-size:13px;opacity:0.9;margin-top:4px;">"Machine" is too generic</p>
+          </div>
+        </div>
+        
+        <div class="needs-info-content">
+          <p style="font-size:14px;color:var(--muted);margin-bottom:12px;">Please specify:</p>
+          
+          <ul class="question-list">
+            <li>❓ What type of machine?</li>
+            <li>❓ What is its primary function?</li>
+            <li>❓ What industry is it for?</li>
+          </ul>
+          
+          <p style="font-size:13px;color:var(--muted);margin-top:20px;">Could be in:</p>
+          <div class="chapter-chips">
+            <span class="chip">Ch. 84 — Machinery</span>
+            <span class="chip">Ch. 85 — Electrical</span>
+            <span class="chip">Ch. 90 — Instruments</span>
+          </div>
+          
+          <div style="margin-top:20px;">
+            <textarea rows="2" style="width:100%;padding:12px;border:2px solid var(--yellow);border-radius:8px;font-size:14px;" placeholder="Add more details..."></textarea>
+          </div>
+          
+          <button class="btn btn-primary" style="margin-top:12px;background:var(--yellow);">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function show(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.demo-nav button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>

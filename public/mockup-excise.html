@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutify v2 — Excise Example</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --primary: #059669;
+      --primary-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --error: #ef4444;
+      --info: #3b82f6;
+      --info-light: #dbeafe;
+      --purple: #7c3aed;
+      --purple-light: #ede9fe;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    
+    .container { max-width: 600px; margin: 0 auto; }
+    
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 24px; font-weight: 600; color: var(--primary); }
+    .header p { color: var(--text-muted); font-size: 14px; }
+    
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    
+    .product-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f3f4f6;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    
+    .product-pill .code {
+      font-family: 'SF Mono', monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .origin-display {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+    
+    .origin-display .flag { font-size: 24px; }
+    .origin-display .arrow { color: var(--text-muted); }
+    
+    .excise-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--purple-light);
+      color: var(--purple);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+    
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    
+    .result-section { margin-bottom: 16px; }
+    
+    .result-section .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+    }
+    
+    .result-row.muted { color: var(--text-muted); }
+    
+    .result-row .value {
+      font-weight: 500;
+      font-family: 'SF Mono', monospace;
+    }
+    
+    .result-total {
+      background: var(--primary);
+      color: white;
+      margin: -20px;
+      margin-top: 16px;
+      padding: 20px;
+      border-radius: 0 0 11px 11px;
+    }
+    
+    .result-total .label { font-size: 14px; opacity: 0.9; }
+    .result-total .amount { font-size: 28px; font-weight: 600; font-family: 'SF Mono', monospace; }
+    .result-total .per-unit { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+    
+    .info-box {
+      background: var(--purple-light);
+      border-left: 3px solid var(--purple);
+      padding: 12px;
+      font-size: 14px;
+      color: #5b21b6;
+      margin-top: 12px;
+      border-radius: 0 6px 6px 0;
+    }
+    
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+    
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    .input-row { display: flex; gap: 12px; }
+    .input-row > * { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🧮 Dutify</h1>
+      <p>Excise Product Example — Scotch Whisky</p>
+    </div>
+    
+    <!-- Excise Step (auto-triggered) -->
+    <div class="card">
+      <div class="product-pill">
+        <span class="code">2208.30.30</span>
+        <span>Scotch Whisky × 1000 bottles</span>
+      </div>
+      
+      <div class="excise-badge">
+        🍷 Excise Product Detected — Spirits
+      </div>
+      
+      <div class="card-title">Excise Details Required</div>
+      
+      <div class="input-row">
+        <div class="input-group">
+          <label>Volume per bottle</label>
+          <input type="text" value="0.7" placeholder="litres">
+        </div>
+        <div class="input-group">
+          <label>ABV</label>
+          <input type="text" value="40" placeholder="%">
+        </div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="result-row muted">
+        <span>Total volume</span>
+        <span class="value">700 litres</span>
+      </div>
+      <div class="result-row muted">
+        <span>Pure alcohol (700L × 40%)</span>
+        <span class="value">280 litres</span>
+      </div>
+      <div class="result-row muted">
+        <span>= Hectolitres pure alcohol</span>
+        <span class="value">2.8 hl PA</span>
+      </div>
+      <div class="result-row" style="color: var(--purple);">
+        <span>Luxembourg excise rate</span>
+        <span class="value">€1,041.15 / hl PA</span>
+      </div>
+      
+      <div class="info-box">
+        Luxembourg excise on spirits: €1,041.15 per hectolitre of pure alcohol (ADA 2026)
+      </div>
+    </div>
+    
+    <!-- Combined Result -->
+    <div class="card">
+      <div class="origin-display">
+        <span class="flag">🇬🇧</span>
+        <span class="arrow">→</span>
+        <span class="flag">🇱🇺</span>
+        <span>UK to Luxembourg (TCA)</span>
+      </div>
+      
+      <div class="result-section">
+        <div class="section-title">Customs Value</div>
+        <div class="result-row">
+          <span>CIF in EUR</span>
+          <span class="value">€25,000.00</span>
+        </div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="result-section">
+        <div class="section-title">Customs Duties</div>
+        <div class="result-row muted">
+          <span>Customs duty (0% — TCA)</span>
+          <span class="value">€0.00</span>
+        </div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="result-section">
+        <div class="section-title">🍷 Excise Duty</div>
+        <div class="result-row" style="color: var(--purple);">
+          <span>Spirits (2.8 hl PA × €1,041.15)</span>
+          <span class="value">€2,915.22</span>
+        </div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="result-section">
+        <div class="section-title">VAT</div>
+        <div class="result-row muted">
+          <span>VAT base (value + duty + excise)</span>
+          <span class="value">€27,915.22</span>
+        </div>
+        <div class="result-row">
+          <span>Luxembourg VAT (17%)</span>
+          <span class="value">€4,745.59</span>
+        </div>
+      </div>
+      
+      <div class="result-total">
+        <div class="label">Total Landed Cost</div>
+        <div class="amount">€32,660.81</div>
+        <div class="per-unit">€32.66 per bottle</div>
+      </div>
+    </div>
+    
+    <div class="btn-row">
+      <button class="btn btn-secondary">📄 PDF</button>
+      <button class="btn btn-secondary">💾 Save</button>
+      <button class="btn btn-primary">🔄 New</button>
+    </div>
+  </div>
+</body>
+</html>

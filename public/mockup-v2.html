@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutify v2 — Mockup</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --primary: #059669;
+      --primary-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --error: #ef4444;
+      --info: #3b82f6;
+      --info-light: #dbeafe;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .header p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    
+    .step {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--border);
+      color: var(--text-muted);
+    }
+    
+    .step.active {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .step.done {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    
+    .input-group {
+      margin-bottom: 16px;
+    }
+    
+    .input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    
+    .input-group input, .input-group select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    
+    .input-group input:focus, .input-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    .input-row {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .input-row > * {
+      flex: 1;
+    }
+    
+    .ai-box {
+      background: var(--info-light);
+      border: 1px solid #93c5fd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    
+    .ai-box .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    .ai-box .suggestion {
+      background: white;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .ai-box .code {
+      font-family: 'SF Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .ai-box .desc {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .confidence {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+    
+    .confidence-bar {
+      flex: 1;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    
+    .confidence-fill {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 3px;
+    }
+    
+    .ai-note {
+      font-size: 13px;
+      color: var(--text-muted);
+      background: #fef3c7;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+    }
+    
+    .ai-note::before {
+      content: "⚠️ ";
+    }
+    
+    .fta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+    
+    .fta-details {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    
+    .fta-details .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .fta-details .row:last-child {
+      border-bottom: none;
+    }
+    
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    
+    .checkbox-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+    }
+    
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    
+    .result-section {
+      margin-bottom: 16px;
+    }
+    
+    .result-section .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+    }
+    
+    .result-row.muted {
+      color: var(--text-muted);
+    }
+    
+    .result-row .value {
+      font-weight: 500;
+      font-family: 'SF Mono', monospace;
+    }
+    
+    .result-total {
+      background: var(--primary);
+      color: white;
+      margin: -20px;
+      margin-top: 16px;
+      padding: 20px;
+      border-radius: 0 0 11px 11px;
+    }
+    
+    .result-total .label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .result-total .amount {
+      font-size: 28px;
+      font-weight: 600;
+      font-family: 'SF Mono', monospace;
+    }
+    
+    .result-total .per-unit {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+    
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #047857;
+    }
+    
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+    
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+    
+    .info-box {
+      background: var(--info-light);
+      border-left: 3px solid var(--info);
+      padding: 12px;
+      font-size: 14px;
+      color: #1e40af;
+      margin-top: 12px;
+      border-radius: 0 6px 6px 0;
+    }
+    
+    .warning-box {
+      background: var(--warning-light);
+      border-left: 3px solid var(--warning);
+      padding: 12px;
+      font-size: 14px;
+      color: #92400e;
+      margin-top: 16px;
+      border-radius: 0 6px 6px 0;
+    }
+    
+    .section-break {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin: 32px 0 16px;
+    }
+    
+    /* Product pill */
+    .product-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f3f4f6;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+    
+    .product-pill .code {
+      font-family: 'SF Mono', monospace;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    
+    .product-pill .name {
+      color: var(--text-muted);
+    }
+    
+    /* Origin flag */
+    .origin-display {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+    
+    .origin-display .flags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .origin-display .flag {
+      font-size: 24px;
+    }
+    
+    .origin-display .arrow {
+      color: var(--text-muted);
+    }
+    
+    /* Screen visibility */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    
+    /* Tab navigation for demo */
+    .demo-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    
+    .demo-nav button {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    
+    .demo-nav button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🧮 Dutify</h1>
+      <p>Luxembourg Customs Calculator</p>
+    </div>
+    
+    <!-- Demo navigation -->
+    <div class="demo-nav">
+      <button class="active" onclick="showScreen('goods')">1. Goods</button>
+      <button onclick="showScreen('origin')">2. Origin</button>
+      <button onclick="showScreen('value')">3. Value</button>
+      <button onclick="showScreen('result')">4. Result</button>
+      <button onclick="showScreen('result-complex')">4b. Complex</button>
+    </div>
+    
+    <!-- Screen 1: Goods -->
+    <div id="goods" class="screen active">
+      <div class="steps">
+        <div class="step active">1</div>
+        <div class="step">2</div>
+        <div class="step">3</div>
+        <div class="step">4</div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Product Identification</div>
+        
+        <div class="input-group">
+          <label>Describe your product or enter CN code</label>
+          <input type="text" placeholder="e.g. Samsung Galaxy smartphone" value="Samsung Galaxy S24 smartphone">
+        </div>
+        
+        <div class="ai-box">
+          <div class="ai-header">
+            🤖 AI Classification
+          </div>
+          <div class="suggestion">
+            <div class="code">8517.13.00.00</div>
+            <div class="desc">Smartphones (telephones for cellular networks)</div>
+            <div class="confidence">
+              <span>Confidence:</span>
+              <div class="confidence-bar">
+                <div class="confidence-fill" style="width: 92%"></div>
+              </div>
+              <span>92%</span>
+            </div>
+          </div>
+          <div style="font-size: 14px; color: #374151;">
+            <strong>Why:</strong> Portable device with cellular capability as primary function, touchscreen interface, personal communication device.
+          </div>
+          <div class="ai-note">
+            If primarily a tablet with SIM, consider 8471.30.00 (portable computers)
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Quantity</div>
+        <div class="input-row">
+          <div class="input-group">
+            <label>Amount</label>
+            <input type="number" value="500">
+          </div>
+          <div class="input-group">
+            <label>Unit</label>
+            <select>
+              <option selected>Pieces</option>
+              <option>Kilograms</option>
+              <option>Litres</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn btn-primary" style="width: 100%;">Continue →</button>
+    </div>
+    
+    <!-- Screen 2: Origin -->
+    <div id="origin" class="screen">
+      <div class="steps">
+        <div class="step done">✓</div>
+        <div class="step active">2</div>
+        <div class="step">3</div>
+        <div class="step">4</div>
+      </div>
+      
+      <div class="card">
+        <div class="product-pill">
+          <span class="code">8517.13.00</span>
+          <span class="name">Smartphones × 500</span>
+        </div>
+        
+        <div class="card-title">Origin Country</div>
+        <div class="input-group">
+          <select>
+            <option>🇨🇳 China</option>
+            <option selected>🇻🇳 Vietnam</option>
+            <option>🇰🇷 South Korea</option>
+            <option>🇯🇵 Japan</option>
+            <option>🇺🇸 United States</option>
+          </select>
+        </div>
+        
+        <div class="fta-badge">
+          ✓ EU-Vietnam FTA applies
+        </div>
+        
+        <div class="fta-details">
+          <div class="row">
+            <span>MFN duty rate</span>
+            <span>0% (ITA)</span>
+          </div>
+          <div class="row">
+            <span>FTA preferential rate</span>
+            <span style="color: var(--primary); font-weight: 600;">0%</span>
+          </div>
+          <div class="row">
+            <span>Proof required</span>
+            <span>REX statement</span>
+          </div>
+        </div>
+        
+        <div class="checkbox-row">
+          <input type="checkbox" id="hasProof" checked>
+          <label for="hasProof">I have valid proof of origin</label>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Destination</div>
+        <div class="input-group">
+          <select>
+            <option selected>🇱🇺 Luxembourg</option>
+          </select>
+        </div>
+        <div class="info-box">
+          VAT rate: 17% (standard rate for electronics)
+        </div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary">← Back</button>
+        <button class="btn btn-primary">Continue →</button>
+      </div>
+    </div>
+    
+    <!-- Screen 3: Value -->
+    <div id="value" class="screen">
+      <div class="steps">
+        <div class="step done">✓</div>
+        <div class="step done">✓</div>
+        <div class="step active">3</div>
+        <div class="step">4</div>
+      </div>
+      
+      <div class="card">
+        <div class="product-pill">
+          <span class="code">8517.13.00</span>
+          <span class="name">Smartphones × 500</span>
+        </div>
+        <div class="origin-display">
+          <div class="flags">
+            <span class="flag">🇻🇳</span>
+            <span class="arrow">→</span>
+            <span class="flag">🇱🇺</span>
+          </div>
+          <span>Vietnam to Luxembourg</span>
+        </div>
+        
+        <div class="card-title">Incoterm & Value</div>
+        
+        <div class="input-group">
+          <label>Incoterm</label>
+          <select>
+            <option>EXW — Ex Works</option>
+            <option selected>FOB — Free On Board</option>
+            <option>CFR — Cost and Freight</option>
+            <option>CIF — Cost, Insurance, Freight</option>
+            <option>DDP — Delivered Duty Paid</option>
+          </select>
+        </div>
+        
+        <div class="info-box" style="margin-bottom: 16px;">
+          FOB = value at port of origin. Add freight & insurance for customs value.
+        </div>
+        
+        <div class="input-row">
+          <div class="input-group">
+            <label>Invoice value (FOB)</label>
+            <input type="text" value="45,000">
+          </div>
+          <div class="input-group">
+            <label>Currency</label>
+            <select>
+              <option selected>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="input-row">
+          <div class="input-group">
+            <label>Freight</label>
+            <input type="text" value="2,500">
+          </div>
+          <div class="input-group">
+            <label>Insurance</label>
+            <input type="text" value="225">
+          </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-row">
+          <span>CIF Value (USD)</span>
+          <span class="value">$47,725.00</span>
+        </div>
+        <div class="result-row">
+          <span>Exchange rate (ECB)</span>
+          <span class="value">1 EUR = 1.1000 USD</span>
+        </div>
+        <div class="result-row" style="font-weight: 600;">
+          <span>Customs Value (EUR)</span>
+          <span class="value" style="color: var(--primary);">€43,386.36</span>
+        </div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary">← Back</button>
+        <button class="btn btn-primary">Calculate →</button>
+      </div>
+    </div>
+    
+    <!-- Screen 4: Result (Simple) -->
+    <div id="result" class="screen">
+      <div class="steps">
+        <div class="step done">✓</div>
+        <div class="step done">✓</div>
+        <div class="step done">✓</div>
+        <div class="step active">4</div>
+      </div>
+      
+      <div class="card">
+        <div class="product-pill">
+          <span class="code">8517.13.00</span>
+          <span class="name">Smartphones × 500</span>
+        </div>
+        <div class="origin-display">
+          <div class="flags">
+            <span class="flag">🇻🇳</span>
+            <span class="arrow">→</span>
+            <span class="flag">🇱🇺</span>
+          </div>
+        </div>
+        
+        <div class="result-section">
+          <div class="section-title">Customs Value</div>
+          <div class="result-row">
+            <span>CIF in EUR</span>
+            <span class="value">€43,386.36</span>
+          </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-section">
+          <div class="section-title">Duties</div>
+          <div class="result-row muted">
+            <span>Customs duty (0% — ITA agreement)</span>
+            <span class="value">€0.00</span>
+          </div>
+          <div class="result-row muted">
+            <span>Anti-dumping</span>
+            <span class="value">—</span>
+          </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-section">
+          <div class="section-title">VAT</div>
+          <div class="result-row muted">
+            <span>VAT base (value + duties)</span>
+            <span class="value">€43,386.36</span>
+          </div>
+          <div class="result-row">
+            <span>Luxembourg VAT (17%)</span>
+            <span class="value">€7,375.68</span>
+          </div>
+        </div>
+        
+        <div class="result-total">
+          <div class="label">Total Landed Cost</div>
+          <div class="amount">€50,762.04</div>
+          <div class="per-unit">€101.52 per unit</div>
+        </div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary">📄 PDF</button>
+        <button class="btn btn-secondary">💾 Save</button>
+        <button class="btn btn-primary">🔄 New</button>
+      </div>
+    </div>
+    
+    <!-- Screen 4b: Result (Complex with CBAM) -->
+    <div id="result-complex" class="screen">
+      <div class="steps">
+        <div class="step done">✓</div>
+        <div class="step done">✓</div>
+        <div class="step done">✓</div>
+        <div class="step active">4</div>
+      </div>
+      
+      <div class="card">
+        <div class="product-pill">
+          <span class="code">7208.51.00</span>
+          <span class="name">Hot-rolled steel × 1,000t</span>
+        </div>
+        <div class="origin-display">
+          <div class="flags">
+            <span class="flag">🇨🇳</span>
+            <span class="arrow">→</span>
+            <span class="flag">🇱🇺</span>
+          </div>
+        </div>
+        
+        <div class="result-section">
+          <div class="section-title">Customs Value</div>
+          <div class="result-row">
+            <span>CIF in EUR</span>
+            <span class="value">€850,000.00</span>
+          </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-section">
+          <div class="section-title">Duties</div>
+          <div class="result-row muted">
+            <span>Customs duty (0%)</span>
+            <span class="value">€0.00</span>
+          </div>
+          <div class="result-row" style="color: var(--warning);">
+            <span>⚠️ Anti-dumping (17.2%)</span>
+            <span class="value">€146,200.00</span>
+          </div>
+        </div>
+        
+        <div class="warning-box">
+          Anti-dumping rate varies by exporter. Verify with TARIC for exact rate.
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-section">
+          <div class="section-title">🌍 CBAM (2026 — 2.5% phase-in)</div>
+          <div class="result-row muted">
+            <span>Embedded emissions</span>
+            <span class="value">1,850 tCO2e</span>
+          </div>
+          <div class="result-row muted">
+            <span>ETS price</span>
+            <span class="value">€82.50/tCO2e</span>
+          </div>
+          <div class="result-row">
+            <span>CBAM cost (2.5%)</span>
+            <span class="value">€3,816.56</span>
+          </div>
+        </div>
+        
+        <div class="info-box">
+          CBAM reporting required. Certificates purchased separately.
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="result-section">
+          <div class="section-title">VAT</div>
+          <div class="result-row muted">
+            <span>VAT base</span>
+            <span class="value">€996,200.00</span>
+          </div>
+          <div class="result-row">
+            <span>Luxembourg VAT (17%)</span>
+            <span class="value">€169,354.00</span>
+          </div>
+        </div>
+        
+        <div class="result-total">
+          <div class="label">Total Landed Cost</div>
+          <div class="amount">€1,169,370.56</div>
+          <div class="per-unit">+ €3,816.56 CBAM certificates</div>
+        </div>
+      </div>
+      
+      <div class="btn-row">
+        <button class="btn btn-secondary">📄 PDF</button>
+        <button class="btn btn-secondary">💾 Save</button>
+        <button class="btn btn-primary">🔄 New</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.demo-nav button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
