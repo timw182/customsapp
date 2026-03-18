@@ -10,17 +10,15 @@ import { signOut } from "next-auth/react";
 // Maps HS chapter to applicable VAT rate
 const LU_VAT_RATES_3 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 36, 49];
 const LU_VAT_RATES_8 = [27, 90];
-// Chapter 22: still wine ≤13° ABV = 14%, still wine >13° ABV = 17%, sparkling/beer/spirits = 17%
-// stillWineLow flag passed from UI when user confirms still wine ≤13° ABV
+// Note: chapter 22 wines have special rules (still wine 14%, >13° ABV 17%)
 // chapter 30 pharma = 3%, chapter 61-64 children items = 3% (needs user input for size)
 
-function getLuVAT(hsCode, stillWineLow = false) {
+function getLuVAT(hsCode) {
   if (!hsCode) return 0.17;
   const chapter = parseInt(String(hsCode).replace(/\D/g, "").substring(0, 2), 10);
   if (LU_VAT_RATES_3.includes(chapter)) return 0.03;
   if (LU_VAT_RATES_8.includes(chapter)) return 0.08;
   if (chapter === 30) return 0.03; // pharma
-  if (chapter === 22 && stillWineLow) return 0.14; // still wine ≤13° ABV (LU Loi TVA)
   return 0.17;
 }
 
@@ -76,16 +74,10 @@ const EXCISE_SCHEMAS = {
   "still-wine": {
     label: "Still Wine",
     group: "Alcohol",
-    // VAT: 14% if ≤13° ABV, 17% if >13° ABV (LU Loi TVA — Luxembourg exception)
-    vatRate: null, // dynamic — determined by abv input
-    inputs: ["volume", "abv"],
+    vatRate: 0.17,
+    inputs: ["volume"],
     calc(inp, R) {
-      const vatRate = (inp.abv || 0) <= 13 ? 0.14 : 0.17;
-      return {
-        duty: (inp.volume / 100) * R["still-wine"],
-        note: `EU 0-rate — no excise duty in LU · VAT ${vatRate * 100}% (${(inp.abv || 0) <= 13 ? "≤13°" : ">13°"} ABV)`,
-        vatRate,
-      };
+      return { duty: (inp.volume / 100) * R["still-wine"], note: "EU 0-rate — no excise duty in LU" };
     },
   },
   "sparkling-wine": {
@@ -255,19 +247,17 @@ const EXCISE_SCHEMAS = {
 };
 
 // ─── CBAM (Carbon Border Adjustment Mechanism) — EU Regulation 2023/956 ────────
-// Phase-in factor = fraction of embedded emissions requiring CBAM certificate purchase
-// = 1 − share of free EU ETS allowances (free allocation phased out per ETS Directive Art. 10a)
-// Financial obligations start 1 Jan 2026. From 2026 importers must surrender CBAM certificates.
+// Phase-in factor = 1 − share of free EU ETS allowances still in circulation
 const CBAM_FACTOR = {
-  2026: 0.025,  // 2.5% (97.5% free allocation remaining)
-  2027: 0.05,   // 5%
-  2028: 0.1,    // 10%
-  2029: 0.225,  // 22.5%
-  2030: 0.485,  // 48.5%
-  2031: 0.73,   // 73%
-  2032: 0.865,  // 86.5%
-  2033: 0.98,   // 98%
-  2034: 1.0,    // 100% — no more free allocation
+  2026: 0.0,
+  2027: 0.05,
+  2028: 0.1,
+  2029: 0.225,
+  2030: 0.485,
+  2031: 0.73,
+  2032: 0.865,
+  2033: 0.98,
+  2034: 1.0,
 };
 
 // Default embedded emission factors (tCO₂e / tonne or MWh) — pre-markup
@@ -796,7 +786,6 @@ export default function CustomsCalculator({ user }) {
   const [hsLoading, setHsLoading] = useState(false);
   const [dutyRateSource, setDutyRateSource] = useState(null);
   const [antiDumpingRate, setAntiDumpingRate] = useState(""); // ADD rate % if applicable
-  const [stillWineLow, setStillWineLow] = useState(false); // true = still wine ≤13° ABV → 14% VAT
   const [dutyRateLoading, setDutyRateLoading] = useState(false);
   const [taricData, setTaricData] = useState(null);
   const [showChapterPopup, setShowChapterPopup] = useState(false);
@@ -840,7 +829,7 @@ export default function CustomsCalculator({ user }) {
   // ── Persist form state to localStorage ─────────────────────
   useEffect(() => {
     try {
-      const s = JSON.parse(localStorage.getItem("dutify_form") || "{}");
+      const s = JSON.parse(localStorage.getItem(dutify_form) || {});
       if (s.tab)                   setTab(s.tab);
       if (s.description    != null) setDescription(s.description);
       if (s.hsCode         != null) setHsCode(s.hsCode);
@@ -874,7 +863,7 @@ export default function CustomsCalculator({ user }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem("dutify_form", JSON.stringify({
+      localStorage.setItem(dutify_form, JSON.stringify({
         tab, description, hsCode, dutyRate, itemValue, freight, insurance,
         currency, originCountry, incoterm, preferential, hasProofOfOrigin,
         antiDumpingRate, fxAmount, fxFrom, fxTo,
@@ -1078,28 +1067,16 @@ export default function CustomsCalculator({ user }) {
     else if (!incotermDef.needsFreight && incotermDef.needsIns) cifEUR = valEUR + insEUR;
     // else CIF/CIP/DAP/DPU/DDP: use value as-is
 
-    // De minimis: €150 exemption on CUSTOMS DUTIES ONLY — abolished 1 July 2026
-    // Anti-dumping duties are NOT covered by de minimis — they still apply
-    const deMinimisActive = new Date() < new Date("2026-07-01");
-    const dutyFree = deMinimisActive && cifEUR <= 150;
-    const deMinimisExpiringSoon = deMinimisActive && cifEUR <= 150 && new Date() >= new Date("2026-04-01");
-
+    const dutyFree = cifEUR <= 150;
     let effectiveDutyRate = duty / 100;
     if (preferential && hasProofOfOrigin) {
       if (dutyRateSource?.usingPref) {
-        // TARIC already returned the actual preferential rate — use as-is
+        // TARIC already returned the actual preferential rate — use as-is, no further reduction
         effectiveDutyRate = duty / 100;
       } else {
         // Fallback: rough reduction by agreement type
         const prefType = ORIGIN_AGREEMENTS[originCountry]?.type || "";
-        // Turkey customs union (cu) only covers INDUSTRIAL goods (HS ch. 25–97 excl. ch. 39-40 for some)
-        // Agricultural goods (HS ch. 1–24) pay MFN rates even with Turkey
-        const hsChapter = parseInt(String(hsCode).replace(/\D/g, "").substring(0, 2), 10) || 0;
-        const isTurkeyCUAgri = prefType === "cu" && originCountry === "TR" && hsChapter >= 1 && hsChapter <= 24;
-        if (isTurkeyCUAgri) {
-          // Agricultural goods from Turkey: MFN rate applies
-          effectiveDutyRate = duty / 100;
-        } else if (["eba", "fta", "eea", "cu", "atp", "epa"].includes(prefType)) {
+        if (["eba", "fta", "eea", "cu", "atp", "epa", "cta"].includes(prefType)) {
           effectiveDutyRate = 0;
         } else if (prefType === "gsp+") {
           effectiveDutyRate = effectiveDutyRate * 0.2;
@@ -1112,18 +1089,18 @@ export default function CustomsCalculator({ user }) {
     }
     const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
 
-    // Anti-dumping duty: NOT waived by de minimis — ADD applies to all commercial shipments
-    // (UCC Art. 83; ADD is a trade defence measure, not covered by customs duty exemptions)
+    // Anti-dumping duty (on top of customs duty, same base)
     const addRate = parseFloat(antiDumpingRate) || 0;
-    const antiDumpingDuty = cifEUR * (addRate / 100);
+    const antiDumpingDuty = dutyFree ? 0 : cifEUR * (addRate / 100);
 
     // VAT rate based on HS code (Luxembourg Loi TVA)
-    // stillWineLow = user confirmed still wine ≤13° ABV → 14% VAT
-    const vatRate = getLuVAT(hsCode, stillWineLow);
-    // VAT base: CIF + all duties including excise (Loi TVA art. 42 / UCC Art. 86)
+    const vatRate = getLuVAT(hsCode);
+    // VAT base includes customs duty + ADD (excise handled separately)
+    // VAT base includes customs duty, ADD, and excise duty (Loi TVA art. 42)
     const exciseDutyAmt = exciseResult ? exciseResult.duty || 0 : 0;
     const vatBase = cifEUR + customsDuty + antiDumpingDuty + exciseDutyAmt;
     const importVAT = vatBase * vatRate;
+    const total = cifEUR + customsDuty + antiDumpingDuty + importVAT;
     setResult({
       cifEUR,
       customsDuty,
@@ -1134,7 +1111,6 @@ export default function CustomsCalculator({ user }) {
       effectiveDutyRate: effectiveDutyRate * 100,
       addRate,
       dutyFree,
-      deMinimisExpiringSoon,
       vatBase,
       vatRate,
       valEUR,
@@ -1160,19 +1136,16 @@ export default function CustomsCalculator({ user }) {
       breweryTier: exciseInputs.breweryTier || "large",
       above15: !!exciseInputs.above15,
     };
-    const calcResult = schema.calc(inp, exciseRates);
-    const { duty, note } = calcResult;
-    // Use dynamic vatRate from calc result (still wine varies by ABV) or schema default
-    const effectiveVatRate = calcResult.vatRate ?? schema.vatRate ?? 0.17;
+    const { duty, note } = schema.calc(inp, exciseRates);
     const cifVal = parseFloat(exciseCifValue) || 0;
     const vatBase = cifVal + (duty || 0);
-    const vatAmt = vatBase * effectiveVatRate;
+    const vatAmt = vatBase * schema.vatRate;
     setExciseResult({
       duty: duty || 0,
       note: note || "",
       cifVal,
       vatAmt,
-      vatRate: effectiveVatRate * 100,
+      vatRate: schema.vatRate * 100,
       total: (duty || 0) + vatAmt,
       label: schema.label,
     });
@@ -1626,12 +1599,6 @@ export default function CustomsCalculator({ user }) {
                             <option key={k} value={k}>{v.label}</option>
                           ))}
                         </select>
-                        {(incoterm === "DAP" || incoterm === "DPU") && (
-                          <div className="v2-hint" style={{color:"#d97706"}}>⚠ DAP/DPU: enter the goods value <strong>excluding</strong> EU internal transport. Deduct freight from EU border to named place from the price.</div>
-                        )}
-                        {incoterm === "DDP" && (
-                          <div className="v2-hint" style={{color:"#d97706"}}>⚠ DDP: enter the customs value <strong>excluding</strong> import duties. The DDP price includes duties already paid by seller — subtract them before entering here.</div>
-                        )}
                       </div>
                       {needsShipping && (
                         <>
@@ -1752,23 +1719,8 @@ export default function CustomsCalculator({ user }) {
                           />
                           <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"var(--muted)"}}>%</span>
                         </div>
-                        <div className="v2-hint">ADD applies on top of customs duty and is NOT waived by the €150 de minimis · check TARIC for active measures</div>
+                        <div className="v2-hint">ADD applies on top of customs duty · check TARIC for active measures</div>
                       </div>
-                      {/* Still wine VAT — only show when HS chapter 22 */}
-                      {parseInt(String(hsCode).replace(/\D/g,"").substring(0,2),10) === 22 && (
-                        <div>
-                          <div className="v2-lbl">Wine VAT Rate (LU)</div>
-                          <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer",marginTop:4}}>
-                            <input
-                              type="checkbox"
-                              checked={stillWineLow}
-                              onChange={(e) => setStillWineLow(e.target.checked)}
-                            />
-                            Still wine ≤ 13° ABV → 14% VAT
-                          </label>
-                          <div className="v2-hint">Luxembourg: still wine ≤13° ABV = 14% VAT; {'>'}13° ABV, sparkling, beer, spirits = 17%</div>
-                        </div>
-                      )}
                       <div>
                         <div className="v2-lbl">Preferential Treatment</div>
                         {hasPref ? (
@@ -1839,13 +1791,8 @@ export default function CustomsCalculator({ user }) {
                         </div>
                         <div>
                           <div className="v2-sec-h">Duties &amp; Taxes</div>
-                          {result.deMinimisExpiringSoon && (
-                            <div style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#92400e",marginBottom:8}}>
-                              ⚠️ <strong>€150 de minimis abolished 1 July 2026</strong> — customs duty will apply to this shipment after that date
-                            </div>
-                          )}
                           <div className="v2-bk-row">
-                            <span className="v2-bk-lbl">Customs duty {result.dutyFree ? "(waived — de minimis)" : result.effectiveDutyRate.toFixed(1) + "%"}</span>
+                            <span className="v2-bk-lbl">Customs duty {result.dutyFree ? "(waived)" : result.effectiveDutyRate.toFixed(1) + "%"}</span>
                             <span className="v2-bk-val">€{fmt(result.customsDuty)}</span>
                           </div>
                           {result.antiDumpingDuty > 0 && (
