@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dutify — UX Mockup v4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@400;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #10b981;
+      --gold-hi: #34d399;
+      --border: #e2e8f0;
+      --muted: #6b7280;
+      --bg: #f0f7f4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: #111827;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    /* ── HEADER ── */
+    .page-header {
+      height: 72px;
+      background: #e8f4f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      margin-bottom: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-text {
+      font-family: 'Oswald', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: #111827;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 12px;
+      color: #9ca3af;
+      font-family: 'Courier Prime', monospace;
+      letter-spacing: 1px;
+    }
+
+    /* ── TABS ── */
+    .tabs-bar {
+      display: flex;
+      background: #e8f4f0;
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      overflow-x: auto;
+      gap: 4px;
+    }
+
+    .tab {
+      font-family: 'Oswald', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 18px 28px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      white-space: nowrap;
+      transition: color 0.2s;
+    }
+
+    .tab.active {
+      color: var(--gold);
+      border-bottom-color: var(--gold);
+      background: rgba(16,185,129,0.07);
+    }
+
+    /* ── MAIN CONTENT ── */
+    .page-content {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    /* ── 3-COLUMN LAYOUT ── */
+    .calculator-grid {
+      display: grid;
+      grid-template-columns: 1fr 24px 1fr 24px 1.2fr;
+      gap: 0;
+      align-items: start;
+    }
+
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-top: 72px;
+      opacity: 0.2;
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--gold);
+      border-radius: 0 0 12px 12px;
+      overflow: hidden;
+    }
+
+    .panel-section {
+      padding: 28px;
+    }
+
+    .panel-section + .panel-section {
+      border-top: 1px solid var(--border);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── FORM FIELDS ── */
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+
+    label .check {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    label .circle {
+      font-size: 12px;
+      font-weight: 700;
+      color: #d1d5db;
+    }
+
+    input, select {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: #111827;
+      padding: 13px 16px;
+      font-family: 'Courier Prime', monospace;
+      font-size: 16px;
+      border-radius: 8px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #9ca3af;
+      font-family: 'Courier Prime', monospace;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .hint.success {
+      color: #059669;
+    }
+
+    .hint.info {
+      color: #3b82f6;
+    }
+
+    /* ── INPUT GRID ── */
+    .input-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .input-row-2 { grid-template-columns: 1fr 1fr; }
+    .input-row-3 { grid-template-columns: 1fr auto auto; }
+    .input-row-value { grid-template-columns: 1fr 80px; }
+
+    /* ── INLINE BUTTONS ── */
+    .btn-inline {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      padding: 0 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      height: 100%;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .btn-inline:hover {
+      border-color: var(--gold);
+      background: rgba(16,185,129,0.06);
+    }
+
+    /* ── ORIGIN INFO TAG ── */
+    .origin-tag {
+      margin-top: 8px;
+      padding: 8px 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #059669;
+      font-family: 'Courier Prime', monospace;
+      line-height: 1.5;
+    }
+
+    /* ── CALCULATE BUTTON ── */
+    .btn-calculate {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, #34d399, #10b981);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 16px rgba(16,185,129,0.2);
+    }
+
+    .btn-calculate:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(16,185,129,0.3);
+    }
+
+    .btn-export {
+      width: 100%;
+      padding: 14px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    /* ── RESULT PANEL ── */
+    .result-panel {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      position: sticky;
+      top: 20px;
+    }
+
+    .result-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .result-title {
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse 1.5s ease infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .result-amount {
+      padding: 28px 24px 20px;
+    }
+
+    .result-big {
+      font-family: 'Courier Prime', monospace;
+      font-size: 60px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+
+    .result-sub {
+      font-size: 15px;
+      color: #9ca3af;
+      margin-top: 10px;
+    }
+
+    .result-sub strong {
+      color: #111827;
+    }
+
+    /* ── LEDGER ── */
+    .ledger {
+      border-top: 1px solid var(--border);
+    }
+
+    .ledger-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .ledger-row.rule {
+      border-top: 2px solid var(--border);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .ledger-row.total {
+      background: rgba(16,185,129,0.04);
+    }
+
+    .ledger-label {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .ledger-value {
+      font-family: 'Courier Prime', monospace;
+      font-size: 16px;
+      color: #111827;
+    }
+
+    .ledger-row.total .ledger-label {
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .ledger-row.total .ledger-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    /* ── COMPOSITION BAR ── */
+    .comp-bar-wrap {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      background: #fafafa;
+    }
+
+    .comp-bar-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      font-family: 'Oswald', sans-serif;
+    }
+
+    .comp-bar {
+      height: 7px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .comp-legend {
+      display: flex;
+      gap: 14px;
+      margin-top: 9px;
+      flex-wrap: wrap;
+    }
+
+    .comp-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+    }
+
+    .comp-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 2px;
+    }
+
+    /* ── DISCLAIMER ── */
+    .disclaimer {
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+
+    .disclaimer a { color: var(--gold); }
+
+    /* ── DONE HIGHLIGHT ── */
+    .panel.done {
+      background: rgba(16,185,129,0.05);
+      box-shadow: inset 0 0 0 1.5px rgba(16,185,129,0.2);
+    }
+
+    /* ── PREF BADGE ── */
+    .pref-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      color: var(--gold);
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    /* ── BUTTONS COL ── */
+    .btns-col {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <div class="logo">
+    <svg width="36" height="36" viewBox="0 0 56 56" fill="none">
+      <rect width="56" height="56" rx="11" fill="#1f2937"/>
+      <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#hGold)"/>
+      <path d="M13 22L28 39L43 22" stroke="url(#hGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#hGold)"/>
+      <defs>
+        <linearGradient id="hGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#34d399"/>
+          <stop offset="100%" stop-color="#059669"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <span class="logo-text">Dutify</span>
+  </div>
+  <div class="header-meta">
+    Luxembourg · Import Calculator<br>
+    <span style="color: rgba(16,185,129,0.6);">FX: USD/EUR 0.91842 · 2026-03-13</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab active">Calculator</button>
+  <button class="tab">Excise</button>
+  <button class="tab">CBAM</button>
+  <button class="tab">HS Lookup</button>
+  <button class="tab">FX Rates</button>
+  <button class="tab">Rulings</button>
+  <button class="tab">Reference</button>
+</div>
+
+<!-- CONTENT -->
+<div class="page-content">
+  <div class="calculator-grid">
+
+    <!-- ══ COL 1: GOODS & ORIGIN ══ -->
+    <div class="panel done">
+      <!-- Goods -->
+      <div class="panel-section">
+        <div class="section-head">
+          <span class="section-title">Goods</span>
+          <div class="section-line"></div>
+        </div>
+
+        <div class="field">
+          <label>Description <span class="check">✓</span></label>
+          <input type="text" value="Samsung Galaxy S24 smartphone 256GB">
+        </div>
+
+        <div class="field">
+          <label>HS / CN Code <span class="check">✓</span></label>
+          <div class="input-row input-row-3">
+            <input type="text" value="8517.13.00">
+            <button class="btn-inline">rate</button>
+            <button class="btn-inline">find ↗</button>
+          </div>
+          <div class="hint info" style="margin-top:8px;">✓ Live TARIC · 2026-03-13 · MFN 0% · pref. 0% with proof</div>
+        </div>
+      </div>
+
+      <!-- Origin & Value -->
+      <div class="panel-section">
+        <div class="section-head">
+          <span class="section-title">Origin & Value</span>
+          <div class="section-line"></div>
+        </div>
+
+        <div class="field">
+          <label>Country of Origin <span class="check">✓</span></label>
+          <select>
+            <option selected>United States (US)</option>
+            <option>China (CN)</option>
+            <option>United Kingdom (GB)</option>
+          </select>
+          <div class="hint">No FTA – MFN rates (TTIP stalled)</div>
+        </div>
+
+        <div class="field">
+          <label>Goods Value <span class="check">✓</span></label>
+          <div class="input-row input-row-value">
+            <input type="number" value="1200.00">
+            <select>
+              <option>USD</option>
+              <option>EUR</option>
+              <option>GBP</option>
+            </select>
+          </div>
+          <div class="hint">× 0.9184 = €1,102.08</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARROW 1 -->
+    <div class="arrow">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M4 9h10M10 5l4 4-4 4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- ══ COL 2: LOGISTICS & RATES ══ -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="panel done">
+        <!-- Logistics -->
+        <div class="panel-section">
+          <div class="section-head">
+            <span class="section-title">Logistics</span>
+            <div class="section-line"></div>
+          </div>
+
+          <div class="field">
+            <label>Incoterm 2020 <span class="check">✓</span></label>
+            <select>
+              <option>FOB – Free on Board</option>
+              <option>CIF – Cost, Insurance & Freight</option>
+              <option>EXW – Ex Works</option>
+            </select>
+            <div class="hint">Sea only — add main carriage + insurance</div>
+            <div class="hint success" style="margin-top:4px;">✈ Air: 70% of freight in customs value</div>
+          </div>
+
+          <div class="field">
+            <div class="input-row input-row-2">
+              <div>
+                <label>Freight (USD) <span class="check">✓</span></label>
+                <input type="number" value="85.00">
+              </div>
+              <div>
+                <label>Insurance (USD) <span class="circle">○</span></label>
+                <input type="number" placeholder="0.00">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rates -->
+        <div class="panel-section">
+          <div class="section-head">
+            <span class="section-title">Rates</span>
+            <div class="section-line"></div>
+          </div>
+
+          <div class="field">
+            <label>Customs Duty Rate (%) <span class="check">✓</span></label>
+            <input type="number" value="0" style="border-color: rgba(16,185,129,0.4);">
+            <div class="hint info">✓ Live TARIC · 2026-03-13 · MFN 0%</div>
+          </div>
+
+          <div class="field" style="margin-bottom:0;">
+            <label>Anti-Dumping Duty (%) <span class="circle">○</span></label>
+            <input type="number" placeholder="0.00">
+            <div class="hint">0 if no ADD order applies</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="btns-col">
+        <button class="btn-calculate">Calculate</button>
+        <button class="btn-export">↓ Export PDF</button>
+      </div>
+    </div>
+
+    <!-- ARROW 2 -->
+    <div class="arrow">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M4 9h10M10 5l4 4-4 4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- ══ COL 3: RESULT ══ -->
+    <div>
+      <div class="result-panel" style="border-top: 3px solid #10b981; box-shadow: inset 0 0 0 1.5px rgba(16,185,129,0.2);">
+        <div class="result-header">
+          <span class="result-title">Duties & Taxes</span>
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            confirmed
+          </div>
+        </div>
+
+        <div class="result-amount">
+          <div class="result-big">€218.67</div>
+          <div class="result-sub">
+            Landed: <strong>€1,320.75</strong> · 19.8% on value
+          </div>
+          <div class="pref-badge">
+            ✓ 0% preferential (UK TCA)
+          </div>
+        </div>
+
+        <div class="ledger">
+          <div class="ledger-row">
+            <div class="ledger-label">Goods value</div>
+            <div class="ledger-value">€1,102.08</div>
+          </div>
+          <div class="ledger-row">
+            <div class="ledger-label">Freight (air adj. 70%)</div>
+            <div class="ledger-value">€54.70</div>
+          </div>
+          <div class="ledger-row rule">
+            <div class="ledger-label">Customs Value (CIF)</div>
+            <div class="ledger-value">€1,156.78</div>
+          </div>
+          <div class="ledger-row">
+            <div class="ledger-label" style="color:#6366f1;">Duty 0.0%</div>
+            <div class="ledger-value" style="color:#6366f1;">€0.00</div>
+          </div>
+          <div class="ledger-row">
+            <div class="ledger-label" style="color:#0891b2;">VAT 17%</div>
+            <div class="ledger-value" style="color:#0891b2;">€196.65</div>
+          </div>
+          <div class="ledger-row rule total">
+            <div class="ledger-label">Total</div>
+            <div class="ledger-value">€196.65</div>
+          </div>
+        </div>
+
+        <!-- Composition bar -->
+        <div class="comp-bar-wrap">
+          <div class="comp-bar-label">Composition</div>
+          <div class="comp-bar">
+            <div style="flex:1102;background:#e2e8f0;"></div>
+            <div style="flex:0;background:#6366f1;"></div>
+            <div style="flex:197;background:#10b981;"></div>
+          </div>
+          <div class="comp-legend">
+            <div class="comp-item">
+              <div class="comp-dot" style="background:#e2e8f0;"></div>
+              <span style="color:#9ca3af;">Goods</span>
+            </div>
+            <div class="comp-item">
+              <div class="comp-dot" style="background:#6366f1;"></div>
+              <span style="color:#6366f1;">Duty</span>
+            </div>
+            <div class="comp-item">
+              <div class="comp-dot" style="background:#10b981;"></div>
+              <span style="color:#10b981;">VAT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        ⚠ Estimate only. Verify at <a href="#">TARIC ↗</a>.
+      </div>
+    </div>
+
+  </div><!-- /calculator-grid -->
+</div><!-- /page-content -->
+
+<!-- NOTES BOX -->
+<div style="max-width:1280px;margin:0 auto 60px;padding:0 32px;">
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin-top:32px;">
+    <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#9ca3af;margin-bottom:16px;">Mockup Notes — Changes vs Current</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-size:14px;color:#374151;line-height:2;">
+      <div>
+        <div style="font-weight:700;color:#059669;margin-bottom:8px;">↑ Increased</div>
+        <div>• Labels: 11.5px → 13px</div>
+        <div>• Input text: 15px → 16px</div>
+        <div>• Ledger rows: 8px → 12px padding</div>
+        <div>• Ledger values: 15px → 16px</div>
+        <div>• Ledger total: 18px → 20px</div>
+        <div>• Result big number: 56px → 60px</div>
+        <div>• Result sub: 13px → 15px</div>
+        <div>• Panel sections: 18-22px → 28px padding</div>
+        <div>• Field gap: 14-16px → 20px</div>
+        <div>• Section head gap: 12px → 20px</div>
+        <div>• Tab font: 13px → 14px</div>
+        <div>• Tab padding: 16px → 18px</div>
+        <div>• Calculate button: 16px → 18px padding, 15px → 17px font</div>
+        <div>• Input border-radius: 6px → 8px</div>
+        <div>• Input padding: 11px 15px → 13px 16px</div>
+        <div>• Header height: 64px → 72px</div>
+        <div>• Live dot: 6px → 7px</div>
+      </div>
+      <div>
+        <div style="font-weight:700;color:#059669;margin-bottom:8px;">✨ Other</div>
+        <div>• Button focus ring: stronger glow (3px, 12% opacity)</div>
+        <div>• Section title letter-spacing: 4px → 3px (less cramped)</div>
+        <div>• Content padding: 36px 32px → 40px 32px</div>
+        <div>• Panel border-radius: 0 0 10px 10px → 0 0 12px 12px</div>
+        <div>• Hint line-height: implicit → 1.5 (more readable)</div>
+        <div>• Pref badge padding: 4px 12px → 5px 14px</div>
+        <div>• Logo size: 22px → 26px</div>
+        <div>• Logo icon: 32px → 36px</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

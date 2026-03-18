@@ -103,6 +103,10 @@ export async function POST(req) {
     const preferential = measures.filter(m => ['142', '145'].includes(m.measureType));
     const antiDumpingMeasures = measures.filter(m => ['551', '552', '553', '554'].includes(m.measureType));
 
+    // Tariff rate quotas (contingents): measure types 122/123 (autonomous), 143/146 (preferential)
+    const quotaMeasures = measures.filter(m => ['122', '123', '143', '146'].includes(m.measureType));
+    const quotaRate = quotaMeasures.length > 0 ? (parseFloat(quotaMeasures[0].dutyRate) ?? null) : null;
+
     return NextResponse.json({
       cn10: code,
       cn8: code.slice(0, 8),
@@ -115,6 +119,9 @@ export async function POST(req) {
       preferential,
       antiDumping: antiDumpingMeasures.length > 0,
       antiDumpingMeasures,
+      tariffQuota: quotaMeasures.length > 0,
+      quotaRate,
+      quotaMeasures,
       allMeasures: measures,
       source: 'TARIC-API-2026',
     });

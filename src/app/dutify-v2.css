@@ -1,0 +1,757 @@
+/* ═══════════════════════════════════════════════════════════════
+   DUTIFY V2 — Professional B2B Design System
+   Palette: Slate + EU Blue. Dense, fast, authoritative.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --d-bg:        #F1F5F9;
+  --d-surface:   #FFFFFF;
+  --d-border:    #E2E8F0;
+  --d-border-md: #CBD5E1;
+
+  --d-text:      #1E293B;
+  --d-muted:     #64748B;
+  --d-subtle:    #94A3B8;
+
+  --d-blue:      #2563EB;
+  --d-blue-light:#EFF6FF;
+  --d-blue-mid:  #BFDBFE;
+
+  --d-green:     #059669;
+  --d-green-bg:  #ECFDF5;
+  --d-amber:     #D97706;
+  --d-amber-bg:  #FFFBEB;
+  --d-red:       #DC2626;
+  --d-red-bg:    #FEF2F2;
+
+  --d-nav-bg:    #0F172A;
+  --d-nav-text:  #94A3B8;
+  --d-nav-active:#FFFFFF;
+
+  --d-radius:    8px;
+  --d-radius-lg: 12px;
+  --d-shadow:    0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --d-shadow-md: 0 4px 12px rgba(0,0,0,.08);
+
+  --font-mono:   'IBM Plex Mono', 'Courier New', monospace;
+}
+
+/* ── Shell ───────────────────────────────────────────────────── */
+.dv2-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--d-bg);
+  font-family: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+  color: var(--d-text);
+}
+
+/* ── Top Nav ─────────────────────────────────────────────────── */
+.dv2-topnav {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  background: var(--d-nav-bg);
+  padding: 0 20px;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.dv2-logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -.3px;
+  margin-right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.dv2-logo-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--d-blue);
+  border-radius: 50%;
+}
+
+.dv2-nav-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+}
+
+.dv2-nav-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--d-nav-text);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color .15s, background .15s;
+  letter-spacing: .1px;
+}
+
+.dv2-nav-tab:hover {
+  color: #FFFFFF;
+  background: rgba(255,255,255,.07);
+}
+
+.dv2-nav-tab.active {
+  color: var(--d-nav-active);
+  background: rgba(37,99,235,.35);
+}
+
+.dv2-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.dv2-user-badge {
+  font-size: 12px;
+  color: var(--d-nav-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dv2-signout-btn {
+  font-size: 12px;
+  color: var(--d-nav-text);
+  background: none;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.dv2-signout-btn:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,.3);
+}
+
+/* ── Page layout ─────────────────────────────────────────────── */
+.dv2-page {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* ── Calculator main (left) ──────────────────────────────────── */
+.dv2-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Card ────────────────────────────────────────────────────── */
+.dv2-card {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-lg);
+  box-shadow: var(--d-shadow);
+  overflow: visible;
+}
+
+.dv2-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--d-border);
+}
+
+.dv2-card-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--d-blue-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.dv2-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--d-text);
+}
+
+.dv2-card-subtitle {
+  font-size: 11.5px;
+  color: var(--d-muted);
+  margin-left: auto;
+}
+
+.dv2-card-body {
+  padding: 18px 20px;
+}
+
+/* ── 2-col grid inside card ──────────────────────────────────── */
+.dv2-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.dv2-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px 20px;
+}
+
+.dv2-span-2 { grid-column: span 2; }
+.dv2-span-3 { grid-column: span 3; }
+
+/* ── Field ───────────────────────────────────────────────────── */
+.dv2-field {}
+
+.dv2-label {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--d-muted);
+  margin-bottom: 5px;
+  gap: 6px;
+}
+
+.dv2-label-check {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--d-green);
+}
+
+.dv2-input,
+.dv2-select {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--d-border-md);
+  border-radius: var(--d-radius);
+  background: var(--d-surface);
+  font-size: 13.5px;
+  color: var(--d-text);
+  font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+
+.dv2-input:focus,
+.dv2-select:focus {
+  border-color: var(--d-blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+
+.dv2-input::placeholder {
+  color: var(--d-subtle);
+}
+
+.dv2-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.dv2-input-row .dv2-input { flex: 1; min-width: 0; }
+
+.dv2-hint {
+  font-size: 11px;
+  color: var(--d-subtle);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.dv2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--d-radius);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s, opacity .15s;
+}
+
+.dv2-btn-primary {
+  background: var(--d-blue);
+  color: #fff;
+  font-size: 13px;
+  padding: 0 18px;
+  height: 36px;
+}
+
+.dv2-btn-primary:hover {
+  background: #1D4ED8;
+  box-shadow: 0 2px 8px rgba(37,99,235,.35);
+}
+
+.dv2-btn-ghost {
+  background: transparent;
+  color: var(--d-blue);
+  font-size: 12px;
+  padding: 0 12px;
+  height: 36px;
+  border: 1px solid var(--d-blue-mid);
+}
+
+.dv2-btn-ghost:hover {
+  background: var(--d-blue-light);
+}
+
+.dv2-btn-sm {
+  font-size: 11px;
+  padding: 3px 10px;
+  height: 26px;
+  border-radius: 5px;
+  font-weight: 700;
+  letter-spacing: .3px;
+}
+
+.dv2-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* ── Tag badges ──────────────────────────────────────────────── */
+.dv2-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  letter-spacing: .4px;
+}
+
+.dv2-tag-amber {
+  background: var(--d-amber-bg);
+  color: var(--d-amber);
+  border: 1px solid rgba(217,119,6,.2);
+}
+
+.dv2-tag-blue {
+  background: var(--d-blue-light);
+  color: var(--d-blue);
+  border: 1px solid var(--d-blue-mid);
+}
+
+.dv2-tag-red {
+  background: var(--d-red-bg);
+  color: var(--d-red);
+  border: 1px solid rgba(220,38,38,.2);
+}
+
+.dv2-tag-green {
+  background: var(--d-green-bg);
+  color: var(--d-green);
+  border: 1px solid rgba(5,150,105,.2);
+}
+
+/* ── Alert strip ─────────────────────────────────────────────── */
+.dv2-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--d-radius);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.dv2-alert-red   { background: var(--d-red-bg);   border: 1px solid rgba(220,38,38,.2);   color: var(--d-red); }
+.dv2-alert-amber { background: var(--d-amber-bg); border: 1px solid rgba(217,119,6,.2);  color: #92400E; }
+.dv2-alert-blue  { background: var(--d-blue-light); border: 1px solid var(--d-blue-mid); color: #1E40AF; }
+.dv2-alert-green { background: var(--d-green-bg); border: 1px solid rgba(5,150,105,.2);  color: #065F46; }
+
+/* ── Pref rate pill ──────────────────────────────────────────── */
+.dv2-origin-info {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--d-blue-light);
+  border: 1px solid var(--d-blue-mid);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #1E40AF;
+  line-height: 1.4;
+}
+
+/* ── Checkbox row ────────────────────────────────────────────── */
+.dv2-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--d-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.dv2-checkbox-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--d-blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESULTS PANEL (right sidebar)
+   ═══════════════════════════════════════════════════════════════ */
+.dv2-results-panel {
+  width: 300px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 76px; /* 52px nav + 24px padding */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dv2-results-card {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-lg);
+  box-shadow: var(--d-shadow);
+  overflow: hidden;
+}
+
+.dv2-results-header {
+  padding: 12px 16px 10px;
+  background: var(--d-nav-bg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dv2-results-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #94A3B8;
+}
+
+.dv2-results-live {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .4px;
+  color: var(--d-green);
+  background: rgba(5,150,105,.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.dv2-results-rows {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dv2-result-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--d-border);
+  gap: 8px;
+}
+
+.dv2-result-row:last-child {
+  border-bottom: none;
+}
+
+.dv2-result-row.total {
+  border-top: 2px solid var(--d-border-md);
+  border-bottom: none;
+  margin-top: 4px;
+  padding-top: 10px;
+}
+
+.dv2-result-label {
+  font-size: 12px;
+  color: var(--d-muted);
+  line-height: 1.3;
+}
+
+.dv2-result-sub {
+  font-size: 10px;
+  color: var(--d-subtle);
+  display: block;
+}
+
+.dv2-result-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--d-text);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.dv2-result-val.zero { color: var(--d-subtle); }
+.dv2-result-val.total { font-size: 17px; color: var(--d-blue); font-weight: 700; }
+.dv2-result-val.green { color: var(--d-green); }
+.dv2-result-val.red   { color: var(--d-red); }
+
+.dv2-results-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--d-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dv2-export-btn {
+  width: 100%;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--d-blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--d-radius);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.dv2-export-btn:hover { background: #1D4ED8; }
+.dv2-export-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.dv2-save-btn {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: transparent;
+  color: var(--d-muted);
+  border: 1px solid var(--d-border-md);
+  border-radius: var(--d-radius);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+
+.dv2-save-btn:hover {
+  border-color: var(--d-blue-mid);
+  color: var(--d-blue);
+}
+
+/* ── Flags card ──────────────────────────────────────────────── */
+.dv2-flags-card {
+  background: var(--d-surface);
+  border: 1px solid var(--d-border);
+  border-radius: var(--d-radius-lg);
+  overflow: hidden;
+}
+
+.dv2-flags-header {
+  padding: 10px 16px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--d-muted);
+  border-bottom: 1px solid var(--d-border);
+}
+
+.dv2-flags-body {
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.dv2-flag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--d-muted);
+}
+
+.dv2-flag-row.active { color: var(--d-text); }
+.dv2-flag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--d-border-md); flex-shrink: 0; }
+.dv2-flag-dot.amber { background: var(--d-amber); }
+.dv2-flag-dot.blue  { background: var(--d-blue); }
+.dv2-flag-dot.green { background: var(--d-green); }
+.dv2-flag-btn { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--d-blue); cursor: pointer; text-decoration: none; background: none; border: none; padding: 0; }
+
+/* ── Duty free banner ────────────────────────────────────────── */
+.dv2-duty-free-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--d-green-bg);
+  border: 1px solid rgba(5,150,105,.25);
+  border-radius: var(--d-radius);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #065F46;
+}
+
+/* ── Rate source tag ─────────────────────────────────────────── */
+.dv2-rate-source {
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.dv2-results-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--d-subtle);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.dv2-results-empty-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+  opacity: .5;
+}
+
+/* ── Section divider inside card ─────────────────────────────── */
+.dv2-divider {
+  height: 1px;
+  background: var(--d-border);
+  margin: 16px -20px;
+}
+
+/* ── Taric popup ─────────────────────────────────────────────── */
+.dv2-taric-popup {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--d-green-bg);
+  border: 1px solid rgba(5,150,105,.2);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #065F46;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── FX badge ────────────────────────────────────────────────── */
+.dv2-fx-badge {
+  font-size: 11px;
+  color: var(--d-muted);
+  background: var(--d-bg);
+  border: 1px solid var(--d-border);
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* ── Calculate button row ────────────────────────────────────── */
+.dv2-calc-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid var(--d-border);
+  background: var(--d-bg);
+  border-radius: 0 0 var(--d-radius-lg) var(--d-radius-lg);
+}
+
+.dv2-calc-btn {
+  height: 40px;
+  padding: 0 28px;
+  background: var(--d-blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--d-radius);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+  letter-spacing: .2px;
+}
+
+.dv2-calc-btn:hover {
+  background: #1D4ED8;
+  box-shadow: 0 3px 12px rgba(37,99,235,.35);
+}
+
+.dv2-reset-btn {
+  height: 40px;
+  padding: 0 18px;
+  background: transparent;
+  color: var(--d-muted);
+  border: 1px solid var(--d-border-md);
+  border-radius: var(--d-radius);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dv2-reset-btn:hover { color: var(--d-red); border-color: rgba(220,38,38,.3); }
+
+/* ── Quota row ───────────────────────────────────────────────── */
+.dv2-quota-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--d-amber-bg);
+  border: 1px solid rgba(217,119,6,.2);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #92400E;
+  margin-top: 8px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .dv2-results-panel { width: 260px; }
+}
+
+@media (max-width: 900px) {
+  .dv2-page { flex-direction: column; padding: 16px; }
+  .dv2-results-panel { width: 100%; position: static; }
+  .dv2-grid-3 { grid-template-columns: 1fr 1fr; }
+}

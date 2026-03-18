@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dutify — Import Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#F3F4F6;--surface:#fff;--border:#E5E7EB;--border-md:#D1D5DB;
+  --text:#111827;--body:#374151;--muted:#6B7280;--subtle:#9CA3AF;
+  --gold:#10b981;--gold-hi:#34d399;--gold-bg:rgba(16,185,129,.09);--gold-border:rgba(16,185,129,.28);
+  --red:#DC2626;--red-bg:#FEF2F2;--amber:#D97706;--amber-bg:#FFFBEB;
+  --blue:#10b981;--blue-bg:#EFF6FF;
+  --nav:#10b981;--nav-text:rgba(255,255,255,.75);--nav-active:#fff;
+  --r:8px;--rl:12px;
+  --f-head:'Oswald',sans-serif;--f-body:'DM Sans',sans-serif;--f-mono:'Courier Prime',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f-body);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+
+/* NAV ──────────────────────────────────────────── */
+.nav{display:flex;align-items:center;height:56px;background:var(--nav);padding:0 24px;position:sticky;top:0;z-index:200;border-bottom:1px solid rgba(255,255,255,.06)}
+.nav-logo{display:flex;align-items:center;gap:10px;margin-right:32px;text-decoration:none}
+.nav-logo-icon{width:30px;height:30px;border-radius:7px;background:#111827;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-logo-text{font-family:var(--f-head);font-size:20px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#fff}
+.nav-tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{padding:6px 16px;border-radius:6px;font-family:var(--f-head);font-size:13px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--nav-text);cursor:pointer;border:none;background:none;white-space:nowrap;transition:.15s;position:relative}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.nav-tab.active{color:var(--nav-active);background:rgba(0,0,0,.15)}
+.nav-tab.active::after{content:'';position:absolute;bottom:-1px;left:12px;right:12px;height:2px;background:var(--gold);border-radius:2px}
+.nav-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+.nav-user{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--nav-text);font-family:var(--f-mono)}
+.nav-avatar{width:24px;height:24px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:var(--f-head)}
+.nav-btn{font-size:11px;font-family:var(--f-head);letter-spacing:1px;text-transform:uppercase;color:var(--nav-text);background:none;border:1px solid rgba(255,255,255,.14);border-radius:5px;padding:4px 11px;cursor:pointer;transition:.15s}
+.nav-btn:hover{color:#fff;border-color:rgba(255,255,255,.35)}
+
+/* PAGE ─────────────────────────────────────────── */
+.page{display:flex;gap:20px;max-width:1380px;margin:0 auto;padding:24px 24px 60px;align-items:flex-start}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+.tab-content{display:none}.tab-content.active{display:flex;flex-direction:column;gap:16px}
+
+/* CARD ─────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card-hdr{display:flex;align-items:center;gap:10px;padding:13px 20px 11px;border-bottom:1px solid var(--border)}
+.card-icon{width:28px;height:28px;border-radius:7px;background:rgba(16,185,129,.09);border:1px solid rgba(16,185,129,.28);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.card-title{font-family:var(--f-head);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text)}
+.card-sub{font-size:11.5px;color:var(--subtle);margin-left:auto}
+.card-body{padding:18px 20px}
+
+/* GRIDS ────────────────────────────────────────── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 22px}
+.s2{grid-column:span 2}.s3{grid-column:span 3}
+
+/* FIELD ────────────────────────────────────────── */
+.lbl{font-family:var(--f-head);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.lbl-ok{color:var(--gold);font-size:11px;margin-left:auto}
+.lbl-auto{margin-left:auto;font-family:var(--f-body);font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--subtle)}
+.inp,.sel{width:100%;height:37px;padding:0 11px;border:1px solid var(--border-md);border-radius:var(--r);background:var(--bg);font-size:14px;color:var(--text);font-family:var(--f-mono);outline:none;transition:.15s;-webkit-appearance:none;appearance:none}
+.inp:focus,.sel:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(16,185,129,.13);background:#fff}
+.inp::placeholder{color:var(--subtle);font-size:13px}
+.sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;cursor:pointer}
+.inp-row{display:flex;gap:6px}.inp-row .inp{flex:1;min-width:0}
+.hint{font-size:11px;color:var(--subtle);margin-top:4px;line-height:1.5}
+
+/* BUTTONS ──────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:var(--r);font-family:var(--f-head);font-weight:600;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.btn-gold{background:#10b981;color:#fff;font-size:11px;padding:0 16px;height:37px}
+.btn-gold:hover{background:#059669;box-shadow:0 3px 12px rgba(16,185,129,.25)}
+.btn-ghost{background:transparent;color:var(--gold);font-size:10px;padding:0 12px;height:37px;border:1px solid var(--gold-border)}
+.btn-ghost:hover{background:var(--gold-bg)}
+.btn-sm{height:28px;font-size:9px;padding:0 10px;border-radius:5px}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(220,38,38,.25);font-size:10px;padding:0 12px;height:37px}
+.btn-danger:hover{background:var(--red-bg)}
+
+/* TAGS ─────────────────────────────────────────── */
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;font-family:var(--f-head);letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.tag-gold{background:rgba(16,185,129,.09);color:#059669;border:1px solid rgba(16,185,129,.28)}
+.tag-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.22)}
+.tag-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(220,38,38,.22)}
+.tag-blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(37,99,235,.25)}
+.tag-gray{background:#f3f4f6;color:#4b5563;border:1px solid #e5e7eb}
+
+/* POPUP / PILL ─────────────────────────────────── */
+.info-pill{margin-top:6px;padding:6px 10px;border-radius:6px;font-size:11.5px;line-height:1.45}
+.pill-green{background:rgba(16,185,129,.09);border:1px solid rgba(16,185,129,.28);color:#065f46}
+.pill-amber{background:var(--amber-bg);border:1px solid rgba(217,119,6,.22);color:#92400e}
+.pill-red{background:var(--red-bg);border:1px solid rgba(220,38,38,.22);color:var(--red)}
+.pill-blue{background:var(--blue-bg);border:1px solid rgba(37,99,235,.25);color:#1e40af}
+.pill-gray{background:#f9fafb;border:1px solid var(--border);color:var(--muted)}
+
+/* CHECKBOX ROW ─────────────────────────────────── */
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:var(--body)}
+.chk input{width:15px;height:15px;accent-color:var(--gold);cursor:pointer;flex-shrink:0}
+.chk-disabled{color:var(--subtle);cursor:not-allowed}
+
+/* QUOTA ────────────────────────────────────────── */
+.quota-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--amber-bg);border:1px solid rgba(217,119,6,.22);border-radius:6px;font-size:11.5px;color:#92400e;margin-top:12px}
+
+/* CALC ROW ─────────────────────────────────────── */
+.calc-row{display:flex;gap:10px;align-items:center;padding:14px 20px;border-top:1px solid var(--border);background:var(--bg);border-radius:0 0 var(--rl) var(--rl)}
+.calc-btn{height:42px;padding:0 32px;background:#10b981;color:#fff;border:none;border-radius:var(--r);font-family:var(--f-head);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.calc-btn:hover{background:#059669;box-shadow:0 4px 16px rgba(16,185,129,.25)}
+.reset-btn{height:42px;padding:0 20px;background:transparent;color:var(--muted);border:1px solid var(--border-md);border-radius:var(--r);font-family:var(--f-head);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.reset-btn:hover{color:var(--red);border-color:rgba(220,38,38,.3)}
+.calc-hint{margin-left:auto;font-size:11px;color:var(--subtle)}
+
+/* FX BADGE ─────────────────────────────────────── */
+.fx-badge{font-size:11px;color:var(--muted);background:#f9fafb;border:1px solid var(--border);padding:3px 9px;border-radius:4px;font-family:var(--f-mono)}
+
+/* BREAKDOWN CARD ───────────────────────────────── */
+.bk-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid #10b981;border-radius:var(--rl)}
+.bk-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+.bk-row:last-child{border-bottom:none}
+.bk-lbl{color:var(--muted)}
+.bk-val{font-family:var(--f-mono);font-weight:700;color:var(--text)}
+.bk-val.zero{color:var(--subtle);font-weight:400}
+.bk-val.green{color:#10b981}
+.bk-sep{height:1px;background:var(--border-md);margin:6px 0}
+.bk-total{display:flex;justify-content:space-between;padding:8px 0;font-size:14px;font-weight:700}
+.bk-total .bk-val{font-size:15px}
+.bk-summary{margin-top:16px;padding:14px 16px;background:rgba(16,185,129,.09);border:1px solid rgba(16,185,129,.28);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bk-total-amount{font-size:22px;font-weight:700;font-family:var(--f-mono);color:var(--text)}
+.bk-total-label{font-size:11.5px;color:var(--muted);margin-bottom:4px;font-family:var(--f-head);letter-spacing:1px;text-transform:uppercase}
+
+/* RESULTS PANEL ────────────────────────────────── */
+.results-panel{width:292px;flex-shrink:0;position:sticky;top:80px;display:flex;flex-direction:column;gap:12px}
+.res-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.res-hdr{padding:12px 16px;background:#B84C37;display:flex;align-items:center;justify-content:space-between}
+.res-title{font-family:var(--f-head);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--nav-text)}
+.res-live{font-size:9px;font-weight:700;font-family:var(--f-head);letter-spacing:.5px;text-transform:uppercase;color:#10B981;background:rgba(16,185,129,.09);padding:2px 7px;border-radius:4px}
+.res-rows{padding:12px 16px;display:flex;flex-direction:column}
+.res-row{display:flex;align-items:baseline;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);gap:8px}
+.res-row:last-child{border-bottom:none}
+.res-row.total-row{border-top:2px solid var(--border-md);border-bottom:none;margin-top:4px;padding-top:10px}
+.res-lbl{font-size:12px;color:var(--muted);line-height:1.3;font-family:var(--f-body)}
+.res-sub{font-size:10px;color:var(--subtle);display:block;margin-top:1px}
+.res-val{font-size:13px;font-weight:700;font-family:var(--f-mono);white-space:nowrap;color:var(--text)}
+.res-val.zero{color:var(--subtle);font-weight:400}
+.res-val.total{font-size:18px;color:#10b981}
+.res-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
+.res-export{width:100%;height:38px;display:flex;align-items:center;justify-content:center;gap:7px;background:#10b981;color:#fff;border:none;border-radius:var(--r);font-family:var(--f-head);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.res-export:hover{background:#059669;box-shadow:0 3px 12px rgba(16,185,129,.2)}
+.res-save{width:100%;height:33px;display:flex;align-items:center;justify-content:center;gap:7px;background:transparent;color:var(--muted);border:1px solid var(--border-md);border-radius:var(--r);font-family:var(--f-head);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.res-save:hover{border-color:rgba(16,185,129,.4);color:#10b981}
+
+/* FLAGS ────────────────────────────────────────── */
+.flags-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden}
+.flags-hdr{padding:9px 16px;font-family:var(--f-head);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:#fafafa}
+.flags-body{padding:10px 16px;display:flex;flex-direction:column;gap:8px}
+.flag-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--subtle)}
+.flag-row.on{color:var(--body)}
+.flag-dot{width:7px;height:7px;border-radius:50%;background:var(--border-md);flex-shrink:0}
+.flag-dot.green{background:#10b981}
+.flag-dot.amber{background:var(--amber)}
+.flag-dot.red{background:var(--red)}
+.flag-dot.blue{background:var(--blue)}
+.flag-btn{margin-left:auto;font-family:var(--f-head);font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--gold);cursor:pointer;text-decoration:none;background:none;border:none;text-transform:uppercase}
+
+/* TABLE ────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-family:var(--f-head);font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 12px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--body)}
+.tbl tr:hover td{background:#fafafa}
+.tbl .mono{font-family:var(--f-mono);font-size:12.5px}
+.tbl .bold{font-weight:700;color:var(--text)}
+
+/* SECTION HEADING ──────────────────────────────── */
+.sec-h{font-family:var(--f-head);font-size:10px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+/* REFERENCE GRID ───────────────────────────────── */
+.ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ref-link{display:block;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);text-decoration:none;transition:.15s;cursor:pointer}
+.ref-link:hover{border-color:rgba(16,185,129,.4);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.06)}
+.ref-link-title{font-family:var(--f-head);font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text);margin-bottom:4px}
+.ref-link-desc{font-size:11.5px;color:var(--muted);line-height:1.4}
+.ref-link-url{font-size:10px;color:var(--gold);font-family:var(--f-mono);margin-top:6px}
+
+/* FX TABLE ─────────────────────────────────────── */
+.fx-row{display:grid;grid-template-columns:48px 1fr 110px 110px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);gap:0}
+.fx-row:last-child{border-bottom:none}
+.fx-row:hover{background:#fafafa}
+.fx-flag{font-size:18px;line-height:1}
+.fx-name{font-size:13px;color:var(--body)}
+.fx-code{font-family:var(--f-mono);font-size:11px;color:var(--subtle);display:block}
+.fx-rate{font-family:var(--f-mono);font-size:13px;font-weight:700;color:var(--text);text-align:right}
+.fx-inv{font-size:11px;color:var(--subtle);font-family:var(--f-mono);text-align:right}
+
+/* RULING CARD ──────────────────────────────────── */
+.ruling-card{padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:.15s}
+.ruling-card:hover{border-color:var(--gold-border);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.ruling-hs{font-family:var(--f-mono);font-size:13px;font-weight:700;color:var(--text)}
+.ruling-desc{font-size:12.5px;color:var(--body);margin:4px 0}
+.ruling-meta{font-size:11px;color:var(--subtle);display:flex;gap:12px}
+
+/* RESPONSIVE ───────────────────────────────────── */
+@media(max-width:1000px){.results-panel{width:260px}}
+@media(max-width:860px){.page{flex-direction:column;padding:16px}.results-panel{width:100%;position:static}.g3{grid-template-columns:1fr 1fr}.s3{grid-column:span 2}}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}.s2,.s3{grid-column:span 1}.ref-grid{grid-template-columns:1fr}.nav-logo-text{display:none}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a class="nav-logo" href="#">
+    <div class="nav-logo-icon">
+      <svg width="18" height="18" viewBox="0 0 56 56" fill="none"><rect width="56" height="56" rx="11" fill="rgba(0,0,0,.25)"/><rect x="25" y="8" width="6" height="18" rx="3" fill="#10b981"/><rect x="25" y="30" width="6" height="18" rx="3" fill="#10b981"/><rect x="8" y="25" width="18" height="6" rx="3" fill="#10b981"/><rect x="30" y="25" width="18" height="6" rx="3" fill="#10b981"/></svg>
+    </div>
+    <span class="nav-logo-text">Dutify</span>
+  </a>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('calculator',this)">Calculator</button>
+    <button class="nav-tab" onclick="switchTab('excise',this)">Excise</button>
+    <button class="nav-tab" onclick="switchTab('cbam',this)">CBAM</button>
+    <button class="nav-tab" onclick="switchTab('hs-lookup',this)">HS Lookup</button>
+    <button class="nav-tab" onclick="switchTab('fx',this)">FX Rates</button>
+    <button class="nav-tab" onclick="switchTab('rulings',this)">Rulings</button>
+    <button class="nav-tab" onclick="switchTab('reference',this)">Reference</button>
+  </div>
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="nav-avatar">T</div>
+      <span>weiti072</span>
+    </div>
+    <button class="nav-btn">Admin</button>
+    <button class="nav-btn">Logout</button>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+<div class="main">
+
+<!-- ══════════════════ CALCULATOR TAB ══════════════════ -->
+<div id="tab-calculator" class="tab-content active">
+
+  <!-- GOODS -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-icon">📦</div>
+      <span class="card-title">Goods</span>
+      <span class="card-sub">Describe the item · find its CN / TARIC code</span>
+    </div>
+    <div class="card-body">
+      <div class="g2">
+        <div class="s2">
+          <div class="lbl">Description <span class="lbl-ok">✓</span></div>
+          <input class="inp" id="description" type="text" value="Samsung Galaxy S24 Ultra — smartphone" oninput="calc()"/>
+        </div>
+        <div>
+          <div class="lbl">HS / CN Code</div>
+          <div class="inp-row">
+            <input class="inp" id="hsCode" type="text" value="8517.13" oninput="onHsChange()"/>
+            <button class="btn btn-ghost btn-sm" onclick="lookupRate()">Rate</button>
+            <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Find ↗</a>
+          </div>
+          <div id="hs-info" class="info-pill pill-green">✓ <strong>Ch.85</strong> · Electrical machinery and equipment · VAT 17%</div>
+        </div>
+        <div>
+          <div class="lbl">Quantity</div>
+          <input class="inp" id="qty" type="number" value="1" min="1" oninput="calc()"/>
+          <div class="hint">Used for excise-liable goods (volume, weight, units)</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-blue">CBAM eligible</span>
+        <span class="tag tag-amber">⚡ Excise — check Excise tab</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHIPMENT -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-icon">✈️</div>
+      <span class="card-title">Shipment</span>
+      <span class="card-sub">CIF = customs duty base (cost + insurance + freight to EU border)</span>
+    </div>
+    <div class="card-body">
+      <div class="g3">
+        <div>
+          <div class="lbl">Item Value <span class="lbl-ok">✓</span></div>
+          <input class="inp" id="itemValue" type="number" value="2400" oninput="calc()"/>
+        </div>
+        <div>
+          <div class="lbl">Currency</div>
+          <select class="sel" id="currency" onchange="calc()">
+            <option value="EUR">EUR — Euro</option>
+            <option value="USD" selected>USD — US Dollar</option>
+            <option value="GBP">GBP — Pound Sterling</option>
+            <option value="CHF">CHF — Swiss Franc</option>
+            <option value="JPY">JPY — Japanese Yen</option>
+            <option value="CAD">CAD — Canadian Dollar</option>
+            <option value="CNY">CNY — Chinese Yuan</option>
+            <option value="AUD">AUD — Australian Dollar</option>
+          </select>
+        </div>
+        <div>
+          <div class="lbl">Incoterm</div>
+          <select class="sel" id="incoterm" onchange="calc()">
+            <option value="FOB" selected>FOB — Free On Board</option>
+            <option value="EXW">EXW — Ex Works</option>
+            <option value="CIF">CIF — Cost, Ins & Freight</option>
+            <option value="CPT">CPT — Carriage Paid To</option>
+            <option value="DAP">DAP — Delivered At Place</option>
+            <option value="DDP">DDP — Delivered Duty Paid</option>
+          </select>
+        </div>
+        <div>
+          <div class="lbl">Freight Cost</div>
+          <input class="inp" id="freight" type="number" value="180" oninput="calc()"/>
+        </div>
+        <div>
+          <div class="lbl">Insurance</div>
+          <input class="inp" id="insurance" type="number" value="24" oninput="calc()"/>
+        </div>
+        <div>
+          <div class="lbl">Transport Mode</div>
+          <select class="sel" id="transportMode" onchange="calc()">
+            <option value="air" selected>Air (70% freight rule)</option>
+            <option value="sea">Sea / Road (full freight)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span class="fx-badge" id="fx-badge">1 USD = 0.9241 EUR · ECB 2026-03-14</span>
+        <button class="btn btn-ghost btn-sm" onclick="refreshFX()">Refresh FX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORIGIN & RATES -->
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-icon">🌍</div>
+      <span class="card-title">Origin &amp; Rates</span>
+      <span class="card-sub">Country of origin determines preferential treatment &amp; anti-dumping</span>
+    </div>
+    <div class="card-body">
+      <div class="g2">
+        <div>
+          <div class="lbl">Country of Origin <span class="lbl-ok">✓</span></div>
+          <select class="sel" id="originCountry" onchange="onOriginChange()">
+            <option value="US" selected>United States (US)</option>
+            <option value="CN">China (CN)</option>
+            <option value="GB">United Kingdom (GB)</option>
+            <option value="CA">Canada (CA)</option>
+            <option value="JP">Japan (JP)</option>
+            <option value="KR">South Korea (KR)</option>
+            <option value="IN">India (IN)</option>
+            <option value="VN">Vietnam (VN)</option>
+            <option value="TR">Turkey (TR)</option>
+            <option value="CH">Switzerland (CH)</option>
+            <option value="NO">Norway (NO)</option>
+            <option value="AU">Australia (AU)</option>
+            <option value="MX">Mexico (MX)</option>
+            <option value="BD">Bangladesh (BD)</option>
+            <option value="RU">Russia (RU)</option>
+            <option value="UA">Ukraine (UA)</option>
+          </select>
+          <div id="origin-info" class="info-pill pill-amber">🔵 US · No EU FTA — MFN rates apply (TTIP stalled)</div>
+        </div>
+        <div>
+          <div class="lbl">Customs Duty Rate <span class="lbl-auto" id="rate-source">override</span></div>
+          <div class="inp-row">
+            <input class="inp" id="dutyRate" type="number" value="3.7" step="0.01" oninput="calc()"/>
+            <span style="display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);color:var(--muted)">%</span>
+          </div>
+          <div class="rate-src" id="rate-tags" style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="tag tag-gray">MFN · TARIC 8517.13.00</span>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">Anti-Dumping Duty</div>
+          <div class="inp-row">
+            <input class="inp" id="antiDumpingRate" type="number" value="0" step="0.01" placeholder="0.0" oninput="calc()"/>
+            <span style="display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);color:var(--muted)">%</span>
+          </div>
+          <div class="hint">ADD applies on top of customs duty · check TARIC for active measures</div>
+        </div>
+        <div>
+          <div class="lbl">Preferential Treatment</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+            <label class="chk chk-disabled" id="pref-chk">
+              <input type="checkbox" id="preferential" disabled onchange="calc()"/> Claim preferential rate
+            </label>
+            <label class="chk chk-disabled" id="proof-chk">
+              <input type="checkbox" id="hasProofOfOrigin" disabled onchange="calc()"/> Proof of origin held (EUR.1 / invoice declaration)
+            </label>
+          </div>
+          <div id="pref-hint" class="hint" style="margin-top:6px">No EU-US agreement — MFN rate applies</div>
+        </div>
+      </div>
+      <div id="quota-section" style="display:none">
+        <div class="quota-row">
+          <span>🔢</span>
+          <span>Tariff-rate quota available for this CN code · in-quota rate: <strong id="quota-rate">0%</strong></span>
+          <label class="chk" style="margin-left:auto;font-size:12px"><input type="checkbox" id="useQuotaRate" onchange="calc()"/> Use quota rate</label>
+        </div>
+      </div>
+    </div>
+    <div class="calc-row">
+      <button class="calc-btn" onclick="calc()">Calculate</button>
+      <button class="reset-btn" onclick="resetForm()">Reset</button>
+      <span class="calc-hint">Results update live as you type</span>
+    </div>
+  </div>
+
+  <!-- BREAKDOWN -->
+  <div class="bk-card" id="breakdown" style="display:none">
+    <div class="card-hdr">
+      <div class="card-icon" style="background:var(--gold-bg)">📋</div>
+      <span class="card-title">Calculation Breakdown</span>
+      <span class="card-sub" id="bk-total-label" style="color:#10b981;font-family:var(--f-mono);font-weight:700"></span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 40px">
+        <div>
+          <div class="sec-h">Customs Value (CIF)</div>
+          <div class="bk-row"><span class="bk-lbl">Item value (EUR)</span><span class="bk-val" id="bk-val"></span></div>
+          <div class="bk-row"><span class="bk-lbl" id="bk-freight-lbl">Freight</span><span class="bk-val" id="bk-freight"></span></div>
+          <div class="bk-row"><span class="bk-lbl">Insurance</span><span class="bk-val" id="bk-ins"></span></div>
+          <div class="bk-sep"></div>
+          <div class="bk-total"><span>CIF Value</span><span class="bk-val green" id="bk-cif"></span></div>
+        </div>
+        <div>
+          <div class="sec-h">Duties &amp; Taxes</div>
+          <div class="bk-row"><span class="bk-lbl" id="bk-duty-lbl">Customs duty</span><span class="bk-val" id="bk-duty"></span></div>
+          <div class="bk-row"><span class="bk-lbl" id="bk-add-lbl">Anti-dumping duty</span><span class="bk-val" id="bk-add"></span></div>
+          <div class="bk-row"><span class="bk-lbl" id="bk-vat-lbl">Import VAT</span><span class="bk-val" id="bk-vat"></span></div>
+          <div class="bk-sep"></div>
+          <div class="bk-total"><span>Total duties</span><span class="bk-val green" id="bk-duties-total"></span></div>
+        </div>
+      </div>
+      <div class="bk-summary">
+        <div>
+          <div class="bk-total-label">Total landed cost (CIF + all duties)</div>
+          <div class="bk-total-amount" id="bk-grand"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost">⭐ Save HS</button>
+          <button class="btn btn-gold">⬇ Export PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /calculator -->
+
+<!-- ══════════════════ EXCISE TAB ══════════════════ -->
+<div id="tab-excise" class="tab-content">
+  <div class="card">
+    <div class="card-hdr">
+      <div class="card-icon">🏛️</div>
+      <span class="card-title">Excise Duty Calculator</span>
+      <span class="card-sub">Luxembourg ADA rates · effective 01.01.2026</span>
+    </div>
+    <div class="card-body">
+      <div class="g3">
+        <div class="s3">
+          <div class="lbl">Product Category</div>
+          <select class="sel" id="excise-cat" onchange="onExciseCatChange()">
+            <optgroup label="Alcohol">
+              <option value="beer">Beer</option>
+              <option value="still-wine">Still Wine</option>
+              <option value="sparkling-wine">Sparkling Wine / Champagne</option>
+              <option value="intermediate">Intermediate Products (e.g. port, sherry)</option>
+              <option value="spirits">Spirits / Liqueur</option>
+            </optgroup>
+            <optgroup label="Tobacco">
+              <option value="cigarettes">Cigarettes</option>
+              <option value="fine-cut">Fine Cut / Roll-your-own</option>
+              <option value="cigars">Cigars &amp; Cigarillos</option>
+              <option value="heated-tobacco">Heated Tobacco Products</option>
+              <option value="eliquid">E-liquids</option>
+              <option value="nicotine-pouches">Nicotine Pouches</option>
+            </optgroup>
+            <optgroup label="Energy">
+              <option value="petrol">Petrol (unleaded)</option>
+              <option value="diesel">Diesel (road use)</option>
+              <option value="heating-fuel">Heating Oil</option>
+              <option value="lpg">LPG</option>
+            </optgroup>
+          </select>
+        </div>
+        <div id="excise-field-volume">
+          <div class="lbl" id="excise-vol-lbl">Volume (litres)</div>
+          <input class="inp" id="excise-volume" type="number" value="100" oninput="calcExcise()"/>
+        </div>
+        <div id="excise-field-plato" style="display:none">
+          <div class="lbl">Strength (°Plato)</div>
+          <input class="inp" id="excise-plato" type="number" value="12" oninput="calcExcise()"/>
+        </div>
+        <div id="excise-field-tier" style="display:none">
+          <div class="lbl">Brewery Size</div>
+          <select class="sel" id="excise-tier" onchange="calcExcise()">
+            <option value="small">Small (≤ 50,000 hl/yr)</option>
+            <option value="medium">Medium (≤ 200,000 hl/yr)</option>
+            <option value="large" selected>Large (&gt; 200,000 hl/yr)</option>
+          </select>
+        </div>
+        <div id="excise-field-abv" style="display:none">
+          <div class="lbl">% ABV (pure alcohol)</div>
+          <input class="inp" id="excise-abv" type="number" value="40" step="0.1" oninput="calcExcise()"/>
+        </div>
+        <div id="excise-field-units" style="display:none">
+          <div class="lbl">Units (1000s)</div>
+          <input class="inp" id="excise-units" type="number" value="10" oninput="calcExcise()"/>
+        </div>
+        <div id="excise-field-retail" style="display:none">
+          <div class="lbl">Retail Price (€/1000 units)</div>
+          <input class="inp" id="excise-retail" type="number" value="300" oninput="calcExcise()"/>
+        </div>
+        <div id="excise-field-kg" style="display:none">
+          <div class="lbl">Weight (kg)</div>
+          <input class="inp" id="excise-kg" type="number" value="10" oninput="calcExcise()"/>
+        </div>
+      </div>
+      <div id="excise-result" class="info-pill pill-green" style="margin-top:16px">
+        Select a category and enter values to calculate excise duty.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">📊</div><span class="card-title">Rate Reference</span><span class="card-sub">ADA Luxembourg 2026</span></div>
+    <div class="card-body">
+      <table class="tbl">
+        <thead><tr><th>Category</th><th>Rate</th><th>Basis</th><th>VAT</th></tr></thead>
+        <tbody>
+          <tr><td class="bold">Beer (large brewery)</td><td class="mono">€0.7933/hl/°P</td><td>per hl per °Plato</td><td>17%</td></tr>
+          <tr><td class="bold">Beer (small brewery)</td><td class="mono">€0.3966/hl/°P</td><td>≤ 50,000 hl/yr</td><td>17%</td></tr>
+          <tr><td class="bold">Still Wine</td><td class="mono">€0 (EU 0-rate)</td><td>per hl</td><td>14%/17%</td></tr>
+          <tr><td class="bold">Sparkling Wine</td><td class="mono">€0 (EU 0-rate)</td><td>per hl</td><td>17%</td></tr>
+          <tr><td class="bold">Spirits</td><td class="mono">€1,123.10/hl pa</td><td>per hl pure alcohol</td><td>17%</td></tr>
+          <tr><td class="bold">Cigarettes</td><td class="mono">€23.39/1000 + 48.14%</td><td>specific + ad valorem</td><td>17%</td></tr>
+          <tr><td class="bold">Fine Cut Tobacco</td><td class="mono">€26.40/kg + 35.6%</td><td>specific + ad valorem</td><td>17%</td></tr>
+          <tr><td class="bold">Petrol</td><td class="mono">€0.5691/L</td><td>per litre</td><td>17%</td></tr>
+          <tr><td class="bold">Diesel</td><td class="mono">€0.4646/L</td><td>per litre</td><td>17%</td></tr>
+          <tr><td class="bold">E-liquid</td><td class="mono">€120.00/L</td><td>per litre</td><td>17%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /excise -->
+
+<!-- ══════════════════ CBAM TAB ══════════════════ -->
+<div id="tab-cbam" class="tab-content">
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">🏭</div><span class="card-title">CBAM Calculator</span><span class="card-sub">Carbon Border Adjustment Mechanism · in force Jan 2026</span></div>
+    <div class="card-body">
+      <div class="info-pill pill-amber" style="margin-bottom:16px">⚠️ CBAM transitional period ended 31 Dec 2025. From Jan 2026 importers must surrender CBAM certificates at €EU-ETS price.</div>
+      <div class="g3">
+        <div>
+          <div class="lbl">Sector</div>
+          <select class="sel" id="cbam-sector">
+            <option>Steel &amp; Iron (72-73)</option>
+            <option>Aluminium (76)</option>
+            <option>Cement (25)</option>
+            <option>Fertilizers (28, 31)</option>
+            <option>Electricity</option>
+            <option>Hydrogen</option>
+          </select>
+        </div>
+        <div>
+          <div class="lbl">Country of Origin</div>
+          <select class="sel" id="cbam-country">
+            <option>China (CN) — no carbon pricing</option>
+            <option>Russia (RU) ⚠️ sanctioned</option>
+            <option>Turkey (TR) — partial carbon</option>
+            <option>India (IN) — no carbon pricing</option>
+            <option>Ukraine (UA) — developing</option>
+            <option>UK (GB) — ETS aligned (exempt)</option>
+          </select>
+        </div>
+        <div>
+          <div class="lbl">Embedded CO₂ (tonnes)</div>
+          <input class="inp" id="cbam-tonnes" type="number" value="50" placeholder="0"/>
+        </div>
+        <div>
+          <div class="lbl">EU ETS Price (€/tonne)</div>
+          <input class="inp" id="cbam-price" type="number" value="62" placeholder="~62"/>
+          <div class="hint">Current EU ETS spot price</div>
+        </div>
+        <div>
+          <div class="lbl">Carbon Price Paid at Origin</div>
+          <input class="inp" id="cbam-paid" type="number" value="0" placeholder="0"/>
+          <div class="hint">Deducted from CBAM liability</div>
+        </div>
+      </div>
+      <button class="btn btn-gold" style="margin-top:16px" onclick="calcCBAM()">Calculate CBAM</button>
+      <div id="cbam-result" class="info-pill pill-green" style="margin-top:12px;display:none"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">📋</div><span class="card-title">CBAM Sectors &amp; CN Codes</span></div>
+    <div class="card-body">
+      <table class="tbl">
+        <thead><tr><th>Sector</th><th>CN Chapters</th><th>In force</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="bold">Steel &amp; Iron</td><td class="mono">72, 73</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+          <tr><td class="bold">Aluminium</td><td class="mono">76</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+          <tr><td class="bold">Cement</td><td class="mono">25</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+          <tr><td class="bold">Fertilizers</td><td class="mono">28, 31</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+          <tr><td class="bold">Electricity</td><td class="mono">27</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+          <tr><td class="bold">Hydrogen</td><td class="mono">28</td><td>Jan 2026</td><td><span class="tag tag-gold">LIVE</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /cbam -->
+
+<!-- ══════════════════ HS LOOKUP TAB ══════════════════ -->
+<div id="tab-hs-lookup" class="tab-content">
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">🔍</div><span class="card-title">HS Code Lookup</span><span class="card-sub">AI-assisted classification · TARIC verification</span></div>
+    <div class="card-body">
+      <div class="lbl">Describe the goods</div>
+      <div class="inp-row" style="margin-bottom:12px">
+        <input class="inp" id="hs-desc" type="text" placeholder="e.g. waterproof running shoes with rubber sole, size 42"/>
+        <button class="btn btn-gold" onclick="hsLookup()">Classify</button>
+      </div>
+      <div class="hint">Claude AI classifies based on your description. Always verify against official TARIC before lodging a declaration.</div>
+      <div id="hs-result" style="margin-top:16px;display:none">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="info-pill pill-green">
+            <strong>8517.13.00</strong> — Smartphones, for cellular networks<br>
+            <span style="font-size:11px">MFN duty: 3.7% · Luxembourg VAT: 17% · CBAM: No</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+            <strong>Classification rationale:</strong> Smartphones fall under CN heading 8517, specifically subheading 8517.13 for "Telephones for cellular networks or for other wireless networks" with the further subdivision .00 for the 8-digit CN code used in EU tariff declarations. This classification is consistent with WCO HS explanatory notes and ECJ case law on smartphones.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&redirectionDate=&Expand=true&SimDate=20260101&Area=&MeasType=&StartPub=&EndPub=&Regulation=&Selection=&Lang=en&number=8517130000&LangDescr=en" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none">Verify in TARIC ↗</a>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hsCode').value='8517.13';switchTab('calculator',document.querySelectorAll('.nav-tab')[0])">Use in Calculator</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">⭐</div><span class="card-title">Saved HS Codes</span></div>
+    <div class="card-body">
+      <table class="tbl">
+        <thead><tr><th>CN Code</th><th>Description</th><th>MFN Duty</th><th>VAT</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="mono bold">8517.13.00</td><td>Smartphones</td><td class="mono">3.7%</td><td class="mono">17%</td><td><button class="btn btn-ghost btn-sm">Use</button></td></tr>
+          <tr><td class="mono bold">6403.91.16</td><td>Waterproof footwear, rubber sole</td><td class="mono">17%</td><td class="mono">17%</td><td><button class="btn btn-ghost btn-sm">Use</button></td></tr>
+          <tr><td class="mono bold">3304.99.00</td><td>Cosmetic preparations n.e.s.</td><td class="mono">6.5%</td><td class="mono">17%</td><td><button class="btn btn-ghost btn-sm">Use</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /hs-lookup -->
+
+<!-- ══════════════════ FX TAB ══════════════════ -->
+<div id="tab-fx" class="tab-content">
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">💱</div><span class="card-title">FX Rates</span><span class="card-sub">European Central Bank · updated daily</span></div>
+    <div class="card-body" style="padding:0">
+      <div class="fx-row" style="background:#fafafa;border-bottom:2px solid var(--border)">
+        <div style="font-family:var(--f-head);font-size:9px;letter-spacing:2px;color:var(--muted);padding:0 12px;grid-column:span 4">RATES TO EUR · ECB 2026-03-14</div>
+      </div>
+      <div class="fx-row"><span class="fx-flag">🇺🇸</span><div class="fx-name">US Dollar<span class="fx-code">USD</span></div><div class="fx-rate">0.9241</div><div class="fx-inv">1.0821 EUR/USD</div></div>
+      <div class="fx-row"><span class="fx-flag">🇬🇧</span><div class="fx-name">Pound Sterling<span class="fx-code">GBP</span></div><div class="fx-rate">1.1756</div><div class="fx-inv">0.8506 EUR/GBP</div></div>
+      <div class="fx-row"><span class="fx-flag">🇨🇭</span><div class="fx-name">Swiss Franc<span class="fx-code">CHF</span></div><div class="fx-rate">1.0512</div><div class="fx-inv">0.9513 EUR/CHF</div></div>
+      <div class="fx-row"><span class="fx-flag">🇯🇵</span><div class="fx-name">Japanese Yen<span class="fx-code">JPY</span></div><div class="fx-rate">0.00622</div><div class="fx-inv">160.77 EUR/JPY</div></div>
+      <div class="fx-row"><span class="fx-flag">🇨🇳</span><div class="fx-name">Chinese Yuan<span class="fx-code">CNY</span></div><div class="fx-rate">0.1275</div><div class="fx-inv">7.845 EUR/CNY</div></div>
+      <div class="fx-row"><span class="fx-flag">🇨🇦</span><div class="fx-name">Canadian Dollar<span class="fx-code">CAD</span></div><div class="fx-rate">0.6771</div><div class="fx-inv">1.477 EUR/CAD</div></div>
+      <div class="fx-row"><span class="fx-flag">🇦🇺</span><div class="fx-name">Australian Dollar<span class="fx-code">AUD</span></div><div class="fx-rate">0.5901</div><div class="fx-inv">1.695 EUR/AUD</div></div>
+      <div class="fx-row"><span class="fx-flag">🇹🇷</span><div class="fx-name">Turkish Lira<span class="fx-code">TRY</span></div><div class="fx-rate">0.02711</div><div class="fx-inv">36.89 EUR/TRY</div></div>
+      <div class="fx-row"><span class="fx-flag">🇮🇳</span><div class="fx-name">Indian Rupee<span class="fx-code">INR</span></div><div class="fx-rate">0.01073</div><div class="fx-inv">93.2 EUR/INR</div></div>
+      <div class="fx-row"><span class="fx-flag">🇭🇰</span><div class="fx-name">Hong Kong Dollar<span class="fx-code">HKD</span></div><div class="fx-rate">0.1183</div><div class="fx-inv">8.45 EUR/HKD</div></div>
+    </div>
+  </div>
+</div><!-- /fx -->
+
+<!-- ══════════════════ RULINGS TAB ══════════════════ -->
+<div id="tab-rulings" class="tab-content">
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">⚖️</div><span class="card-title">Binding Tariff Information</span><span class="card-sub">BTI rulings database · EBTI search</span></div>
+    <div class="card-body">
+      <div class="lbl">Search BTI / classification rulings</div>
+      <div class="inp-row" style="margin-bottom:12px">
+        <input class="inp" type="text" placeholder="Search by CN code, keyword, or goods description…"/>
+        <button class="btn btn-gold">Search</button>
+      </div>
+      <div class="info-pill pill-blue" style="margin-bottom:16px">BTI rulings are legally binding for 3 years. Check EBTI database for existing rulings before requesting a new one.</div>
+      <div class="sec-h">Recent saved rulings</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="ruling-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="ruling-hs">8517.13.00</div>
+              <div class="ruling-desc">Smartphones — Samsung Galaxy series</div>
+              <div class="ruling-meta"><span>BTI LU/2025/4812</span><span>Valid until: 2028-01-15</span><span>MFN 3.7%</span></div>
+            </div>
+            <span class="tag tag-gold">Valid</span>
+          </div>
+        </div>
+        <div class="ruling-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="ruling-hs">6403.91.16</div>
+              <div class="ruling-desc">Waterproof trekking boots, rubber outsole, textile upper</div>
+              <div class="ruling-meta"><span>BTI LU/2024/2103</span><span>Valid until: 2027-03-20</span><span>MFN 17%</span></div>
+            </div>
+            <span class="tag tag-gold">Valid</span>
+          </div>
+        </div>
+        <div class="ruling-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div class="ruling-hs">9405.40.39</div>
+              <div class="ruling-desc">LED downlights, flush mount, for residential use</div>
+              <div class="ruling-meta"><span>BTI LU/2022/0891</span><span>Expired: 2025-04-01</span><span>MFN 2.7%</span></div>
+            </div>
+            <span class="tag tag-gray">Expired</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div><!-- /rulings -->
+
+<!-- ══════════════════ REFERENCE TAB ══════════════════ -->
+<div id="tab-reference" class="tab-content">
+  <div class="card">
+    <div class="card-hdr"><div class="card-icon">📚</div><span class="card-title">Reference</span><span class="card-sub">Official sources &amp; tools</span></div>
+    <div class="card-body">
+      <div class="sec-h" style="margin-bottom:10px">EU Customs</div>
+      <div class="ref-grid" style="margin-bottom:20px">
+        <a class="ref-link" href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank"><div class="ref-link-title">TARIC Consultation</div><div class="ref-link-desc">Official EU TARIC database — duty rates, measures, suspensions</div><div class="ref-link-url">ec.europa.eu/taxation_customs/dds2/taric</div></a>
+        <a class="ref-link" href="https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp" target="_blank"><div class="ref-link-title">EBTI — BTI Rulings</div><div class="ref-link-desc">European BTI database — search existing binding classification rulings</div><div class="ref-link-url">ec.europa.eu/…/ebti</div></a>
+        <a class="ref-link" href="https://www.wcotradetools.org/en/harmonized-system" target="_blank"><div class="ref-link-title">WCO — HS Nomenclature</div><div class="ref-link-desc">World Customs Organization — HS 2022 explanatory notes and classification opinions</div><div class="ref-link-url">wcotradetools.org</div></a>
+        <a class="ref-link" href="https://cbam.ec.europa.eu/" target="_blank"><div class="ref-link-title">CBAM Registry</div><div class="ref-link-desc">EU Carbon Border Adjustment Mechanism — register, certificates, embedded emissions</div><div class="ref-link-url">cbam.ec.europa.eu</div></a>
+      </div>
+      <div class="sec-h" style="margin-bottom:10px">Luxembourg</div>
+      <div class="ref-grid" style="margin-bottom:20px">
+        <a class="ref-link" href="https://douanes.public.lu" target="_blank"><div class="ref-link-title">ADA Luxembourg</div><div class="ref-link-desc">Administration des douanes et accises — excise rates, procedures, declarations</div><div class="ref-link-url">douanes.public.lu</div></a>
+        <a class="ref-link" href="https://aed.public.lu" target="_blank"><div class="ref-link-title">AED — TVA</div><div class="ref-link-desc">Administration de l'enregistrement — Luxembourg VAT rules and registrations</div><div class="ref-link-url">aed.public.lu</div></a>
+        <a class="ref-link" href="https://guichet.public.lu/fr/entreprises/finances-fiscalite/douane-accises.html" target="_blank"><div class="ref-link-title">Guichet.lu — Customs</div><div class="ref-link-desc">Business guide to import/export procedures in Luxembourg</div><div class="ref-link-url">guichet.public.lu</div></a>
+        <a class="ref-link" href="https://trade.ec.europa.eu/access-to-markets/en/home" target="_blank"><div class="ref-link-title">EU Market Access</div><div class="ref-link-desc">EU trade agreements, tariff concessions and rules of origin by country</div><div class="ref-link-url">trade.ec.europa.eu</div></a>
+      </div>
+      <div class="sec-h" style="margin-bottom:10px">What's changing in 2026</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="info-pill pill-red">🚨 <strong>1 Jul 2026</strong> — €150 e-commerce duty-free threshold removed. New €3 flat duty per item until 2028, then full TARIC rates. Affects all China/US parcel shipments.</div>
+        <div class="info-pill pill-amber">⚠️ <strong>Jan 2026</strong> — CBAM full financial obligations begin. Certificates must be surrendered quarterly at EU ETS price. Non-compliant importers face penalties.</div>
+        <div class="info-pill pill-blue">🔄 <strong>2028</strong> — New EU Customs Authority and EU Customs Data Hub replace current fragmented national systems. Single window mandatory.</div>
+        <div class="info-pill pill-green">✓ <strong>2024–2026</strong> — New FTAs in force: EU-NZ (2024), EU-Chile updated, EU-Australia pending ratification.</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /reference -->
+
+</div><!-- /main -->
+
+<!-- RIGHT PANEL -->
+<div class="results-panel" id="results-panel">
+  <div class="res-card">
+    <div class="res-hdr">
+      <span class="res-title">Live Results</span>
+      <span class="res-live">● live</span>
+    </div>
+    <div class="res-rows" id="res-rows">
+      <div style="padding:20px 0;text-align:center;color:var(--subtle)">
+        <div style="font-size:24px;margin-bottom:8px;opacity:.4">⚖️</div>
+        <div style="font-size:12px;line-height:1.6">Enter goods details &amp;<br>click Calculate</div>
+      </div>
+    </div>
+    <div class="res-footer">
+      <button class="res-export" id="res-export" disabled>⬇ Export PDF</button>
+      <button class="res-save">⭐ Save HS code</button>
+    </div>
+  </div>
+  <div class="flags-card">
+    <div class="flags-hdr">Applicable rules</div>
+    <div class="flags-body" id="flags-body">
+      <div class="flag-row"><span class="flag-dot"></span>No flags — run calculation first</div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--subtle);padding:0 2px;line-height:1.6">
+    Rates via TARIC · FX via ECB · Excise via ADA · <a href="https://dutify.lu" style="color:#10b981">dutify.lu</a>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+// ── FX rates (ECB mock 2026-03-14) ────────────────
+const FX = { EUR:1, USD:1/0.9241, GBP:1/1.1756, CHF:1/1.0512, JPY:1/0.00622, CNY:1/0.1275, CAD:1/0.6771, AUD:1/0.5901 };
+const FX_DATE = 'ECB 2026-03-14';
+
+// ── VAT by HS chapter ─────────────────────────────
+const VAT3 = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,36,49];
+const VAT8 = [27,90];
+function getLuVAT(hs) {
+  if (!hs) return 0.17;
+  const ch = parseInt(String(hs).replace(/\D/g,'').substring(0,2));
+  if (VAT3.includes(ch)) return 0.03;
+  if (VAT8.includes(ch)) return 0.08;
+  if (ch === 30) return 0.03;
+  return 0.17;
+}
+
+// ── Origin agreements (simplified) ───────────────
+const ORIGIN = {
+  IS:{pref:true,type:'eea',note:'EEA — 0% on most goods (EUR.1)'},
+  NO:{pref:true,type:'eea',note:'EEA — 0% on most goods'},
+  CH:{pref:true,type:'fta',note:'EU-CH FTA — 0% on most goods (EUR.1)'},
+  GB:{pref:true,type:'fta',note:'UK TCA — 0% with proof of origin'},
+  CA:{pref:true,type:'fta',note:'CETA — 0% on most goods'},
+  JP:{pref:true,type:'fta',note:'EU-Japan EPA — reduced/0% rates'},
+  KR:{pref:true,type:'fta',note:'EU-Korea FTA — 0% on most goods'},
+  VN:{pref:true,type:'fta',note:'EVFTA — 0% on most goods (phased)'},
+  IN:{pref:true,type:'gsp',note:'GSP — reduced rates (FTA negotiations)'},
+  TR:{pref:true,type:'cu',note:'Customs Union — 0% industrial goods'},
+  UA:{pref:true,type:'fta',note:'DCFTA + EU Autonomous Trade Measures'},
+  BD:{pref:true,type:'eba',note:'EBA — Everything But Arms (0%, LDC)'},
+  MX:{pref:true,type:'fta',note:'EU-Mexico Global Agreement'},
+  AU:{pref:true,type:'fta',note:'EU-Australia FTA (signed 2024, pending)'},
+  CN:{pref:false,type:'mfn',note:'No FTA — MFN rates; anti-dumping common on many goods'},
+  US:{pref:false,type:'mfn',note:'No FTA — MFN rates (TTIP stalled)'},
+  RU:{pref:false,type:'sanctioned',note:'⚠️ SANCTIONED — EU restrictive measures apply; imports heavily restricted'},
+};
+
+// ── Formatting ────────────────────────────────────
+const fmt = n => n == null ? '—' : '€\u202F' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,'\u202F');
+const fmtPct = n => n.toFixed(2) + '%';
+
+// ── Tab switcher ──────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name !== 'calculator') {
+    document.getElementById('results-panel').style.display = 'none';
+  } else {
+    document.getElementById('results-panel').style.display = '';
+  }
+}
+
+// ── FX refresh ────────────────────────────────────
+function refreshFX() {
+  const cur = document.getElementById('currency').value;
+  const rate = cur === 'EUR' ? 1 : (1/FX[cur]);
+  document.getElementById('fx-badge').textContent = `1 ${cur} = ${rate.toFixed(4)} EUR · ${FX_DATE}`;
+  calc();
+}
+
+// ── Origin change ─────────────────────────────────
+function onOriginChange() {
+  const code = document.getElementById('originCountry').value;
+  const info = ORIGIN[code] || {pref:false,type:'mfn',note:'No FTA — MFN rates'};
+  const el = document.getElementById('origin-info');
+  el.textContent = (info.type==='sanctioned'?'🚨 ':'🔵 ') + code + ' · ' + info.note;
+  el.className = 'info-pill ' + (info.type==='sanctioned'?'pill-red':info.pref?'pill-green':'pill-amber');
+  const prefChk = document.getElementById('preferential');
+  const proofChk = document.getElementById('hasProofOfOrigin');
+  const prefEl = document.getElementById('pref-chk');
+  const proofEl = document.getElementById('proof-chk');
+  if (info.pref && info.type !== 'sanctioned') {
+    prefChk.disabled = false; proofChk.disabled = false;
+    prefEl.classList.remove('chk-disabled'); proofEl.classList.remove('chk-disabled');
+    document.getElementById('pref-hint').textContent = info.note;
+  } else {
+    prefChk.disabled = true; proofChk.disabled = true; prefChk.checked = false; proofChk.checked = false;
+    prefEl.classList.add('chk-disabled'); proofEl.classList.add('chk-disabled');
+    document.getElementById('pref-hint').textContent = info.type==='sanctioned'?'⚠️ Imports from this country are subject to EU sanctions':info.note;
+  }
+  calc();
+}
+
+// ── HS change ─────────────────────────────────────
+function onHsChange() {
+  const hs = document.getElementById('hsCode').value.replace(/\D/g,'').substring(0,2);
+  const ch = parseInt(hs);
+  const vat = getLuVAT(document.getElementById('hsCode').value);
+  const chapters = {
+    '84':'Machinery and mechanical appliances','85':'Electrical machinery and equipment',
+    '87':'Vehicles','61':'Knitted clothing','62':'Woven clothing','63':'Textile articles',
+    '64':'Footwear','39':'Plastics','72':'Iron and steel','73':'Iron/steel articles',
+    '30':'Pharmaceutical products','22':'Beverages','21':'Food preparations',
+    '94':'Furniture','90':'Optical and precision instruments','33':'Cosmetics and toiletries'
+  };
+  const desc = chapters[String(ch).padStart(2,'0')] || 'CN Chapter ' + hs;
+  document.getElementById('hs-info').innerHTML = `✓ <strong>Ch.${hs||'??'}</strong> · ${desc} · VAT ${(vat*100).toFixed(0)}%`;
+  calc();
+}
+
+// ── Main calculation ──────────────────────────────
+function calc() {
+  const cur = document.getElementById('currency').value;
+  const fxRate = cur === 'EUR' ? 1 : (1/FX[cur]);
+  const itemValue = (parseFloat(document.getElementById('itemValue').value)||0) * fxRate;
+  const freightRaw = (parseFloat(document.getElementById('freight').value)||0) * fxRate;
+  const ins = (parseFloat(document.getElementById('insurance').value)||0) * fxRate;
+  const incoterm = document.getElementById('incoterm').value;
+  const transport = document.getElementById('transportMode').value;
+  const airFactor = 0.70;
+
+  let freight = freightRaw;
+  if (incoterm === 'CIF') { freight = 0; } // already included
+  if (transport === 'air') freight *= airFactor;
+  if (incoterm === 'EXW') freight += itemValue * 0.02; // approx inland
+
+  const cif = itemValue + freight + ins;
+  const dutyRate = parseFloat(document.getElementById('dutyRate').value)||0;
+  const addRate = parseFloat(document.getElementById('antiDumpingRate').value)||0;
+  const pref = document.getElementById('preferential').checked;
+  const proof = document.getElementById('hasProofOfOrigin').checked;
+
+  const effectiveDutyRate = (pref && proof) ? 0 : dutyRate;
+  const duty = cif * (effectiveDutyRate/100);
+  const add = cif * (addRate/100);
+  const hs = document.getElementById('hsCode').value;
+  const vat = getLuVAT(hs);
+  const vatAmount = (cif + duty + add) * vat;
+  const total = cif + duty + add + vatAmount;
+  const fxDisplay = cur === 'EUR' ? '' : `1 ${cur} = ${(1/FX[cur]).toFixed(4)} EUR · ${FX_DATE}`;
+  if (fxDisplay) document.getElementById('fx-badge').textContent = fxDisplay;
+
+  // Update results panel
+  document.getElementById('res-rows').innerHTML = `
+    <div class="res-row"><div class="res-lbl">CIF Value<span class="res-sub">${Math.round(parseFloat(document.getElementById('itemValue').value)||0)} ${cur} + costs</span></div><span class="res-val">${fmt(cif)}</span></div>
+    <div class="res-row"><div class="res-lbl">Customs duty<span class="res-sub">${fmtPct(effectiveDutyRate)}${pref&&proof?' pref':'  MFN'}</span></div><span class="res-val${duty===0?' zero':''}">${duty===0?'—':fmt(duty)}</span></div>
+    <div class="res-row"><div class="res-lbl">Anti-dumping</div><span class="res-val${add===0?' zero':''}">${add===0?'—':fmt(add)}</span></div>
+    <div class="res-row"><div class="res-lbl">Import VAT<span class="res-sub">${(vat*100).toFixed(0)}% Luxembourg</span></div><span class="res-val">${fmt(vatAmount)}</span></div>
+    <div class="res-row total-row"><div class="res-lbl" style="font-weight:700;color:var(--text)">Total landed cost</div><span class="res-val total">${fmt(total)}</span></div>
+  `;
+  document.getElementById('res-export').disabled = false;
+
+  // Breakdown card
+  const bd = document.getElementById('breakdown');
+  bd.style.display = '';
+  document.getElementById('bk-total-label').textContent = 'Total: ' + fmt(total);
+  document.getElementById('bk-val').textContent = fmt(itemValue);
+  document.getElementById('bk-freight-lbl').textContent = `Freight${transport==='air'?' (air 70%)':''}`;
+  document.getElementById('bk-freight').textContent = fmt(freight);
+  document.getElementById('bk-ins').textContent = fmt(ins);
+  document.getElementById('bk-cif').textContent = fmt(cif);
+  document.getElementById('bk-duty-lbl').textContent = `Customs duty (${fmtPct(effectiveDutyRate)})`;
+  document.getElementById('bk-duty').textContent = fmt(duty);
+  document.getElementById('bk-duty').className = 'bk-val' + (duty===0?' zero':'');
+  document.getElementById('bk-add-lbl').textContent = `Anti-dumping (${fmtPct(addRate)})`;
+  document.getElementById('bk-add').textContent = add===0?'—':fmt(add);
+  document.getElementById('bk-add').className = 'bk-val' + (add===0?' zero':'');
+  document.getElementById('bk-vat-lbl').textContent = `Import VAT (${(vat*100).toFixed(0)}%)`;
+  document.getElementById('bk-vat').textContent = fmt(vatAmount);
+  document.getElementById('bk-duties-total').textContent = fmt(duty+add+vatAmount);
+  document.getElementById('bk-grand').textContent = fmt(total);
+
+  // Flags
+  const origin = document.getElementById('originCountry').value;
+  const originInfo = ORIGIN[origin] || {pref:false};
+  const isCBAM = ['72','73','76','25','28','31','27'].includes(String(parseInt(hs.replace(/\D/g,'').substring(0,2))).padStart(2,'0'));
+  document.getElementById('flags-body').innerHTML = `
+    ${isCBAM?'<div class="flag-row on"><span class="flag-dot blue"></span>CBAM eligible<button class="flag-btn" onclick="switchTab(\'cbam\',document.querySelectorAll(\'.nav-tab\')[2])">Open →</button></div>':'<div class="flag-row"><span class="flag-dot"></span>CBAM not applicable</div>'}
+    ${addRate>0?'<div class="flag-row on"><span class="flag-dot amber"></span>Anti-dumping duty active</div>':'<div class="flag-row"><span class="flag-dot"></span>No ADD active</div>'}
+    ${originInfo.type==='sanctioned'?'<div class="flag-row on"><span class="flag-dot red"></span>⚠️ Sanctioned country</div>':''}
+    ${pref&&proof?'<div class="flag-row on"><span class="flag-dot green"></span>Preferential rate claimed</div>':''}
+    <div class="flag-row on" style="margin-top:4px;padding:7px 8px;background:var(--amber-bg);border-radius:6px;border:1px solid rgba(217,119,6,.15)"><span style="font-size:12px">⚠️</span><span style="font-size:11.5px;color:#92400e;line-height:1.4">€150 threshold removed<br><strong>1 Jul 2026 (e-commerce)</strong></span></div>
+  `;
+}
+
+function resetForm() {
+  document.getElementById('description').value='';
+  document.getElementById('hsCode').value='';
+  document.getElementById('itemValue').value='';
+  document.getElementById('freight').value='';
+  document.getElementById('insurance').value='';
+  document.getElementById('dutyRate').value='';
+  document.getElementById('antiDumpingRate').value='0';
+  document.getElementById('hs-info').textContent='Enter an HS code above';
+  document.getElementById('hs-info').className='info-pill pill-gray';
+  document.getElementById('breakdown').style.display='none';
+  document.getElementById('res-rows').innerHTML='<div style="padding:20px 0;text-align:center;color:var(--subtle)"><div style="font-size:24px;margin-bottom:8px;opacity:.4">⚖️</div><div style="font-size:12px;line-height:1.6">Enter goods details &amp;<br>click Calculate</div></div>';
+}
+
+function lookupRate() {
+  alert('In production: fetches live MFN rate from TARIC SOAP API for HS code ' + document.getElementById('hsCode').value);
+}
+
+// ── Excise calc ───────────────────────────────────
+function onExciseCatChange() {
+  const cat = document.getElementById('excise-cat').value;
+  const show = (id, v) => document.getElementById(id).style.display = v ? '' : 'none';
+  show('excise-field-plato', cat==='beer');
+  show('excise-field-tier', cat==='beer');
+  show('excise-field-abv', cat==='spirits'||cat==='intermediate');
+  show('excise-field-units', cat==='cigarettes'||cat==='cigars'||cat==='heated-tobacco');
+  show('excise-field-retail', cat==='cigarettes'||cat==='cigars'||cat==='fine-cut'||cat==='heated-tobacco');
+  show('excise-field-kg', cat==='fine-cut'||cat==='nicotine-pouches');
+  show('excise-field-volume', !['cigarettes','cigars','fine-cut','heated-tobacco','nicotine-pouches'].includes(cat)||cat==='eliquid');
+  const labels = {beer:'Volume (litres)',spirits:'Volume (litres pure alcohol)',intermediate:'Volume (litres)','still-wine':'Volume (litres)','sparkling-wine':'Volume (litres)',petrol:'Volume (litres)',diesel:'Volume (litres)',heating:'Volume (litres)',lpg:'Weight (kg)',eliquid:'Volume (litres)'};
+  document.getElementById('excise-vol-lbl').textContent = labels[cat] || 'Volume (litres)';
+  calcExcise();
+}
+
+function calcExcise() {
+  const cat = document.getElementById('excise-cat').value;
+  const vol = parseFloat(document.getElementById('excise-volume').value)||0;
+  const plato = parseFloat(document.getElementById('excise-plato').value)||0;
+  const tier = document.getElementById('excise-tier').value;
+  const abv = parseFloat(document.getElementById('excise-abv').value)||0;
+  const units = parseFloat(document.getElementById('excise-units').value)||0;
+  const retail = parseFloat(document.getElementById('excise-retail').value)||0;
+  const kg = parseFloat(document.getElementById('excise-kg').value)||0;
+  let duty = 0, note = '';
+  if (cat==='beer') {
+    const rate = tier==='small'?0.3966:tier==='medium'?0.4462:0.7933;
+    duty = (vol/100)*plato*rate;
+    note = `${vol}L → ${(vol/100).toFixed(2)} hl × ${plato}°P × €${rate}/hl/°P = ${fmt(duty)}`;
+  } else if (cat==='still-wine'||cat==='sparkling-wine') {
+    duty = 0; note = 'EU 0-rate — Luxembourg applies no excise on wine. VAT applies (14%/17%).';
+  } else if (cat==='spirits') {
+    const hlpa = (vol*abv/100)/100;
+    duty = hlpa * 1123.1042;
+    note = `${vol}L × ${abv}% ABV = ${(vol*abv/100).toFixed(1)}L pa → ${hlpa.toFixed(3)} hl pa × €1,123.10 = ${fmt(duty)}`;
+  } else if (cat==='intermediate') {
+    const rate = abv>15?66.9313:47.0998;
+    duty = (vol/100)*rate;
+    note = `${(vol/100).toFixed(2)} hl × €${rate}/hl (${abv>15?'>15°':'≤15°'}) = ${fmt(duty)}`;
+  } else if (cat==='cigarettes') {
+    const spec = (units/1)*23.3914;
+    const adv = (retail*(units/1000))*0.4814;
+    const min = (units/1)*152.8/1000;
+    duty = Math.max(spec+adv, min);
+    note = `Max(€23.39×${units}k + 48.14% retail, floor €152.80/k) = ${fmt(duty)}`;
+  } else if (cat==='petrol') {
+    duty = vol*0.5691; note = `${vol}L × €0.5691/L = ${fmt(duty)}`;
+  } else if (cat==='diesel') {
+    duty = vol*0.4646; note = `${vol}L × €0.4646/L = ${fmt(duty)}`;
+  } else if (cat==='eliquid') {
+    duty = vol*120; note = `${vol}L × €120.00/L = ${fmt(duty)}`;
+  } else {
+    duty = 0; note = 'Enter values to calculate.';
+  }
+  const r = document.getElementById('excise-result');
+  r.className = 'info-pill ' + (duty===0?'pill-gray':'pill-green');
+  r.innerHTML = duty===0 ? note : `<strong>Excise duty: ${fmt(duty)}</strong><br><span style="font-size:11px;opacity:.8">${note}</span>`;
+}
+
+// ── CBAM calc ─────────────────────────────────────
+function calcCBAM() {
+  const tonnes = parseFloat(document.getElementById('cbam-tonnes').value)||0;
+  const price = parseFloat(document.getElementById('cbam-price').value)||0;
+  const paid = parseFloat(document.getElementById('cbam-paid').value)||0;
+  const liability = Math.max(0, (tonnes * price) - (tonnes * paid));
+  const r = document.getElementById('cbam-result');
+  r.style.display = '';
+  r.className = 'info-pill ' + (liability===0?'pill-green':'pill-amber');
+  r.innerHTML = `<strong>CBAM liability: ${fmt(liability)}</strong><br><span style="font-size:11px">${tonnes} tCO₂ × €${price} ETS − €${paid} carbon paid at origin = ${fmt(liability)}</span>`;
+}
+
+// ── HS lookup mock ────────────────────────────────
+function hsLookup() {
+  document.getElementById('hs-result').style.display = '';
+}
+
+// ── Init ──────────────────────────────────────────
+onOriginChange();
+</script>
+</body>
+</html>

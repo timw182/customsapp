@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { ShipmentPDF, ExcisePDF } from '@/components/ShipmentPDF'
+import { T1DraftPDF } from '@/components/T1DraftPDF'
 import React from 'react'
 
 export async function POST(req) {
@@ -10,8 +11,18 @@ export async function POST(req) {
 
   const data = await req.json()
 
-  const component = data.type === 'excise' ? ExcisePDF : ShipmentPDF
-  const filename  = data.type === 'excise' ? `excise-${Date.now()}.pdf` : `customs-${Date.now()}.pdf`
+  let component, filename
+  if (data.type === 'excise') {
+    component = ExcisePDF
+    filename = `excise-${Date.now()}.pdf`
+  } else if (data.type === 't1') {
+    component = T1DraftPDF
+    filename = `T1-draft-${Date.now()}.pdf`
+  } else {
+    component = ShipmentPDF
+    filename = `customs-${Date.now()}.pdf`
+  }
+
   const buffer = await renderToBuffer(React.createElement(component, { data }))
 
   return new NextResponse(buffer, {

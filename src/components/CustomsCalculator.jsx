@@ -1,4 +1,8 @@
 "use client";
+import HsLookupTabV2 from "./HsLookupTabV2";
+import dynamic from "next/dynamic";
+const CustomsFlow = dynamic(() => import("./CustomsFlow"), { ssr: false, loading: () => <div style={{padding:40,color:"#6b7280",textAlign:"center"}}>Loading flow…</div> });
+import T1DraftTab from "./T1DraftTab";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { signOut } from "next-auth/react";
 
@@ -822,6 +826,60 @@ export default function CustomsCalculator({ user }) {
 
   const hasPref = ORIGIN_AGREEMENTS[originCountry]?.pref;
 
+  // ── Persist form state to localStorage ─────────────────────
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem(dutify_form) || {});
+      if (s.tab)                   setTab(s.tab);
+      if (s.description    != null) setDescription(s.description);
+      if (s.hsCode         != null) setHsCode(s.hsCode);
+      if (s.dutyRate       != null) setDutyRate(s.dutyRate);
+      if (s.itemValue      != null) setItemValue(s.itemValue);
+      if (s.freight        != null) setFreight(s.freight);
+      if (s.insurance      != null) setInsurance(s.insurance);
+      if (s.currency       != null) setCurrency(s.currency);
+      if (s.originCountry  != null) setOriginCountry(s.originCountry);
+      if (s.incoterm       != null) setIncoterm(s.incoterm);
+      if (s.preferential   != null) setPreferential(s.preferential);
+      if (s.hasProofOfOrigin != null) setHasProofOfOrigin(s.hasProofOfOrigin);
+      if (s.antiDumpingRate != null) setAntiDumpingRate(s.antiDumpingRate);
+      if (s.fxAmount       != null) setFxAmount(s.fxAmount);
+      if (s.fxFrom         != null) setFxFrom(s.fxFrom);
+      if (s.fxTo           != null) setFxTo(s.fxTo);
+      if (s.exciseCategory != null) setExciseCategory(s.exciseCategory);
+      if (s.exciseCifValue != null) setExciseCifValue(s.exciseCifValue);
+      if (s.exciseInputs   != null) setExciseInputs(s.exciseInputs);
+      if (s.cbamSector     != null) setCbamSector(s.cbamSector);
+      if (s.cbamCountry    != null) setCbamCountry(s.cbamCountry);
+      if (s.cbamTonnes     != null) setCbamTonnes(s.cbamTonnes);
+      if (s.cbamMode       != null) setCbamMode(s.cbamMode);
+      if (s.cbamActualEmissions != null) setCbamActualEmissions(s.cbamActualEmissions);
+      if (s.cbamEtsPrice   != null) setCbamEtsPrice(s.cbamEtsPrice);
+      if (s.cbamCarbonPaid != null) setCbamCarbonPaid(s.cbamCarbonPaid);
+      if (s.cbamRoute      != null) setCbamRoute(s.cbamRoute);
+      if (s.cbamYear       != null) setCbamYear(s.cbamYear);
+    } catch {}
+  }, []); // restore once on mount
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(dutify_form, JSON.stringify({
+        tab, description, hsCode, dutyRate, itemValue, freight, insurance,
+        currency, originCountry, incoterm, preferential, hasProofOfOrigin,
+        antiDumpingRate, fxAmount, fxFrom, fxTo,
+        exciseCategory, exciseCifValue, exciseInputs,
+        cbamSector, cbamCountry, cbamTonnes, cbamMode, cbamActualEmissions,
+        cbamEtsPrice, cbamCarbonPaid, cbamRoute, cbamYear,
+      }));
+    } catch {}
+  }, [tab, description, hsCode, dutyRate, itemValue, freight, insurance,
+      currency, originCountry, incoterm, preferential, hasProofOfOrigin,
+      antiDumpingRate, fxAmount, fxFrom, fxTo,
+      exciseCategory, exciseCifValue, exciseInputs,
+      cbamSector, cbamCountry, cbamTonnes, cbamMode, cbamActualEmissions,
+      cbamEtsPrice, cbamCarbonPaid, cbamRoute, cbamYear]);
+  // ─────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (currency === "EUR") {
       setExchangeRate(1);
@@ -901,15 +959,16 @@ export default function CustomsCalculator({ user }) {
     return (parseFloat(amount) / fromRate) * toRate;
   };
 
-  const lookupHS = async () => {
-    if (!description.trim()) return;
+  const lookupHS = async (overrideDesc) => {
+    const desc = overrideDesc || description;
+    if (!desc.trim()) return;
     setHsLoading(true);
     setHsResult(null);
     try {
       const resp = await fetch("/api/hs-lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, type: "classify" }),
+        body: JSON.stringify({ description: desc, type: "classify" }),
       });
       const parsed = await resp.json();
       setHsResult(parsed);
@@ -1010,7 +1069,7 @@ export default function CustomsCalculator({ user }) {
 
     const dutyFree = cifEUR <= 150;
     let effectiveDutyRate = duty / 100;
-    if (hasPref && hasProofOfOrigin) {
+    if (preferential && hasProofOfOrigin) {
       if (dutyRateSource?.usingPref) {
         // TARIC already returned the actual preferential rate — use as-is, no further reduction
         effectiveDutyRate = duty / 100;
@@ -1058,7 +1117,7 @@ export default function CustomsCalculator({ user }) {
       frEUR,
       insEUR,
       airfreightPct: transportMode === "air" ? getAirfreightPct(originCountry) * 100 : null,
-      prefType: hasPref && hasProofOfOrigin ? ORIGIN_AGREEMENTS[originCountry]?.type || "fta" : null,
+      prefType: preferential && hasProofOfOrigin ? ORIGIN_AGREEMENTS[originCountry]?.type || "fta" : null,
     });
     setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
   };
@@ -1292,7 +1351,7 @@ export default function CustomsCalculator({ user }) {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background: "#f0f7f4",
+        background: "#f0dfc0",
         color: "#111827",
         fontFamily: "var(--font-dm-sans), sans-serif",
       }}
@@ -1323,25 +1382,43 @@ export default function CustomsCalculator({ user }) {
         .btn-ghost:active { transform: translateY(0); }
         .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .tabs-bar { display: flex; justify-content: center; border-bottom: 1px solid var(--border); padding: 0 16px; overflow-x: auto; scrollbar-width: none; background: #e8f4f0; }
-        .tabs-bar::-webkit-scrollbar { display: none; }
-        .tab-btn { padding: 14px 24px; background: none; border: none; font-size: 11px; letter-spacing: 3px; word-spacing: -3px; text-transform: uppercase; white-space: nowrap; margin-bottom: -1px; transition: color 0.2s, background 0.2s; flex-shrink: 0; border-radius: 4px 4px 0 0; position: relative; font-family: var(--font-oswald), sans-serif; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
-        .tab-btn:hover { color: var(--foreground) !important; background: rgba(0,0,0,0.03); }
-        .tab-btn::after { content: ''; position: absolute; bottom: -1px; left: 50%; right: 50%; height: 2px; background: var(--gold); transition: left 0.2s, right 0.2s; }
-        .tab-btn:hover::after { left: 16px; right: 16px; }
-        .page-header { padding: 0 24px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #e8f4f0; margin-top: 20px; margin-bottom: 16px; }
-        .page-content { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
+        .v2-nav { display:flex; align-items:center; height:56px; background:#10b981; padding:0 24px; position:sticky; top:0; z-index:200; border-bottom:1px solid rgba(255,255,255,.06); }
+        .v2-nav-logo { display:flex; align-items:center; gap:10px; margin-right:32px; text-decoration:none; }
+        .v2-nav-logo-icon { width:30px; height:30px; border-radius:7px; background:#111827; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .v2-nav-logo-text { font-family:var(--font-oswald),sans-serif; font-size:20px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#fff; }
+        .v2-nav-tabs { display:flex; gap:2px; flex:1; overflow-x:auto; scrollbar-width:none; }
+        .v2-nav-tabs::-webkit-scrollbar { display:none; }
+        .v2-tab-btn { padding:6px 16px; border-radius:6px; font-family:var(--font-oswald),sans-serif; font-size:13px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.75); cursor:pointer; border:none; background:none; white-space:nowrap; transition:.15s; position:relative; }
+        .v2-tab-btn:hover { color:#fff; background:rgba(255,255,255,.07); }
+        .v2-tab-btn.active { color:#fff; background:rgba(0,0,0,.15); }
+        .v2-tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:12px; right:12px; height:2px; background:#fff; border-radius:2px; }
+        .v2-nav-right { display:flex; align-items:center; gap:10px; margin-left:auto; }
+        .v2-nav-user { display:flex; align-items:center; gap:7px; font-size:12px; color:rgba(255,255,255,.75); font-family:var(--font-courier-prime),monospace; }
+        .v2-nav-avatar { width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; font-family:var(--font-oswald),sans-serif; }
+        .v2-nav-btn { font-size:11px; font-family:var(--font-oswald),sans-serif; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.75); background:none; border:1px solid rgba(255,255,255,.25); border-radius:5px; padding:4px 11px; cursor:pointer; transition:.15s; text-decoration:none; display:inline-flex; align-items:center; }
+        .v2-nav-btn:hover { color:#fff; border-color:rgba(255,255,255,.5); }
+        .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
+        .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
         .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
         .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
         .ref-link:hover { border-color: rgba(16,185,129,0.3) !important; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .ref-link { transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s; }
+        @media (max-width: 1350px) {
+          .v2-tab-btn { padding: 5px 10px; letter-spacing: 0.5px; font-size: 12px; }
+          .v2-nav-logo-text { font-size: 17px; letter-spacing: 2px; }
+          .v2-nav-logo { margin-right: 16px; }
+        }
+        @media (max-width: 1100px) {
+          .v2-tab-btn { padding: 5px 8px; letter-spacing: 0; font-size: 11px; }
+          .v2-nav-user span { display: none; }
+        }
         @media (max-width: 700px) {
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
-          .tabs-bar { padding: 0 8px; justify-content: flex-start; }
-          .tab-btn { padding: 12px 14px; font-size: 10px; letter-spacing: 1px; word-spacing: -1px; }
-          .page-header { padding: 0 16px; }
+          .v2-nav-tabs { padding: 0 4px; }
+          .v2-tab-btn { padding: 6px 10px; font-size: 11px; letter-spacing: 1px; }
+          
           .page-content { padding: 16px; }
           .header-right { display: none; }
           .fx-two-col { grid-template-columns: 1fr !important; }
@@ -1350,151 +1427,50 @@ export default function CustomsCalculator({ user }) {
         }
       `}</style>
 
-      {/* Header */}
-      <div className="page-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="11" fill="#1f2937" />
-            <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#hGold)" />
-            <path
-              d="M13 22L28 39L43 22"
-              stroke="url(#hGold)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#hGold)" />
-            <defs>
-              <linearGradient id="hGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#34d399" />
-                <stop offset="100%" stopColor="#059669" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span
-            style={{
-              fontFamily: "var(--font-oswald), sans-serif",
-              fontSize: 22,
-              fontWeight: 700,
-              letterSpacing: 4,
-              textTransform: "uppercase",
-              color: "#111827",
-            }}
-          >
-            Dutify
-          </span>
-        </div>
-        <div className="header-right">
-          <div
-            style={{
-              fontFamily: "var(--font-oswald), sans-serif",
-              fontSize: 10,
-              color: "#9ca3af",
-              letterSpacing: 3,
-              textTransform: "uppercase",
-            }}
-          >
-            Luxembourg · Import Calculator
+            {/* V2 Navbar */}
+      <nav className="v2-nav">
+        <div className="v2-nav-logo">
+          <div className="v2-nav-logo-icon">
+            <svg width="18" height="18" viewBox="0 0 56 56" fill="none">
+              <rect x="25" y="8" width="6" height="18" rx="3" fill="#fff"/>
+              <path d="M13 22L28 39L43 22" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="10" y="43" width="36" height="4" rx="2" fill="#fff"/>
+            </svg>
           </div>
-          {rateDate && currency !== "EUR" && (
-            <div
-              style={{
-                fontSize: 10,
-                color: "#10b98188",
-                fontFamily: "var(--font-courier-prime), monospace",
-                marginTop: 4,
-              }}
-            >
-              FX: {currency}/EUR {exchangeRate?.toFixed(5)} · {rateDate}
-            </div>
-          )}
-          <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            {user?.role === "ADMIN" && (
-              <a
-                href="/admin"
-                style={{
-                  fontFamily: "var(--font-oswald), sans-serif",
-                  fontSize: 10,
-                  color: "#6b7280",
-                  letterSpacing: 2,
-                  textDecoration: "none",
-                  padding: "4px 10px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 2,
-                  transition: "color 0.2s, border-color 0.2s",
-                  textTransform: "uppercase",
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.color = "#10b981";
-                  e.target.style.borderColor = "#10b98144";
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.color = "#6b7280";
-                  e.target.style.borderColor = "#e2e8f0";
-                }}
-              >
-                admin
-              </a>
-            )}
+          <span className="v2-nav-logo-text">Dutify</span>
+        </div>
+        <div className="v2-nav-tabs">
+          {["calculator","excise","cbam","t1","flow","hs-lookup","fx","rulings","reference"].map((t) => (
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              style={{
-                fontFamily: "var(--font-oswald), sans-serif",
-                fontSize: 10,
-                color: "#6b7280",
-                letterSpacing: 2,
-                background: "none",
-                border: "1px solid #e2e8f0",
-                borderRadius: 2,
-                padding: "4px 10px",
-                cursor: "pointer",
-                transition: "color 0.2s, border-color 0.2s",
-                textTransform: "uppercase",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#dc2626";
-                e.currentTarget.style.borderColor = "#fca5a5";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#6b7280";
-                e.currentTarget.style.borderColor = "#e2e8f0";
-              }}
+              key={t}
+              onClick={() => setTab(t)}
+              className={"v2-tab-btn" + (tab === t ? " active" : "")}
             >
-              logout
+              {t === "calculator" ? "Calculator"
+                : t === "excise" ? "Excise"
+                : t === "cbam" ? "CBAM"
+                : t === "t1" ? "T1 Transit"
+                : t === "flow" ? "Import Flow"
+                : t === "hs-lookup" ? "HS Lookup"
+                : t === "fx" ? "FX Rates"
+                : t === "rulings" ? "Rulings"
+                : "Reference"}
             </button>
-          </div>
+          ))}
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="tabs-bar">
-        {["calculator", "excise", "cbam", "hs-lookup", "fx", "rulings", "reference"].map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="tab-btn"
-            style={{
-              color: tab === t ? "var(--gold)" : "var(--muted)",
-              borderBottom: tab === t ? "2px solid var(--gold)" : "2px solid transparent",
-              background: tab === t ? "rgba(16,185,129,0.07)" : undefined,
-            }}
-          >
-            {t === "calculator"
-              ? "Calculator"
-              : t === "excise"
-                ? "Excise"
-                : t === "cbam"
-                  ? "CBAM"
-                  : t === "hs-lookup"
-                    ? "HS Lookup"
-                    : t === "fx"
-                      ? "FX Rates"
-                      : t === "rulings"
-                        ? "Rulings"
-                        : "Reference"}
+        <div className="v2-nav-right">
+          <div className="v2-nav-user">
+            <div className="v2-nav-avatar">{user?.name?.[0]?.toUpperCase() || "U"}</div>
+            <span>{user?.name || user?.email}</span>
+          </div>
+          {user?.role === "ADMIN" && (
+            <a href="/admin" className="v2-nav-btn">Admin</a>
+          )}
+          <button onClick={() => signOut({ callbackUrl: "/login" })} className="v2-nav-btn">
+            Logout
           </button>
-        ))}
-      </div>
+        </div>
+      </nav>
 
       <div className="page-content">
         {/* CALCULATOR TAB */}
@@ -1510,526 +1486,422 @@ export default function CustomsCalculator({ user }) {
               ? (result.customsDuty || 0) + (result.antiDumpingDuty || 0) + (result.exciseDutyAmt || 0) + (result.importVAT || 0)
               : 0;
 
-            const S = {
-              card: { background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: 20 },
-              sectionHead: { fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 14, fontFamily: "var(--font-oswald), sans-serif" },
-              label: { display: "block", fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9ca3af", marginBottom: 5, marginTop: 14 },
-              hint: { fontSize: 10, color: "#9ca3af", marginTop: 4, fontFamily: "var(--font-courier-prime), monospace", lineHeight: 1.5 },
-            };
-
-            // Live preview — same logic as calculate() but pure (no setState)
-            const computePreview = () => {
-              const val = parseFloat(itemValue) || 0;
-              if (!val || !exchangeRate) return null;
-              const fr = parseFloat(freight) || 0;
-              const ins = parseFloat(insurance) || 0;
-              const rate = exchangeRate || 1;
-              const duty = parseFloat(dutyRate) || 0;
-              const valEUR = val * rate;
-              let frEUR = fr * rate;
-              const insEUR = ins * rate;
-              if (transportMode === "air") frEUR = frEUR * getAirfreightPct(originCountry);
-              const incotermDef = INCOTERMS_CIF[incoterm] || {};
-              let cifEUR = valEUR;
-              if (incotermDef.needsFreight && incotermDef.needsIns) cifEUR = valEUR + frEUR + insEUR;
-              else if (!incotermDef.needsFreight && incotermDef.needsIns) cifEUR = valEUR + insEUR;
-              let effectiveDutyRate = duty / 100;
-              if (hasPref && hasProofOfOrigin) {
-                if (dutyRateSource?.usingPref) {
-                  // already the real pref rate
-                } else {
-                  const prefType = ORIGIN_AGREEMENTS[originCountry]?.type || "";
-                  if (["eba","fta","eea","cu","atp","epa","cta"].includes(prefType)) effectiveDutyRate = 0;
-                  else if (prefType === "gsp+") effectiveDutyRate *= 0.2;
-                  else if (prefType === "gsp") effectiveDutyRate *= 0.35;
-                  else effectiveDutyRate = 0;
-                }
-              }
-              const dutyFree = cifEUR <= 150;
-              const customsDuty = dutyFree ? 0 : cifEUR * effectiveDutyRate;
-              const addDuty = dutyFree ? 0 : cifEUR * ((parseFloat(antiDumpingRate) || 0) / 100);
-              const vatRate = getLuVAT(hsCode);
-              const importVAT = (cifEUR + customsDuty + addDuty) * vatRate;
-              const totalDuties = customsDuty + addDuty + importVAT;
-              return { cifEUR, customsDuty, addDuty, importVAT, totalDuties, total: cifEUR + totalDuties, valEUR, frEUR, insEUR, vatRate, dutyFree, effectiveDutyRate: effectiveDutyRate * 100 };
-            };
-            const preview = !result ? computePreview() : null;
-
             return (
-              <div style={{ maxWidth: 960, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+              <div className="v2-tab-wrap">
 
-                {/* ──── LEFT: INPUTS ──── */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-                  {/* Card 1: HS Code */}
-                  <div style={S.card}>
-                    <div style={S.sectionHead}>Goods</div>
-                    <label style={{ ...S.label, marginTop: 0 }}>Description</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Samsung Galaxy S24 smartphone"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                    <label style={S.label}>HS / CN Code</label>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <input
-                        type="text"
-                        placeholder="e.g. 8471.30"
-                        value={hsCode}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setHsCode(val);
-                          setDutyRateSource(null);
-                          if (val.replace(/\D/g, "").length === 8) firePlaneAnimation();
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value.replace(/\D/g, "").length >= 6) lookupDutyRate(e.target.value);
-                        }}
-                        style={{ flex: 1 }}
-                      />
-                      <button
-                        onClick={() => lookupDutyRate(hsCode)}
-                        disabled={dutyRateLoading || hsCode.replace(/\D/g, "").length < 6}
-                        className="btn-ghost"
-                        style={{ padding: "8px 10px", border: "1px solid var(--border)", color: "var(--gold)", fontSize: 10, borderRadius: 4, background: "none", whiteSpace: "nowrap" }}
-                      >
-                        {dutyRateLoading ? <Spinner /> : "get rate"}
-                      </button>
-                      <button
-                        onClick={() => setTab("hs-lookup")}
-                        className="btn-ghost"
-                        style={{ padding: "8px 10px", border: "1px solid var(--border)", color: "var(--gold)", fontSize: 10, borderRadius: 4, background: "none", whiteSpace: "nowrap" }}
-                      >
-                        find ↗
-                      </button>
-                    </div>
-                    {taricData && showChapterPopup && (
-                      <div style={{ marginTop: 8, padding: "6px 10px", background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 6, fontSize: 11, color: "#1e40af" }}>
-                        <strong>Ch. {taricData.chapter}</strong> · {taricData.description}
-                      </div>
-                    )}
-                    {(isExcisable || isCbam) && (
-                      <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
-                        {isExcisable && (
-                          <button
-                            onClick={() => setTab("excise")}
-                            style={{ fontSize: 9, background: "rgba(245,158,11,0.1)", color: "#d97706", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", letterSpacing: 1, fontWeight: 700 }}
-                          >
-                            EXCISE ↗
-                          </button>
-                        )}
-                        {isCbam && (
-                          <button
-                            onClick={() => setTab("cbam")}
-                            style={{ fontSize: 9, background: "rgba(59,130,246,0.1)", color: "#2563eb", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, padding: "3px 8px", cursor: "pointer", letterSpacing: 1, fontWeight: 700 }}
-                          >
-                            CBAM ↗
-                          </button>
-                        )}
-                      </div>
-                    )}
+                {/* ── Card 1: Goods ── */}
+                <div className="v2-card">
+                  <div className="v2-card-hdr">
+                    <div className="v2-card-icon">📦</div>
+                    <span className="v2-card-title">Goods</span>
+                    <span className="v2-card-sub">Describe the item · find its CN / TARIC code</span>
                   </div>
-
-                  {/* Card 2: Origin & Value */}
-                  <div style={S.card}>
-                    <div style={S.sectionHead}>Origin & Value</div>
-
-                    <label style={S.label}>Country of Origin</label>
-                    <select
-                      value={originCountry}
-                      onChange={(e) => { setOriginCountry(e.target.value); setHasProofOfOrigin(false); }}
-                    >
-                      {Object.entries(ORIGIN_AGREEMENTS)
-                        .sort((a, b) => a[1].name.localeCompare(b[1].name))
-                        .map(([code, info]) => (
-                          <option key={code} value={code}>{info.name} ({code})</option>
-                        ))}
-                      <option value="OTHER">Other</option>
-                    </select>
-
-                    {isSanctioned ? (
-                      <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 6, padding: "8px 10px", marginTop: 8 }}>
-                        <span style={{ color: "#dc2626", fontWeight: 700, fontSize: 11 }}>⚠️ SANCTIONED</span>
-                        <div style={{ color: "#dc2626", fontSize: 10, marginTop: 2 }}>{originInfo.note}</div>
+                  <div className="v2-card-body">
+                    <div className="v2-g2">
+                      <div className="v2-s2">
+                        <div className="v2-lbl">Description</div>
+                        <input
+                          className="v2-inp"
+                          type="text"
+                          placeholder="e.g. Samsung Galaxy S24 smartphone"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                        />
                       </div>
-                    ) : originInfo ? (
-                      <div style={S.hint}>{originInfo.note}</div>
-                    ) : null}
-
-                    {hasPref && (
-                      <>
-                        <label style={S.label}>Proof of Origin</label>
-                        <select
-                          value={hasProofOfOrigin ? "yes" : "none"}
-                          onChange={(e) => setHasProofOfOrigin(e.target.value !== "none")}
-                        >
-                          <option value="none">None — MFN rate applies</option>
-                          <option value="yes">EUR.1 / Invoice declaration / REX</option>
-                        </select>
-                        {hasProofOfOrigin && (
-                          <div style={{ ...S.hint, color: "#059669" }}>✓ Preferential rate will apply</div>
-                        )}
-                      </>
-                    )}
-
-                    <label style={S.label}>Goods Value</label>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 72px", gap: 8 }}>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={itemValue}
-                        onChange={(e) => setItemValue(e.target.value)}
-                      />
-                      <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                        {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    {currency !== "EUR" && (
-                      <div style={S.hint}>
-                        {rateLoading ? "Loading ECB rate..." : `× ${exchangeRate?.toFixed(4)} = €${itemValue && exchangeRate ? (parseFloat(itemValue) * exchangeRate).toFixed(2) : "—"}`}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card 3: Logistics */}
-                  <div style={S.card}>
-                    <div style={S.sectionHead}>Logistics</div>
-
-                    <label style={S.label}>Incoterm 2020</label>
-                    <select value={incoterm} onChange={(e) => setIncoterm(e.target.value)}>
-                      {Object.entries(INCOTERMS_CIF).map(([k, v]) => (
-                        <option key={k} value={k}>{v.label}</option>
-                      ))}
-                    </select>
-                    <div style={S.hint}>{INCOTERMS_CIF[incoterm]?.note}</div>
-
-                    <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 6 }}>
-                      <span style={{ fontSize: 16 }}>✈</span>
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: "#059669" }}>Air Freight</div>
-                        {INCOTERMS_CIF[incoterm]?.needsFreight && (
-                          <div style={{ fontSize: 10, color: "#9ca3af" }}>{getAirfreightPct(originCountry) * 100}% of cost included in customs value · EU Reg. 2015/2447</div>
+                        <div className="v2-lbl">HS / CN Code</div>
+                        <div className="v2-inp-row">
+                          <input
+                            className="v2-inp"
+                            type="text"
+                            placeholder="e.g. 8471.30"
+                            value={hsCode}
+                            onChange={(e) => {
+                              setHsCode(e.target.value);
+                              setDutyRateSource(null);
+                              setPreferential(false);
+                              setHasProofOfOrigin(false);
+                            }}
+                          />
+                          <button
+                            className="v2-btn-ghost v2-btn-sm"
+                            onClick={() => {
+                              if (hsCode) {
+                                lookupDutyRate(hsCode);
+                              }
+                            }}
+                          >Rate</button>
+                          <a
+                            href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp"
+                            target="_blank"
+                            rel="noopener"
+                            className="v2-btn-ghost v2-btn-sm"
+                            style={{textDecoration:"none"}}
+                          >Find ↗</a>
+                        </div>
+                        {dutyRateSource && (
+                          <div className={`v2-pill ${dutyRateSource.aiGenerated ? "v2-pill-amber" : "v2-pill-green"}`} style={{marginTop:6}}>
+                            {dutyRateSource.aiGenerated
+                              ? `⚡ AI: ${dutyRateSource.chapter || "Ch." + hsChapter} · ${dutyRateSource.desc || ""} · VAT ${((getLuVAT(hsCode)) * 100).toFixed(0)}%`
+                              : `✓ TARIC live · ${dutyRateSource.desc || ""} · VAT ${((getLuVAT(hsCode)) * 100).toFixed(0)}%`
+                            }
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {needsShipping && (
-                      <div style={{ display: "grid", gridTemplateColumns: INCOTERMS_CIF[incoterm]?.needsFreight && INCOTERMS_CIF[incoterm]?.needsIns ? "1fr 1fr" : "1fr", gap: 10, marginTop: 12, animation: "slideDown 0.2s ease" }}>
-                        {INCOTERMS_CIF[incoterm]?.needsFreight && (
+                    </div>
+                    {(isExcisable || isCbam) && (
+                      <div style={{marginTop:12,display:"flex",gap:8,flexWrap:"wrap"}}>
+                        {isCbam && <span className="v2-tag v2-tag-blue">🏭 CBAM eligible</span>}
+                        {isExcisable && <span className="v2-tag v2-tag-amber">⚡ Excise — check Excise tab</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Card 2: Shipment ── */}
+                <div className="v2-card">
+                  <div className="v2-card-hdr">
+                    <div className="v2-card-icon">✈️</div>
+                    <span className="v2-card-title">Shipment</span>
+                    <span className="v2-card-sub">CIF = customs duty base (cost + insurance + freight to EU border)</span>
+                  </div>
+                  <div className="v2-card-body">
+                    <div className="v2-g3">
+                      <div>
+                        <div className="v2-lbl">Item Value</div>
+                        <input
+                          className="v2-inp"
+                          type="number"
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
+                          value={itemValue}
+                          onChange={(e) => setItemValue(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Currency</div>
+                        <select
+                          className="v2-sel"
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value)}
+                        >
+                          {CURRENCIES.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Incoterm</div>
+                        <select className="v2-sel" value={incoterm} onChange={(e) => setIncoterm(e.target.value)}>
+                          {Object.entries(INCOTERMS_CIF).map(([k, v]) => (
+                            <option key={k} value={k}>{v.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {needsShipping && (
+                        <>
                           <div>
-                            <label style={{ ...S.label, marginTop: 0 }}>Freight ({currency})</label>
+                            <div className="v2-lbl">Freight Cost ({currency})</div>
                             <input
+                              className="v2-inp"
                               type="number"
                               placeholder="0.00"
+                              min="0"
+                              step="0.01"
                               value={freight}
                               onChange={(e) => setFreight(e.target.value)}
                             />
-                            <div style={S.hint}>{getAirfreightPct(originCountry) * 100}% → customs value (air zone)</div>
                           </div>
-                        )}
-                        {INCOTERMS_CIF[incoterm]?.needsIns && (
                           <div>
-                            <label style={{ ...S.label, marginTop: 0 }}>Insurance ({currency})</label>
+                            <div className="v2-lbl">Insurance ({currency})</div>
                             <input
+                              className="v2-inp"
                               type="number"
                               placeholder="0.00"
+                              min="0"
+                              step="0.01"
                               value={insurance}
                               onChange={(e) => setInsurance(e.target.value)}
                             />
                           </div>
-                        )}
-                      </div>
-                    )}
-                    {!needsShipping && (
-                      <div style={{ ...S.hint, marginTop: 8 }}>
-                        Freight & insurance included in {incoterm} price
+                          <div>
+                            <div className="v2-lbl">Transport Mode</div>
+                            <select className="v2-sel" value={transportMode} onChange={(e) => setTransportMode(e.target.value)}>
+                              <option value="air">Air (70% freight rule)</option>
+                              <option value="sea">Sea / Road (full freight)</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {currency !== "EUR" && (
+                      <div style={{marginTop:12,display:"flex",alignItems:"center",gap:10}}>
+                        <span className="v2-fx-badge">
+                          {rateLoading
+                            ? "Loading ECB rate…"
+                            : exchangeRate
+                              ? `1 ${currency} = ${exchangeRate.toFixed(4)} EUR · ECB`
+                              : "FX rate unavailable"
+                          }
+                        </span>
+                        <button className="v2-btn-ghost v2-btn-sm" onClick={() => setCurrency(c => c)}>Refresh FX</button>
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Card 4: Duty Rates */}
-                  <div style={S.card}>
-                    <div style={S.sectionHead}>Duty Rates</div>
-                    <div style={{ display: "grid", gridTemplateColumns: dutyRateSource?.taricLive ? "1fr 1fr" : "1fr", gap: 12 }}>
+                {/* ── Card 3: Origin & Rates ── */}
+                <div className="v2-card">
+                  <div className="v2-card-hdr">
+                    <div className="v2-card-icon">🌍</div>
+                    <span className="v2-card-title">Origin &amp; Rates</span>
+                    <span className="v2-card-sub">Country of origin determines preferential treatment &amp; anti-dumping</span>
+                  </div>
+                  <div className="v2-card-body">
+                    <div className="v2-g2">
                       <div>
-                        <label style={S.label}>Customs Duty Rate (%)</label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 3.5"
-                          value={dutyRate}
-                          onChange={(e) => { setDutyRate(e.target.value); setDutyRateSource((s) => s ? { ...s, aiGenerated: false } : null); }}
-                          step="0.1"
-                          style={{ borderColor: dutyRateSource?.aiGenerated ? "rgba(16,185,129,0.4)" : undefined }}
-                        />
-                        {dutyRateSource?.taricLive && !dutyRateSource?.error && (
-                          <div style={{ ...S.hint, color: "#3b82f6" }}>
-                            ✓ Live TARIC · {dutyRateSource.referenceDate}
-                            {dutyRateSource.usingPref && (
-                              <span style={{ color: "#059669", marginLeft: 6 }}>✓ preferential rate ({originCountry})</span>
-                            )}
-                            {!dutyRateSource.usingPref && dutyRateSource.prefRate != null && (
-                              <span style={{ color: "#9ca3af", marginLeft: 6 }}>MFN · pref. {dutyRateSource.prefRate}% with proof of origin</span>
-                            )}
-                            {dutyRateSource.mfnRate != null && dutyRateSource.usingPref && (
-                              <span style={{ color: "#9ca3af", marginLeft: 6 }}>· MFN {dutyRateSource.mfnRate}%</span>
-                            )}
-                            {dutyRateSource.antiDumping && <span style={{ color: "#f97316", marginLeft: 6 }}>⚠ ADD may apply</span>}
+                        <div className="v2-lbl">Country of Origin</div>
+                        <select
+                          className="v2-sel"
+                          value={originCountry}
+                          onChange={(e) => { setOriginCountry(e.target.value); setHasProofOfOrigin(false); }}
+                        >
+                          {Object.entries(ORIGIN_AGREEMENTS)
+                            .sort(([, a], [, b]) => (a.name || "").localeCompare(b.name || ""))
+                            .map(([code, info]) => (
+                              <option key={code} value={code}>{info.name} ({code})</option>
+                            ))}
+                        </select>
+                        {originInfo && (
+                          <div className={`v2-pill ${
+                            originInfo.type === "sanctioned" ? "v2-pill-red"
+                            : ["fta","eba","eea","cu","atp","epa","cta"].includes(originInfo.type) ? "v2-pill-green"
+                            : originInfo.type === "gsp" || originInfo.type === "gsp+" ? "v2-pill-blue"
+                            : "v2-pill-amber"
+                          }`} style={{marginTop:6}}>
+                            {originInfo.flag} {originInfo.name} · {originInfo.desc || originInfo.type?.toUpperCase()}
                           </div>
-                        )}
-                        {dutyRateSource?.aiGenerated && !dutyRateSource?.error && (
-                          <div style={S.hint}>
-                            ⚠ AI estimate ·{" "}
-                            <a href={"https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=" + hsCode.replace(/[^0-9]/g, "")} target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>verify TARIC ↗</a>
-                          </div>
-                        )}
-                        {dutyRateSource?.error && <div style={{ ...S.hint, color: "#dc2626" }}>Lookup failed — enter manually</div>}
-                        {!dutyRateSource && !dutyRateLoading && (
-                          <div style={S.hint}>Auto from HS · <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>TARIC ↗</a></div>
                         )}
                       </div>
-                      {dutyRateSource?.taricLive && !dutyRateSource?.error && (
-                        <div>
-                          <label style={S.label}>Anti-Dumping Duty (%)</label>
+                      <div>
+                        <div className="v2-lbl">
+                          Customs Duty Rate (%)
+                          {dutyRateSource?.taricLive && <span className="v2-tag v2-tag-gold" style={{marginLeft:6}}>TARIC live</span>}
+                          {dutyRateSource?.aiGenerated && <span className="v2-tag v2-tag-amber" style={{marginLeft:6}}>AI</span>}
+                        </div>
+                        <div className="v2-inp-row">
                           <input
+                            className="v2-inp"
                             type="number"
-                            placeholder="0.00"
+                            placeholder="e.g. 3.5"
+                            step="0.01"
+                            min="0"
+                            value={dutyRate}
+                            onChange={(e) => { setDutyRate(e.target.value); setDutyRateSource((s) => s ? { ...s, aiGenerated: false } : null); }}
+                          />
+                          <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"var(--muted)"}}>%</span>
+                        </div>
+                        {dutyRateLoading && <div className="v2-hint">Fetching TARIC rate…</div>}
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Anti-Dumping Duty (%)</div>
+                        <div className="v2-inp-row">
+                          <input
+                            className="v2-inp"
+                            type="number"
+                            placeholder="0.0"
+                            step="0.01"
+                            min="0"
                             value={antiDumpingRate}
                             onChange={(e) => setAntiDumpingRate(e.target.value)}
-                            step="0.1"
-                            min="0"
                           />
-                          {!antiDumpingRate && <div style={S.hint}>0 if no ADD order</div>}
+                          <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"var(--muted)"}}>%</span>
                         </div>
-                      )}
+                        <div className="v2-hint">ADD applies on top of customs duty · check TARIC for active measures</div>
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Preferential Treatment</div>
+                        {hasPref ? (
+                          <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:4}}>
+                            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
+                              <input
+                                type="checkbox"
+                                checked={preferential}
+                                onChange={(e) => { setPreferential(e.target.checked); if (!e.target.checked) setHasProofOfOrigin(false); }}
+                              />
+                              Claim preferential rate ({originInfo?.type?.toUpperCase()})
+                            </label>
+                            {preferential && (
+                              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
+                                <input
+                                  type="checkbox"
+                                  checked={hasProofOfOrigin}
+                                  onChange={(e) => setHasProofOfOrigin(e.target.checked)}
+                                />
+                                Proof of origin held (EUR.1 / invoice declaration)
+                              </label>
+                            )}
+                            <div className="v2-hint" style={{marginTop:2}}>
+                              {preferential && hasProofOfOrigin
+                                ? "✓ Preferential rate will be applied"
+                                : preferential
+                                  ? "Confirm you hold proof of origin to apply the rate"
+                                  : originInfo?.note || "Preferential rate available — check the box to apply"}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{marginTop:6,fontSize:13,color:"#9ca3af"}}>
+                            No EU preferential agreement — MFN rate applies
+                            {originInfo?.type === "sanctioned" && <span style={{color:"#dc2626",fontWeight:600}}> ⚠️ Sanctioned country</span>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Actions */}
-                  <button
-                    onClick={calculate}
-                    className="btn-gold"
-                    style={{ padding: "16px", fontSize: 13, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700, borderRadius: 8, fontFamily: "var(--font-oswald), sans-serif", width: "100%" }}
-                  >
-                    Calculate
-                  </button>
-                  {result && (
-                    <button
-                      onClick={downloadPDF}
-                      className="btn-ghost"
-                      style={{ width: "100%", padding: "12px", border: "1px solid var(--border)", color: "var(--gold)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", borderRadius: 8, background: "none", fontFamily: "var(--font-oswald), sans-serif" }}
-                    >
-                      ↓ Export PDF
+                  <div className="v2-calc-row">
+                    <button className="v2-calc-btn" onClick={calculate}>
+                      Calculate
                     </button>
-                  )}
-                </div>
-
-                {/* ──── RIGHT: RESULT ──── */}
-                <div ref={resultRef} style={{ position: "sticky", top: 16 }}>
-                  {!result ? (
-                    <div style={{ ...S.card, animation: "fadeIn 0.2s ease" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                        <div style={S.sectionHead}>Live Preview</div>
-                        {preview && (
-                          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 9, color: "#10b981", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block", animation: "pulse-dot 1.5s ease infinite" }} />
-                            Live
-                          </div>
-                        )}
-                      </div>
-
-                      {!preview ? (
-                        <>
-                          <div style={{ color: "#c4cdd6", fontSize: 40, textAlign: "center", padding: "16px 0", fontFamily: "var(--font-oswald), sans-serif", letterSpacing: 2 }}>€ —</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                            {[
-                              ["🏷", "HS code → TARIC duty rate"],
-                              ["💱", "FX conversion (ECB rates)"],
-                              ["📦", "Incoterm → CIF customs value"],
-                              ["✈", "Air freight zone adjustment"],
-                              ["🤝", "FTA / GSP preferential rates"],
-                              ["🏛", "Luxembourg import VAT"],
-                            ].map(([icon, text]) => (
-                              <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#9ca3af", fontFamily: "var(--font-courier-prime), monospace" }}>
-                                <span>{icon}</span><span>{text}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 4, fontFamily: "var(--font-oswald), sans-serif" }}>
-                              {preview.dutyFree ? "Duty-Free (≤€150)" : "Duties & Taxes"}
-                            </div>
-                            <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 40, color: "var(--foreground)", fontWeight: 700, lineHeight: 1, letterSpacing: -1, opacity: 0.85 }}>
-                              €{fmt(preview.totalDuties)}
-                            </div>
-                            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
-                              Landed: <strong style={{ color: "#6b7280" }}>€{fmt(preview.total)}</strong>
-                              {" · "}{((preview.totalDuties / (preview.valEUR || 1)) * 100).toFixed(1)}% on goods value
-                            </div>
-                          </div>
-                          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 0 }}>
-                            {[
-                              { label: "Goods value", value: preview.valEUR },
-                              ...(preview.frEUR > 0 ? [{ label: "Freight (air adj.)", value: preview.frEUR }] : []),
-                              ...(preview.insEUR > 0 ? [{ label: "Insurance", value: preview.insEUR }] : []),
-                              { label: "Customs Value (CIF)", value: preview.cifEUR, bold: true },
-                              { label: `Duty ${preview.dutyFree ? "(waived)" : preview.effectiveDutyRate.toFixed(1) + "%"}`, value: preview.customsDuty },
-                              ...(preview.addDuty > 0 ? [{ label: "Anti-Dumping", value: preview.addDuty }] : []),
-                              { label: `VAT ${((preview.vatRate || 0.17) * 100).toFixed(0)}%`, value: preview.importVAT },
-                              { label: "Total duties & taxes", value: preview.totalDuties, bold: true, total: true },
-                            ].map(({ label, value, bold, total }, i) => (
-                              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 0", borderTop: bold && i > 0 ? "1px solid var(--border)" : "none" }}>
-                                <span style={{ fontSize: bold ? 11 : 10, color: total ? "var(--foreground)" : "#9ca3af", fontWeight: bold ? 600 : 400 }}>{label}</span>
-                                <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: bold ? 12 : 11, color: total ? "var(--gold)" : "#6b7280", fontWeight: bold ? 700 : 400 }}>€{fmt(value)}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div style={{ marginTop: 12, padding: "8px 12px", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 6, fontSize: 10, color: "#9ca3af", textAlign: "center" }}>
-                            Hit <strong style={{ color: "var(--gold)" }}>Calculate</strong> to confirm & export
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12, animation: "fadeIn 0.3s ease" }}>
-                      {/* Headline */}
-                      <div style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(52,211,153,0.05))", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 10, padding: 24 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#059669", marginBottom: 4, fontFamily: "var(--font-oswald), sans-serif" }}>
-                          {result.dutyFree ? "Duty-Free Import (≤€150)" : "Duties & Taxes"}
-                        </div>
-                        <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 44, color: "var(--foreground)", fontWeight: 700, lineHeight: 1, letterSpacing: -1 }}>
-                          €{fmt(totalDuties)}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
-                          Landed cost: <strong style={{ color: "var(--foreground)" }}>€{fmt(result.total)}</strong>
-                          {" · "}
-                          {((totalDuties / (result.valEUR || 1)) * 100).toFixed(1)}% on goods value
-                        </div>
-                        {hasPref && hasProofOfOrigin && (
-                          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(5,150,105,0.1)", borderRadius: 20, padding: "4px 10px", fontSize: 10, color: "#059669", fontWeight: 600 }}>
-                            ✓ {result.prefType === "gsp" ? "GSP reduced" : result.prefType === "gsp+" ? "GSP+ reduced" : "0% preferential"} applied
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Ledger */}
-                      <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-                        {[
-                          { label: "Goods value", value: result.valEUR, sub: currency !== "EUR" ? `${itemValue} ${currency}` : null },
-                          ...(result.frEUR > 0 ? [{ label: `Freight (${result.airfreightPct ?? 100}% air adj.)`, value: result.frEUR }] : []),
-                          ...(result.insEUR > 0 ? [{ label: "Insurance", value: result.insEUR }] : []),
-                          { label: "Customs Value (CIF)", value: result.cifEUR, divider: true, bold: true },
-                          { label: `Customs Duty ${result.dutyFree ? "(waived)" : result.effectiveDutyRate.toFixed(1) + "%"}`, value: result.customsDuty, accent: "#6366f1" },
-                          ...(result.antiDumpingDuty > 0 ? [{ label: `Anti-Dumping Duty ${result.addRate.toFixed(1)}%`, value: result.antiDumpingDuty, accent: "#dc2626" }] : []),
-                          ...(result.exciseDutyAmt > 0 ? [{ label: "Excise Duty", value: result.exciseDutyAmt, accent: "#d97706" }] : []),
-                          { label: `Import VAT ${((result.vatRate || 0.17) * 100).toFixed(0)}%`, value: result.importVAT, accent: "#0891b2" },
-                          { label: "Total Duties & Taxes", value: totalDuties, divider: true, bold: true, total: true },
-                        ].map(({ label, value, sub, divider, bold, total, accent }, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "baseline",
-                              padding: "10px 20px",
-                              borderTop: divider ? "2px solid var(--border)" : i > 0 ? "1px solid rgba(0,0,0,0.04)" : "none",
-                              background: total ? "rgba(16,185,129,0.04)" : "transparent",
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontSize: bold ? 12 : 11, fontWeight: bold ? 700 : 400, color: accent || (bold ? "var(--foreground)" : "#6b7280") }}>
-                                {label}
-                              </div>
-                              {sub && <div style={{ fontSize: 10, color: "#9ca3af" }}>{sub}</div>}
-                            </div>
-                            <div style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: bold ? 14 : 12, fontWeight: bold ? 700 : 400, color: total ? "var(--gold)" : (accent || "var(--foreground)") }}>
-                              €{fmt(value)}
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* Proportion bar */}
-                        {result.cifEUR > 0 && (
-                          <div style={{ padding: "12px 20px", borderTop: "1px solid var(--border)", background: "#fafafa" }}>
-                            <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 6 }}>Composition</div>
-                            <div style={{ height: 8, borderRadius: 4, overflow: "hidden", display: "flex" }}>
-                              {(() => {
-                                const segments = [
-                                  { val: result.valEUR, color: "#e2e8f0" },
-                                  { val: result.customsDuty, color: "#6366f1" },
-                                  { val: result.antiDumpingDuty || 0, color: "#dc2626" },
-                                  { val: result.exciseDutyAmt || 0, color: "#d97706" },
-                                  { val: result.importVAT, color: "#10b981" },
-                                ].filter(s => s.val > 0);
-                                const total_val = segments.reduce((a, s) => a + s.val, 0);
-                                return segments.map((s, i) => (
-                                  <div key={i} style={{ flex: s.val / total_val, background: s.color }} />
-                                ));
-                              })()}
-                            </div>
-                            <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                              {[
-                                { label: "Goods", color: "#e2e8f0", textColor: "#9ca3af" },
-                                { label: "Duty", color: "#6366f1", textColor: "#6366f1" },
-                                ...(result.antiDumpingDuty > 0 ? [{ label: "ADD", color: "#dc2626", textColor: "#dc2626" }] : []),
-                                ...(result.exciseDutyAmt > 0 ? [{ label: "Excise", color: "#d97706", textColor: "#d97706" }] : []),
-                                { label: "VAT", color: "#10b981", textColor: "#10b981" },
-                              ].map(({ label, color, textColor }) => (
-                                <div key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9 }}>
-                                  <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-                                  <span style={{ color: textColor }}>{label}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Excise / CBAM alerts */}
-                  {isExcisable && (
-                    <div style={{ marginTop: 10, background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 18 }}>🥃</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#d97706" }}>Excise Duty Required</div>
-                        <div style={{ fontSize: 10, color: "#9ca3af" }}>This HS chapter is excisable (alcohol / tobacco / fuel).</div>
-                      </div>
-                      <button onClick={() => setTab("excise")} style={{ fontSize: 10, color: "#d97706", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}>
-                        Excise →
-                      </button>
-                    </div>
-                  )}
-                  {isCbam && (
-                    <div style={{ marginTop: 10, background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.25)", borderRadius: 8, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 18 }}>🌍</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#2563eb" }}>CBAM Applies</div>
-                        <div style={{ fontSize: 10, color: "#9ca3af" }}>Carbon Border Adjustment Mechanism applies.</div>
-                      </div>
-                      <button onClick={() => setTab("cbam")} style={{ fontSize: 10, color: "#2563eb", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 4, padding: "4px 10px", cursor: "pointer", fontWeight: 700 }}>
-                        CBAM →
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Disclaimer */}
-                  <div style={{ marginTop: 10, padding: "10px 14px", background: "#f9fafb", border: "1px solid var(--border)", borderRadius: 6, fontSize: 10, color: "#9ca3af", lineHeight: 1.6 }}>
-                    ⚠ Estimate only. Verify at{" "}
-                    <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener" style={{ color: "var(--gold)" }}>TARIC ↗</a>.
+                    <button className="v2-reset-btn" onClick={() => { setResult(null); setDescription(""); setHsCode(""); setDutyRate(""); setItemValue(""); setFreight(""); setInsurance(""); setAntiDumpingRate(""); setDutyRateSource(null); setPreferential(false); setHasProofOfOrigin(false); }}>Reset</button>
+                    <span style={{fontSize:11,color:"#9ca3af",fontFamily:"var(--font-courier-prime),monospace"}}>Results update live as you type</span>
                   </div>
                 </div>
+
+                {/* ── Breakdown ── */}
+                {result && (
+                  <div className="v2-bk-card">
+                    <div className="v2-card-hdr">
+                      <div className="v2-card-icon" style={{background:"rgba(16,185,129,0.1)"}}>📋</div>
+                      <span className="v2-card-title">Calculation Breakdown</span>
+                      <span className="v2-card-sub" style={{color:"#10b981",fontFamily:"var(--font-courier-prime),monospace",fontWeight:700}}>
+                        Total: €{fmt(result.total)}
+                      </span>
+                    </div>
+                    <div className="v2-card-body">
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 40px"}}>
+                        <div>
+                          <div className="v2-sec-h">Customs Value (CIF)</div>
+                          <div className="v2-bk-row"><span className="v2-bk-lbl">Item value (EUR)</span><span className="v2-bk-val">€{fmt(result.valEUR)}</span></div>
+                          {result.frEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Freight ({result.airfreightPct ?? 100}%)</span><span className="v2-bk-val">€{fmt(result.frEUR)}</span></div>}
+                          {result.insEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Insurance</span><span className="v2-bk-val">€{fmt(result.insEUR)}</span></div>}
+                          <div className="v2-bk-sep"/>
+                          <div className="v2-bk-total"><span>CIF Value</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(result.cifEUR)}</span></div>
+                        </div>
+                        <div>
+                          <div className="v2-sec-h">Duties &amp; Taxes</div>
+                          <div className="v2-bk-row">
+                            <span className="v2-bk-lbl">Customs duty {result.dutyFree ? "(waived)" : result.effectiveDutyRate.toFixed(1) + "%"}</span>
+                            <span className="v2-bk-val">€{fmt(result.customsDuty)}</span>
+                          </div>
+                          {result.antiDumpingDuty > 0 && (
+                            <div className="v2-bk-row">
+                              <span className="v2-bk-lbl">Anti-dumping {result.addRate?.toFixed(1)}%</span>
+                              <span className="v2-bk-val">€{fmt(result.antiDumpingDuty)}</span>
+                            </div>
+                          )}
+                          <div className="v2-bk-row">
+                            <span className="v2-bk-lbl">Import VAT {((result.vatRate || 0.17) * 100).toFixed(0)}%</span>
+                            <span className="v2-bk-val">€{fmt(result.importVAT)}</span>
+                          </div>
+                          <div className="v2-bk-sep"/>
+                          <div className="v2-bk-total"><span>Total duties</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(totalDuties)}</span></div>
+                        </div>
+                      </div>
+                      <div className="v2-bk-grand">
+                        <div>
+                          <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
+                          <div style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:28,fontWeight:700,color:"var(--foreground)",letterSpacing:-1}}>€{fmt(result.total)}</div>
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button
+                            className="v2-btn-ghost v2-btn-sm"
+                            onClick={() => saveFavourite(hsCode)}
+                          >⭐ Save HS</button>
+                          <button
+                            className="v2-btn-gold v2-btn-sm"
+                            onClick={downloadPDF}
+                            
+                          >⬇ Export PDF</button>
+                        </div>
+                      </div>
+                      {/* Proportion bar */}
+                      {result.cifEUR > 0 && (
+                        <div style={{marginTop:16}}>
+                          <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#9ca3af",marginBottom:6,fontFamily:"var(--font-oswald),sans-serif"}}>Composition</div>
+                          <div style={{height:8,borderRadius:4,overflow:"hidden",display:"flex"}}>
+                            {(() => {
+                              const segments = [
+                                { val: result.valEUR, color: "#e2e8f0" },
+                                { val: result.customsDuty, color: "#6366f1" },
+                                { val: result.antiDumpingDuty || 0, color: "#dc2626" },
+                                { val: result.exciseDutyAmt || 0, color: "#d97706" },
+                                { val: result.importVAT, color: "#10b981" },
+                              ].filter(s => s.val > 0);
+                              const tv = segments.reduce((a, s) => a + s.val, 0);
+                              return segments.map((s, i) => (
+                                <div key={i} style={{flex: s.val / tv, background: s.color}} />
+                              ));
+                            })()}
+                          </div>
+                          <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
+                            {[
+                              {label:"Goods",color:"#e2e8f0",text:"#9ca3af"},
+                              {label:"Duty",color:"#6366f1",text:"#6366f1"},
+                              ...(result.antiDumpingDuty > 0 ? [{label:"ADD",color:"#dc2626",text:"#dc2626"}] : []),
+                              ...(result.exciseDutyAmt > 0 ? [{label:"Excise",color:"#d97706",text:"#d97706"}] : []),
+                              {label:"VAT",color:"#10b981",text:"#10b981"},
+                            ].map(({label,color,text}) => (
+                              <div key={label} style={{display:"flex",alignItems:"center",gap:4,fontSize:9}}>
+                                <div style={{width:8,height:8,borderRadius:2,background:color}}/>
+                                <span style={{color:text}}>{label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Excise / CBAM alerts */}
+                {isExcisable && (
+                  <div style={{background:"rgba(245,158,11,.05)",border:"1px solid rgba(245,158,11,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:18}}>🥃</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#d97706"}}>Excise Duty Required</div>
+                      <div style={{fontSize:10,color:"#9ca3af"}}>This HS chapter is excisable (alcohol / tobacco / fuel).</div>
+                    </div>
+                    <button onClick={() => setTab("excise")} style={{fontSize:10,color:"#d97706",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>Excise →</button>
+                  </div>
+                )}
+                {isCbam && (
+                  <div style={{background:"rgba(59,130,246,.05)",border:"1px solid rgba(59,130,246,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:18}}>🌍</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#2563eb"}}>CBAM Applies</div>
+                      <div style={{fontSize:10,color:"#9ca3af"}}>Carbon Border Adjustment Mechanism applies.</div>
+                    </div>
+                    <button onClick={() => setTab("cbam")} style={{fontSize:10,color:"#2563eb",background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>CBAM →</button>
+                  </div>
+                )}
+
+                {/* Disclaimer */}
+                <div style={{padding:"10px 14px",background:"#f9fafb",border:"1px solid var(--border)",borderRadius:6,fontSize:10,color:"#9ca3af",lineHeight:1.6}}>
+                  ⚠ Estimate only. Verify at{" "}
+                  <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener" style={{color:"var(--gold)"}}>TARIC ↗</a>.
+                </div>
+
               </div>
             );
           })()}
         {/* EXCISE TAB */}
         {tab === "excise" && (
-          <div className="two-col">
-            <div>
-              <div className="section-label">Excise Duty Calculator — Luxembourg</div>
+          <div className="v2-tab-wrap">
+            <div className="v2-card">
+              <div className="v2-card-hdr"><div className="v2-card-icon">🏛️</div><span className="v2-card-title">Excise Duty Calculator</span><span className="v2-card-sub">Luxembourg ADA rates · 2026</span></div>
+              <div className="v2-card-body">
               <div
                 style={{
                   background: "#fff",
@@ -2290,10 +2162,11 @@ export default function CustomsCalculator({ user }) {
                 </button>
               </div>
             </div>
+            </div>
 
-            {/* Result panel */}
-            <div>
-              <div className="section-label">Result</div>
+            <div className="v2-card">
+              <div className="v2-card-hdr"><div className="v2-card-icon">📊</div><span className="v2-card-title">Result</span></div>
+              <div className="v2-card-body">
               {!exciseResult ? (
                 <div
                   style={{
@@ -2444,20 +2317,13 @@ export default function CustomsCalculator({ user }) {
                 </div>
               )}
             </div>
+            </div>
           </div>
         )}
 
         {/* CBAM TAB */}
         {tab === "cbam" &&
           (() => {
-            const lbl = {
-              fontSize: 11,
-              color: "#6b7280",
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              display: "block",
-              marginBottom: 6,
-            };
             const sector = CBAM_SECTORS[cbamSector];
             const defaults = CBAM_DEFAULT_EMISSIONS[cbamSector] || {};
             const base = defaults[cbamCountry] ?? defaults.default;
@@ -2467,1866 +2333,403 @@ export default function CustomsCalculator({ user }) {
             const showDeMinimisHint = !isNaN(tonnes) && tonnes > 0 && tonnes < 50 && !sector?.noDeMinimis;
 
             return (
-              <div className="two-col">
-                {/* ── Left: Inputs ── */}
-                <div>
-                  <div className="section-label">CBAM Carbon Cost Calculator</div>
-                  <div
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 2,
-                      padding: 24,
-                      display: "grid",
-                      gap: 16,
-                    }}
-                  >
-                    {/* Sector */}
-                    <div>
-                      <label style={lbl}>Product Sector</label>
-                      <select
-                        value={cbamSector}
-                        onChange={(e) => {
-                          const s = CBAM_SECTORS[e.target.value];
-                          setCbamSector(e.target.value);
-                          setCbamRoute(s?.routes?.[0]?.value || "");
-                          setCbamResult(null);
-                        }}
-                      >
-                        {Object.entries(CBAM_SECTORS).map(([k, s]) => (
-                          <option key={k} value={k}>
-                            {s.label} · {s.cnCodes}
-                          </option>
-                        ))}
-                      </select>
-                      {sector?.indirectIncluded && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            marginTop: 4,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          Indirect emissions (electricity) included in default factors.
-                        </div>
-                      )}
+              <div className="v2-tab-wrap">
+                <div className="v2-card">
+                  <div className="v2-card-hdr">
+                    <div className="v2-card-icon">🏭</div>
+                    <span className="v2-card-title">CBAM Calculator</span>
+                    <span className="v2-card-sub">Carbon Border Adjustment Mechanism · in force Jan 2026</span>
+                  </div>
+                  <div className="v2-card-body">
+                    <div className="v2-pill v2-pill-amber" style={{marginBottom:16}}>
+                      ⚠️ CBAM transitional period ended 31 Dec 2025. From Jan 2026 importers must surrender CBAM certificates at EU ETS price.
                     </div>
-
-                    {/* Country */}
-                    <div>
-                      <label style={lbl}>Country of Origin</label>
-                      <select value={cbamCountry} onChange={(e) => setCbamCountry(e.target.value)}>
-                        {CBAM_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Import Year */}
-                    <div>
-                      <label style={lbl}>Import Year</label>
-                      <select value={cbamYear} onChange={(e) => setCbamYear(parseInt(e.target.value))}>
-                        {Object.entries(CBAM_FACTOR).map(([y, f]) => (
-                          <option key={y} value={y}>
-                            {y} — {(f * 100).toFixed(1)}% CBAM factor
-                          </option>
-                        ))}
-                      </select>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          marginTop: 4,
-                          fontFamily: "var(--font-courier-prime), monospace",
-                        }}
-                      >
-                        Factor = % of embedded emissions requiring certificate coverage.
-                      </div>
-                    </div>
-
-                    {/* Quantity */}
-                    <div>
-                      <label style={lbl}>Import Quantity ({sector?.unit || "tonne"})</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 500"
-                        min="0"
-                        step="0.1"
-                        value={cbamTonnes}
-                        onChange={(e) => setCbamTonnes(e.target.value)}
-                      />
-                      {showDeMinimisHint && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#2e6e2e",
-                            marginTop: 4,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          ✓ Below 50 {sector?.unit} de minimis — CBAM obligation likely waived. Confirm with declarant.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Production route */}
-                    {sector?.routes && (
+                    <div className="v2-g2">
                       <div>
-                        <label style={lbl}>Production Route</label>
-                        <select value={cbamRoute} onChange={(e) => setCbamRoute(e.target.value)}>
-                          {sector.routes.map((r) => (
-                            <option key={r.value} value={r.value}>
-                              {r.label}
-                            </option>
+                        <div className="v2-lbl">Product Sector</div>
+                        <select
+                          className="v2-sel"
+                          value={cbamSector}
+                          onChange={(e) => {
+                            const s = CBAM_SECTORS[e.target.value];
+                            setCbamSector(e.target.value);
+                            setCbamResult(null);
+                            if (s?.defaultMode) setCbamMode(s.defaultMode);
+                          }}
+                        >
+                          {Object.entries(CBAM_SECTORS).map(([k, v]) => (
+                            <option key={k} value={k}>{v.label}</option>
                           ))}
                         </select>
+                        {sector?.cn && (
+                          <div className="v2-hint">CN codes: {sector.cn}</div>
+                        )}
                       </div>
-                    )}
-
-                    {/* Emissions mode */}
-                    <div>
-                      <label style={lbl}>Embedded Emissions Source</label>
-                      <select value={cbamMode} onChange={(e) => setCbamMode(e.target.value)}>
-                        <option value="default">Default values (EU Reg. 2025/2621 + markup)</option>
-                        <option value="actual">Actual verified emissions (accredited verifier)</option>
-                      </select>
-                      {cbamMode === "default" && previewFactor != null && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            marginTop: 6,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                            lineHeight: 1.6,
-                          }}
+                      <div>
+                        <div className="v2-lbl">Country of Origin</div>
+                        <select
+                          className="v2-sel"
+                          value={cbamCountry}
+                          onChange={(e) => { setCbamCountry(e.target.value); setCbamResult(null); }}
                         >
-                          Base factor: {(base ?? 0).toFixed(3)} × {markup} markup = {previewFactor.toFixed(3)} tCO₂e/
-                          {sector?.unit || "t"}
+                          {Object.entries(ORIGIN_AGREEMENTS)
+                            .filter(([, v]) => v.name)
+                            .sort(([, a], [, b]) => a.name.localeCompare(b.name))
+                            .map(([k, v]) => (
+                              <option key={k} value={k}>{v.name} ({k})</option>
+                            ))}
+                        </select>
+                        {previewFactor != null && (
+                          <div className="v2-hint">
+                            Default emission factor: <strong>{previewFactor.toFixed(2)} t CO₂e/t</strong>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Net Mass (tonnes)</div>
+                        <input
+                          className="v2-inp"
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          step="0.01"
+                          value={cbamTonnes}
+                          onChange={(e) => { setCbamTonnes(e.target.value); setCbamResult(null); }}
+                        />
+                        {showDeMinimisHint && (
+                          <div className="v2-hint v2-pill v2-pill-blue" style={{marginTop:6}}>
+                            ℹ Under 50t may qualify for de minimis exemption
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className="v2-lbl">EU ETS Price (€/t CO₂e)</div>
+                        <input
+                          className="v2-inp"
+                          type="number"
+                          placeholder="~65"
+                          min="0"
+                          step="0.01"
+                          value={cbamEtsPrice}
+                          onChange={(e) => { setCbamEtsPrice(e.target.value); setCbamResult(null); }}
+                        />
+                        <div className="v2-hint">Current ETS price · check <a href="https://ember-climate.org/insights/research/european-carbon-price-tracker/" target="_blank" rel="noopener" style={{color:"var(--gold)"}}>Ember ↗</a></div>
+                      </div>
+                      <div>
+                        <div className="v2-lbl">Emissions Mode</div>
+                        <select
+                          className="v2-sel"
+                          value={cbamMode}
+                          onChange={(e) => { setCbamMode(e.target.value); setCbamResult(null); }}
+                        >
+                          <option value="default">Use default emission factor</option>
+                          <option value="actual">Use actual verified emissions</option>
+                        </select>
+                      </div>
+                      {cbamMode === "actual" && (
+                        <div>
+                          <div className="v2-lbl">Actual Emissions (t CO₂e/t)</div>
+                          <input
+                            className="v2-inp"
+                            type="number"
+                            placeholder="0.00"
+                            min="0"
+                            step="0.01"
+                            value={cbamActualEmissions}
+                            onChange={(e) => { setCbamActualEmissions(e.target.value); setCbamResult(null); }}
+                          />
                         </div>
                       )}
-                    </div>
-
-                    {cbamMode === "actual" && (
                       <div>
-                        <label style={lbl}>Actual Embedded Emissions (tCO₂e per {sector?.unit || "tonne"})</label>
+                        <div className="v2-lbl">Carbon Price Already Paid (€/t)</div>
                         <input
+                          className="v2-inp"
                           type="number"
-                          placeholder="e.g. 1.85"
-                          min="0"
-                          step="0.001"
-                          value={cbamActualEmissions}
-                          onChange={(e) => setCbamActualEmissions(e.target.value)}
-                        />
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            marginTop: 4,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          Must be verified by an EU-accredited independent verifier.
-                        </div>
-                      </div>
-                    )}
-
-                    <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 16, display: "grid", gap: 16 }}>
-                      {/* ETS price */}
-                      <div>
-                        <label style={lbl}>EU ETS Carbon Price (€/tCO₂)</label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 70"
-                          min="0"
-                          step="0.5"
-                          value={cbamEtsPrice}
-                          onChange={(e) => setCbamEtsPrice(e.target.value)}
-                        />
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            marginTop: 4,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          Quarterly average ETS price applies. Check{" "}
-                          <a
-                            href="https://www.eex.com/en/market-data/environmental-markets"
-                            target="_blank"
-                            rel="noopener"
-                            style={{ color: "#10b981" }}
-                          >
-                            EEX ↗
-                          </a>{" "}
-                          for current prices.
-                        </div>
-                      </div>
-
-                      {/* Carbon price already paid */}
-                      <div>
-                        <label style={lbl}>Carbon Price Already Paid Abroad (€) — optional</label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
+                          placeholder="0"
                           min="0"
                           step="0.01"
                           value={cbamCarbonPaid}
-                          onChange={(e) => setCbamCarbonPaid(e.target.value)}
+                          onChange={(e) => { setCbamCarbonPaid(e.target.value); setCbamResult(null); }}
                         />
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            marginTop: 4,
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          Effective carbon price paid in origin country. Deducted from CBAM cost.
-                        </div>
+                        <div className="v2-hint">Carbon price paid in country of origin — reduces CBAM liability</div>
                       </div>
                     </div>
-
-                    <button
-                      onClick={calculateCBAM}
-                      className="btn-gold"
-                      style={{
-                        padding: "14px",
-                        fontSize: 13,
-                        letterSpacing: 3,
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        borderRadius: 2,
-                        fontFamily: "var(--font-oswald), sans-serif",
-                        width: "100%",
-                      }}
-                    >
-                      Calculate CBAM
-                    </button>
-                  </div>
-
-                  {/* Key dates reference */}
-                  <div
-                    style={{
-                      marginTop: 16,
-                      background: "#f0f7f4",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 2,
-                      padding: 16,
-                    }}
-                  >
-                    <div className="section-label" style={{ marginTop: 0, marginBottom: 10 }}>
-                      Key Dates & Thresholds
+                    <div className="v2-calc-row" style={{marginTop:20}}>
+                      <button
+                        className="v2-calc-btn"
+                        onClick={calculateCBAM}
+                        disabled={!cbamSector || !cbamTonnes || !cbamEtsPrice}
+                      >
+                        Calculate CBAM
+                      </button>
+                      <button className="v2-reset-btn" onClick={() => { setCbamResult(null); setCbamTonnes(""); setCbamCarbonPaid("0"); setCbamActualEmissions(""); }}>
+                        Reset
+                      </button>
                     </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#6b7280",
-                        lineHeight: 2,
-                        fontFamily: "var(--font-courier-prime), monospace",
-                      }}
-                    >
-                      <div>Jan 2026 — CBAM fully operational (declarant obligations begin)</div>
-                      <div>31 May each year — CBAM annual declaration deadline</div>
-                      <div>Feb 2027 — CBAM certificate sales open</div>
-                      <div>30 Sep 2027 — First surrender deadline (covering 2026 imports)</div>
-                      <div style={{ color: "#2e6e2e" }}>50 t/yr — de minimis threshold (excl. electricity)</div>
-                    </div>
+                    {cbamResult && (
+                      <div className={`v2-pill ${cbamResult.netCost > 0 ? "v2-pill-amber" : "v2-pill-green"}`} style={{marginTop:16}}>
+                        {cbamResult.netCost > 0
+                          ? `⚠ CBAM liability: €${fmt(cbamResult.netCost)} · ${cbamResult.emissionFactor?.toFixed(3)} t CO₂e/t · ${fmt(cbamResult.totalEmissions)} t CO₂e total`
+                          : `✓ No CBAM liability — carbon price paid in origin country covers EU ETS cost`
+                        }
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* ── Right: Result ── */}
-                <div>
-                  <div className="section-label">CBAM Cost Estimate</div>
-                  {!cbamResult ? (
-                    <div
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 2,
-                        padding: "44px 24px",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div style={{ fontSize: 32, marginBottom: 14, opacity: 0.2, lineHeight: 1 }}>CO₂</div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-oswald), sans-serif",
-                          fontSize: 11,
-                          letterSpacing: 4,
-                          textTransform: "uppercase",
-                          color: "var(--muted)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Carbon Border Adjustment
-                      </div>
-                      <div style={{ fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-                        Select sector, origin country, and quantity,
-                        <br />
-                        then click{" "}
-                        <strong
-                          style={{
-                            fontFamily: "var(--font-oswald), sans-serif",
-                            color: "var(--muted)",
-                            letterSpacing: 1,
-                          }}
-                        >
-                          Calculate CBAM
-                        </strong>
-                      </div>
+                {/* Sector reference */}
+                <div className="v2-card">
+                  <div className="v2-card-hdr">
+                    <div className="v2-card-icon">📊</div>
+                    <span className="v2-card-title">CBAM Sectors &amp; CN Codes</span>
+                    <span className="v2-card-sub">Goods in scope from 1 Jan 2026</span>
+                  </div>
+                  <div className="v2-card-body">
+                    <table className="v2-tbl">
+                      <thead>
+                        <tr><th>Sector</th><th>CN Chapter(s)</th><th>Default EF (t CO₂e/t)</th></tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(CBAM_SECTORS).map(([k, v]) => (
+                          <tr key={k} style={{cursor:"pointer"}} onClick={() => setCbamSector(k)}>
+                            <td className="v2-bold">{v.label}</td>
+                            <td className="v2-mono">{v.cn || "—"}</td>
+                            <td className="v2-mono">{CBAM_DEFAULT_EMISSIONS[k]?.default?.toFixed(2) ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="v2-hint" style={{marginTop:12}}>
+                      Click any row to select that sector. Emission factors are EU Commission defaults — use verified data where available.
                     </div>
-                  ) : (
-                    <div style={{ animation: "fadeIn 0.3s ease" }}>
-                      {cbamResult.deMinimis && (
-                        <div
-                          style={{
-                            background: "#e8f5e8",
-                            border: "1px solid #a8d8a8",
-                            padding: "12px 16px",
-                            borderRadius: 2,
-                            marginBottom: 16,
-                            fontSize: 13,
-                            color: "#2e6e2e",
-                          }}
-                        >
-                          ✓ {cbamResult.tonnes.toFixed(1)} {cbamResult.unit} is below the 50-{cbamResult.unit} de
-                          minimis threshold. No CBAM obligation likely applies — verify with your authorised declarant.
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          background: "#fff",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 2,
-                          padding: 20,
-                          boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 10,
-                            letterSpacing: 4,
-                            textTransform: "uppercase",
-                            fontFamily: "var(--font-oswald), sans-serif",
-                            color: "var(--muted)",
-                            marginBottom: 12,
-                          }}
-                        >
-                          {cbamResult.sectorLabel}
-                        </div>
-
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>Import quantity</span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            {cbamResult.tonnes.toFixed(2)} {cbamResult.unit}
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>Total embedded emissions</span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            {cbamResult.totalEmbedded.toFixed(3)} tCO₂e
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>
-                            CBAM factor ({cbamResult.year})
-                            <span
-                              style={{
-                                fontSize: 11,
-                                marginLeft: 8,
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                color: "#6b7280",
-                              }}
-                            >
-                              {(cbamResult.factor * 100).toFixed(1)}% phase-in
-                            </span>
-                          </span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            ×{cbamResult.factor}
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>Covered emissions</span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            {cbamResult.coveredEmissions.toFixed(4)} tCO₂e
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>EU ETS price</span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            €{cbamResult.etsPrice}/tCO₂
-                          </span>
-                        </div>
-                        <div className="result-row">
-                          <span style={{ color: "#6b7280", fontSize: 13 }}>Gross CBAM cost</span>
-                          <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
-                            € {fmt(cbamResult.grossCost)}
-                          </span>
-                        </div>
-                        {cbamResult.carbonPaid > 0 && (
-                          <div className="result-row">
-                            <span style={{ color: "#6b7280", fontSize: 13 }}>− Carbon price paid abroad</span>
-                            <span
-                              style={{
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                fontSize: 13,
-                                color: "#2e6e2e",
-                              }}
-                            >
-                              − € {fmt(cbamResult.carbonPaid)}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Net CBAM cost total box */}
-                        <div
-                          style={{
-                            marginTop: 8,
-                            background: "linear-gradient(135deg, rgba(52,211,153,0.18), rgba(16,185,129,0.08))",
-                            border: "1px solid rgba(16,185,129,0.3)",
-                            borderRadius: 2,
-                            padding: "18px 20px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginBottom: 6,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: 10,
-                                letterSpacing: 4,
-                                textTransform: "uppercase",
-                                fontFamily: "var(--font-oswald), sans-serif",
-                                color: "var(--muted)",
-                              }}
-                            >
-                              Net CBAM Cost
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                fontSize: 28,
-                                color: "var(--gold)",
-                                fontWeight: 700,
-                              }}
-                            >
-                              € {fmt(cbamResult.netCost)}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "#6b7280",
-                              fontFamily: "var(--font-courier-prime), monospace",
-                            }}
-                          >
-                            € {cbamResult.perUnitCost.toFixed(2)} per {cbamResult.unit} · {cbamResult.tonnes.toFixed(1)}{" "}
-                            {cbamResult.unit} imported
-                          </div>
-                        </div>
-
-                        {/* Benchmark comparison */}
-                        {cbamResult.benchmarkEmissions != null && cbamResult.defaultPerTonne != null && (
-                          <div
-                            style={{
-                              marginTop: 16,
-                              padding: "12px 16px",
-                              background: "#f0f7f4",
-                              border: "1px solid #e2e8f0",
-                              borderRadius: 2,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: 10,
-                                letterSpacing: 3,
-                                textTransform: "uppercase",
-                                fontFamily: "var(--font-oswald), sans-serif",
-                                color: "var(--muted)",
-                                marginBottom: 8,
-                              }}
-                            >
-                              vs EU ETS Benchmark
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                color: "#6b7280",
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                lineHeight: 1.9,
-                              }}
-                            >
-                              <div>Imported product: {cbamResult.defaultPerTonne.toFixed(3)} tCO₂e/t</div>
-                              <div>EU benchmark: {cbamResult.benchmarkEmissions.toFixed(3)} tCO₂e/t</div>
-                              <div
-                                style={{
-                                  color:
-                                    cbamResult.defaultPerTonne > cbamResult.benchmarkEmissions ? "#dc2626" : "#2e6e2e",
-                                  marginTop: 2,
-                                }}
-                              >
-                                {cbamResult.defaultPerTonne > cbamResult.benchmarkEmissions
-                                  ? `⚠ ${((cbamResult.defaultPerTonne / cbamResult.benchmarkEmissions - 1) * 100).toFixed(0)}% above EU best-in-class`
-                                  : `✓ Within EU benchmark range`}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Emissions source note */}
-                        <div
-                          style={{
-                            marginTop: 12,
-                            fontSize: 11,
-                            color: "#6b7280",
-                            fontFamily: "var(--font-courier-prime), monospace",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {cbamResult.emissionsSource}
-                        </div>
-
-                        {/* Compliance checklist */}
-                        <div style={{ marginTop: 16, borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
-                          <div
-                            style={{
-                              fontSize: 10,
-                              letterSpacing: 3,
-                              textTransform: "uppercase",
-                              fontFamily: "var(--font-oswald), sans-serif",
-                              color: "var(--muted)",
-                              marginBottom: 10,
-                            }}
-                          >
-                            Compliance Checklist
-                          </div>
-                          {[
-                            "Register as authorised CBAM declarant in the CBAM Registry",
-                            "Obtain embedded emissions report from supplier (or use defaults)",
-                            "Have actual emissions verified by an EU-accredited verifier",
-                            "Purchase CBAM certificates via national authority (ADA Luxembourg)",
-                            "Submit annual CBAM declaration by 31 May for prior year",
-                            "Surrender certificates by 30 September each year",
-                            cbamResult.deMinimis
-                              ? "✓ De minimis: below 50t — obligation likely waived"
-                              : "Monitor annual import volume — 50t de minimis applies per CN code",
-                          ].map((item, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                fontSize: 12,
-                                color: "#6b7280",
-                                lineHeight: 1.9,
-                                paddingLeft: 14,
-                                position: "relative",
-                              }}
-                            >
-                              <span style={{ position: "absolute", left: 0, color: "#10b981" }}>·</span>
-                              {item}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: 12,
-                          fontSize: 11,
-                          color: "#6b7280",
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        Estimate based on EU Reg. 2023/956 and Implementing Reg. 2025/2621. Default emission factors
-                        subject to mandatory +{((CBAM_MARKUP(cbamResult.year, false) - 1) * 100).toFixed(0)}% markup in{" "}
-                        {cbamResult.year}. CBAM certificates not purchasable until Feb 2027. First surrender: 30 Sep
-                        2027. Always consult an authorised CBAM declarant before filing.
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
           })()}
 
         {/* HS LOOKUP TAB */}
+        {tab === "t1" && <T1DraftTab />}
+        {tab === "flow" && <CustomsFlow />}
         {tab === "hs-lookup" && (
-          <div style={{ maxWidth: 500, margin: "0 auto" }}>
-            {/* INPUT SECTION */}
-            <div
-              style={{
-                background: "#fff",
-                borderRadius: 12,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                padding: 24,
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ fontSize: 18, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-                🔍 HS Code Lookup
-              </h2>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your product... e.g. Samsung Galaxy S24 smartphone 256GB"
-                rows={3}
-                style={{
-                  width: "100%",
-                  padding: 14,
-                  border: "2px solid #e5e7eb",
-                  borderRadius: 8,
-                  fontSize: 15,
-                  fontFamily: "inherit",
-                  resize: "none",
-                  marginBottom: 12,
-                  outline: "none",
-                }}
-              />
-              <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
-                💡 Be specific: brand, model, material, function
-              </p>
-              <button
-                onClick={lookupHS}
-                disabled={hsLoading}
-                style={{
-                  width: "100%",
-                  padding: 14,
-                  background: hsLoading ? "#e5e7eb" : "#059669",
-                  color: hsLoading ? "#6b7280" : "white",
-                  border: "none",
-                  borderRadius: 8,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  cursor: hsLoading ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {hsLoading ? (
-                  <>
-                    <Spinner /> Classifying...
-                  </>
-                ) : (
-                  "Classify Product"
-                )}
-              </button>
-            </div>
-
-            {/* SENSITIVE GOODS WARNING */}
-            {hsResult && hsResult.sensitiveGoods && (
-              <div
-                style={{
-                  background: "#fff",
-                  borderRadius: 12,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  overflow: "hidden",
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    background: "#dc2626",
-                    color: "white",
-                    padding: "16px 20px",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  }}
-                >
-                  <span style={{ fontSize: 24 }}>⚠️</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
-                      Sensitive Goods — Licence Required
-                    </div>
-                    <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>
-                      Category: {hsResult.sensitiveGoods.category}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ background: "#fee2e2", padding: "16px 20px", fontSize: 13, color: "#991b1b" }}>
-                  {hsResult.sensitiveGoods.warning}
-                  <ul style={{ listStyle: "none", marginTop: 12, padding: 0 }}>
-                    {hsResult.sensitiveGoods.licenceAuthority && (
-                      <li style={{ padding: "4px 0", display: "flex", gap: 8 }}>
-                        📋 Authority: {hsResult.sensitiveGoods.licenceAuthority}
-                      </li>
-                    )}
-                    {hsResult.sensitiveGoods.regulations &&
-                      hsResult.sensitiveGoods.regulations.map((r, i) => (
-                        <li key={i} style={{ padding: "4px 0", display: "flex", gap: 8 }}>
-                          📜 {r}
-                        </li>
-                      ))}
-                    {hsResult.sensitiveGoods.consequences && (
-                      <li style={{ padding: "4px 0", display: "flex", gap: 8 }}>
-                        ⚡ {hsResult.sensitiveGoods.consequences}
-                      </li>
-                    )}
-                  </ul>
-                </div>
-                <div style={{ padding: "16px 20px", background: "#fef2f2", borderTop: "1px solid #fecaca" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, cursor: "pointer" }}>
-                    <input type="checkbox" style={{ width: 18, height: 18 }} />I understand and will verify licence
-                    requirements
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* NEEDS MORE INFO */}
-            {hsResult && hsResult.needsMoreInfo && (
-              <div
-                style={{
-                  background: "#fff",
-                  borderRadius: 12,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  overflow: "hidden",
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    background: "#d97706",
-                    color: "white",
-                    padding: "16px 20px",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  }}
-                >
-                  <span style={{ fontSize: 24 }}>🤔</span>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>More Details Needed</div>
-                    <div style={{ fontSize: 13, opacity: 0.9, marginTop: 4 }}>{hsResult.reason}</div>
-                  </div>
-                </div>
-                <div style={{ padding: 20 }}>
-                  <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 14 }}>
-                    Click an answer to refine your search:
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
-                    {hsResult.questions &&
-                      hsResult.questions.map((q, i) => {
-                        // Support both old string format and new {question, answers} format
-                        const questionText = typeof q === "string" ? q : q.question;
-                        const answers = typeof q === "string" ? [] : (q.answers || []);
-                        return (
-                          <div key={i}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                              <span>❓</span>
-                              <span>{questionText}</span>
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                              {answers.map((answer, j) => (
-                                <button
-                                  key={j}
-                                  onClick={() => {
-                                    setDescription((prev) => `${prev.trim()} ${answer}`);
-                                  }}
-                                  style={{
-                                    padding: "6px 12px",
-                                    background: "#fef3c7",
-                                    border: "1px solid #fbbf24",
-                                    borderRadius: 20,
-                                    fontSize: 12,
-                                    color: "#92400e",
-                                    cursor: "pointer",
-                                    transition: "all 0.15s",
-                                    fontWeight: 500,
-                                  }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.background = "#fde68a"; e.currentTarget.style.borderColor = "#f59e0b"; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.background = "#fef3c7"; e.currentTarget.style.borderColor = "#fbbf24"; }}
-                                >
-                                  {answer}
-                                </button>
-                              ))}
-                              {answers.length === 0 && (
-                                <button
-                                  onClick={() => setDescription((prev) => `${prev.trim()} `)}
-                                  style={{ padding: "6px 12px", background: "#fef3c7", border: "1px solid #fbbf24", borderRadius: 20, fontSize: 12, color: "#92400e", cursor: "pointer" }}
-                                >
-                                  + type answer
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                  {hsResult.possibleChapters && (
-                    <div>
-                      <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Could be classified under:</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {hsResult.possibleChapters.map((ch, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              setDescription((prev) => prev.trim() + ` (${ch})`);
-                            }}
-                            style={{
-                              padding: "6px 12px",
-                              background: "#f3f4f6",
-                              border: "1px solid #d1d5db",
-                              borderRadius: 16,
-                              fontSize: 12,
-                              color: "#374151",
-                              cursor: "pointer",
-                              transition: "all 0.15s",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "#e5e7eb";
-                              e.currentTarget.style.borderColor = "#9ca3af";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "#f3f4f6";
-                              e.currentTarget.style.borderColor = "#d1d5db";
-                            }}
-                          >
-                            {ch}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {hsResult.hint && (
-                    <div
-                      style={{
-                        marginTop: 16,
-                        padding: 12,
-                        background: "#fef9c3",
-                        borderRadius: 6,
-                        fontSize: 13,
-                        color: "#713f12",
-                      }}
-                    >
-                      💡 {hsResult.hint}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* SUCCESS RESULT */}
-            {hsResult && !hsResult.error && !hsResult.needsMoreInfo && hsResult.cn8 && (
-              <div
-                style={{ background: "#fff", borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.1)", padding: 24 }}
-              >
-                {/* Code Display */}
-                <div
-                  style={{
-                    textAlign: "center",
-                    paddingBottom: 20,
-                    borderBottom: "1px solid #e5e7eb",
-                    marginBottom: 20,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 36,
-                      fontWeight: 700,
-                      fontFamily: "monospace",
-                      color: "#059669",
-                      letterSpacing: 2,
-                    }}
-                  >
-                    {hsResult.cn8 ? hsResult.cn8.replace(/(\d{4})(\d{2})(\d{2})/, "$1.$2.$3") : hsResult.hs6}
-                  </div>
-                  <div style={{ fontSize: 15, color: "#6b7280", marginTop: 4 }}>{hsResult.description}</div>
-                  <div style={{ display: "flex", justifyContent: "center", gap: 24, marginTop: 16 }}>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 20, fontWeight: 600 }}>{hsResult.standardDutyRate}%</div>
-                      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
-                        Duty
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 20, fontWeight: 600 }}>{hsResult.vatRateLU || 17}%</div>
-                      <div style={{ fontSize: 11, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
-                        VAT
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div
-                          style={{ width: 50, height: 6, background: "#e5e7eb", borderRadius: 3, overflow: "hidden" }}
-                        >
-                          <div
-                            style={{
-                              height: "100%",
-                              borderRadius: 3,
-                              width:
-                                hsResult.confidence === "high"
-                                  ? "90%"
-                                  : hsResult.confidence === "medium"
-                                    ? "60%"
-                                    : "30%",
-                              background:
-                                hsResult.confidence === "high"
-                                  ? "#059669"
-                                  : hsResult.confidence === "medium"
-                                    ? "#d97706"
-                                    : "#dc2626",
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          textTransform: "uppercase",
-                          letterSpacing: 1,
-                          marginTop: 4,
-                        }}
-                      >
-                        Confidence
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Badge */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    padding: 12,
-                    borderRadius: 8,
-                    marginBottom: 20,
-                    background: hsResult.antiDumping || hsResult.prohibitedRestricted ? "#fee2e2" : "#d1fae5",
-                    color: hsResult.antiDumping || hsResult.prohibitedRestricted ? "#dc2626" : "#059669",
-                    fontSize: 14,
-                    fontWeight: 500,
-                  }}
-                >
-                  {hsResult.antiDumping || hsResult.prohibitedRestricted
-                    ? "⚠️ Restrictions may apply — check details"
-                    : "✅ Clear to import — no restrictions"}
-                </div>
-
-                {/* Expandable: Documents */}
-                {hsResult.requiredDocuments && hsResult.requiredDocuments.length > 0 && (
-                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <summary
-                      style={{
-                        padding: "14px 0",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: 14,
-                        fontWeight: 500,
-                      }}
-                    >
-                      <span>📄 Required Documents</span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "#6b7280",
-                          background: "#f3f4f6",
-                          padding: "2px 8px",
-                          borderRadius: 10,
-                        }}
-                      >
-                        {hsResult.requiredDocuments.length}
-                      </span>
-                    </summary>
-                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
-                      {hsResult.requiredDocuments.map((doc, i) => (
-                        <li
-                          key={i}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 0",
-                            fontSize: 14,
-                            borderBottom: "1px solid #f3f4f6",
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: 4,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 12,
-                              background: doc.mandatory ? "#d1fae5" : "transparent",
-                              border: doc.mandatory ? "2px solid #059669" : "2px solid #e5e7eb",
-                              color: "#059669",
-                            }}
-                          >
-                            {doc.mandatory ? "✓" : ""}
-                          </span>
-                          {doc.name}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
-                {/* Expandable: Preferential Rates */}
-                {hsResult.preferentialRates && hsResult.preferentialRates.length > 0 && (
-                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <summary
-                      style={{
-                        padding: "14px 0",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: 14,
-                        fontWeight: 500,
-                      }}
-                    >
-                      <span>🌍 Preferential Rates</span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "#6b7280",
-                          background: "#f3f4f6",
-                          padding: "2px 8px",
-                          borderRadius: 10,
-                        }}
-                      >
-                        {hsResult.preferentialRates.length} FTAs
-                      </span>
-                    </summary>
-                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
-                      {hsResult.preferentialRates.slice(0, 6).map((pref, i) => (
-                        <li
-                          key={i}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            padding: "8px 0",
-                            fontSize: 14,
-                            borderBottom: "1px solid #f3f4f6",
-                          }}
-                        >
-                          <span>{pref.partner}</span>
-                          <span style={{ fontWeight: 500 }}>{pref.rate}%</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
-                {/* Expandable: Regulations */}
-                {hsResult.regulatoryNotes && hsResult.regulatoryNotes.length > 0 && (
-                  <details style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <summary
-                      style={{
-                        padding: "14px 0",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: 14,
-                        fontWeight: 500,
-                      }}
-                    >
-                      <span>📋 Regulations</span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "#6b7280",
-                          background: "#f3f4f6",
-                          padding: "2px 8px",
-                          borderRadius: 10,
-                        }}
-                      >
-                        {hsResult.regulatoryNotes.length}
-                      </span>
-                    </summary>
-                    <ul style={{ listStyle: "none", padding: "0 0 16px 0", margin: 0 }}>
-                      {hsResult.regulatoryNotes.map((reg, i) => (
-                        <li key={i} style={{ padding: "8px 0", fontSize: 14, borderBottom: "1px solid #f3f4f6" }}>
-                          {reg}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
-                {/* Verify & Sources */}
-                <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, marginTop: 4, marginBottom: 4 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9ca3af", marginBottom: 10 }}>
-                    Verify &amp; look up further
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {[
-                      {
-                        label: "TARIC — EU Tariff Database",
-                        sub: "Duty rates, measures, anti-dumping",
-                        url: `https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&Taric=${(hsResult.cn8 || "").replace(/\D/g, "")}`,
-                        icon: "🇪🇺",
-                      },
-                      {
-                        label: "Access2Markets",
-                        sub: "Required documents, rules of origin, preferential rates",
-                        url: `https://trade.ec.europa.eu/access-to-markets/en/content?nodeId=${(hsResult.cn8 || "").replace(/\D/g, "")}&lang=en`,
-                        icon: "📋",
-                      },
-                      {
-                        label: "TARLUX — Simulation Tarifaire Luxembourg",
-                        sub: "ADA Luxembourg — official duty simulation",
-                        url: "https://tarlux.public.lu/",
-                        icon: "🇱🇺",
-                      },
-                      {
-                        label: "ADA — Douanes et Accises Luxembourg",
-                        sub: "Customs authority, forms, procedures",
-                        url: "https://douanes.public.lu/",
-                        icon: "🏛",
-                      },
-                    ].map(({ label, sub, url, icon }) => (
-                      <a
-                        key={label}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "9px 12px",
-                          background: "#f9fafb",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 8,
-                          textDecoration: "none",
-                          transition: "all 0.15s",
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#f0fdf4"; e.currentTarget.style.borderColor = "#bbf7d0"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "#f9fafb"; e.currentTarget.style.borderColor = "#e5e7eb"; }}
-                      >
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{label}</div>
-                          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>{sub}</div>
-                        </div>
-                        <span style={{ fontSize: 11, color: "#10b981", flexShrink: 0 }}>↗</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div
-                  style={{ display: "flex", gap: 12, marginTop: 20, paddingTop: 20, borderTop: "1px solid #e5e7eb" }}
-                >
-                  <button
-                    onClick={() => addFavourite(hsResult.cn8 || hsResult.hs6, hsResult.description)}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      background: "#f3f4f6",
-                      color: "#1f2937",
-                      border: "none",
-                      borderRadius: 8,
-                      fontSize: 15,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ★ Save
-                  </button>
-                  <button
-                    onClick={() => {
-                      setHsCode(hsResult.cn8 || hsResult.hs6);
-                      setTab("calculator");
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      background: "#059669",
-                      color: "white",
-                      border: "none",
-                      borderRadius: 8,
-                      fontSize: 15,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
-                    → Use in Calculator
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ERROR */}
-            {hsResult && hsResult.error && (
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: "12px 16px",
-                  background: "#fee2e2",
-                  border: "1px solid #fca5a5",
-                  borderRadius: 8,
-                  color: "#dc2626",
-                  fontSize: 14,
-                }}
-              >
-                {hsResult.error}
-              </div>
-            )}
-
-            {/* FAVOURITES */}
-            {favourites.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#6b7280", marginBottom: 12 }}>Saved HS Codes</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {favourites.map((fav, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: 12,
-                        background: "#fff",
-                        borderRadius: 8,
-                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                      }}
-                    >
-                      <div>
-                        <span style={{ fontFamily: "monospace", fontWeight: 600, color: "#059669" }}>{fav.code}</span>
-                        <span style={{ color: "#6b7280", marginLeft: 8, fontSize: 13 }}>{fav.description}</span>
-                      </div>
-                      <button
-                        onClick={() => removeFavourite(fav.code)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "#dc2626",
-                          cursor: "pointer",
-                          fontSize: 18,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <HsLookupTabV2
+            description={description}
+            setDescription={setDescription}
+            lookupHS={lookupHS}
+            hsLoading={hsLoading}
+            hsResult={hsResult}
+            setHsResult={setHsResult}
+            favourites={favourites}
+            savedCodes={savedCodes}
+            saveFavourite={saveFavourite}
+            removeFavourite={removeFavourite}
+            setTab={setTab}
+            setHsCode={setHsCode}
+          />
         )}
-        {tab === "fx" && (
-          <div>
-            <div className="two-col" style={{ gap: 32 }}>
-              <div>
-                <div className="section-label">Currency Converter → EUR</div>
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, padding: 24 }}>
-                  <div style={{ marginBottom: 16 }}>
-                    <label
-                      style={{
-                        fontSize: 11,
-                        color: "#6b7280",
-                        letterSpacing: 2,
-                        textTransform: "uppercase",
-                        display: "block",
-                        marginBottom: 6,
-                      }}
-                    >
-                      Amount
-                    </label>
-                    <input
-                      type="number"
-                      value={fxAmount}
-                      onChange={(e) => setFxAmount(e.target.value)}
-                      placeholder="1.00"
-                      style={{
-                        background: "#f0f7f4",
-                        border: "1px solid #e2e8f0",
-                        color: "#111827",
-                        padding: "10px 14px",
-                        fontFamily: "var(--font-courier-prime), monospace",
-                        fontSize: 15,
-                        borderRadius: 2,
-                        width: "100%",
-                        outline: "none",
-                      }}
-                    />
+         {tab === "fx" && (
+          <div className="v2-tab-wrap">
+            <div className="v2-card">
+              <div className="v2-card-hdr">
+                <div className="v2-card-icon">💱</div>
+                <span className="v2-card-title">Currency Converter</span>
+                <span className="v2-card-sub">ECB reference rates · {allRatesDate || rateDate || "loading…"}</span>
+              </div>
+              <div className="v2-card-body">
+                <div className="v2-g3" style={{alignItems:"end"}}>
+                  <div>
+                    <div className="v2-lbl">Amount</div>
+                    <input className="v2-inp" type="number" value={fxAmount} onChange={(e) => setFxAmount(e.target.value)} placeholder="1.00"/>
                   </div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr auto 1fr",
-                      gap: 12,
-                      alignItems: "end",
-                      marginBottom: 20,
-                    }}
-                  >
-                    <div>
-                      <label
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          display: "block",
-                          marginBottom: 6,
-                        }}
-                      >
-                        From
-                      </label>
-                      <select
-                        value={fxFrom}
-                        onChange={(e) => setFxFrom(e.target.value)}
-                        style={{
-                          background: "#f0f7f4",
-                          border: "1px solid #e2e8f0",
-                          color: "#111827",
-                          padding: "10px 12px",
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 13,
-                          borderRadius: 2,
-                          width: "100%",
-                          outline: "none",
-                        }}
-                      >
-                        {["EUR", ...Object.keys(allRates)].sort().map((c) => (
-                          <option key={c}>{c}</option>
-                        ))}
+                  <div>
+                    <div className="v2-lbl">From</div>
+                    <select className="v2-sel" value={fxFrom} onChange={(e) => setFxFrom(e.target.value)}>
+                      {["EUR",...Object.keys(allRates)].sort().map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div className="v2-lbl">To</div>
+                    <div className="v2-inp-row">
+                      <select className="v2-sel" value={fxTo} onChange={(e) => setFxTo(e.target.value)}>
+                        {["EUR",...Object.keys(allRates)].sort().map((c) => <option key={c}>{c}</option>)}
                       </select>
-                    </div>
-                    <div style={{ fontSize: 20, color: "#6b7280", paddingBottom: 4, textAlign: "center" }}>⇄</div>
-                    <div>
-                      <label
-                        style={{
-                          fontSize: 11,
-                          color: "#6b7280",
-                          letterSpacing: 2,
-                          textTransform: "uppercase",
-                          display: "block",
-                          marginBottom: 6,
-                        }}
-                      >
-                        To
-                      </label>
-                      <select
-                        value={fxTo}
-                        onChange={(e) => setFxTo(e.target.value)}
-                        style={{
-                          background: "#f0f7f4",
-                          border: "1px solid #e2e8f0",
-                          color: "#111827",
-                          padding: "10px 12px",
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 13,
-                          borderRadius: 2,
-                          width: "100%",
-                          outline: "none",
-                        }}
-                      >
-                        {["EUR", ...Object.keys(allRates)].sort().map((c) => (
-                          <option key={c}>{c}</option>
-                        ))}
-                      </select>
+                      <button className="v2-btn-ghost" style={{flexShrink:0}} onClick={() => { const t=fxFrom; setFxFrom(fxTo); setFxTo(t); }}>⇄</button>
                     </div>
                   </div>
-                  {(() => {
-                    const converted = convertFX(fxAmount, fxFrom, fxTo);
-                    const rate = convertFX(1, fxFrom, fxTo);
-                    if (!fxAmount || converted === null) return null;
+                </div>
+                {(() => {
+                  const converted = convertFX(fxAmount, fxFrom, fxTo);
+                  const rate = convertFX(1, fxFrom, fxTo);
+                  if (!fxAmount || converted === null) return null;
+                  return (
+                    <div className="v2-pill v2-pill-green" style={{marginTop:14}}>
+                      <span style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:22,fontWeight:700,color:"#059669"}}>
+                        {converted.toLocaleString("de-LU",{minimumFractionDigits:4,maximumFractionDigits:4})} {fxTo}
+                      </span>
+                      <span style={{fontSize:12,color:"#6B7280",display:"block",marginTop:4,fontFamily:"var(--font-courier-prime),monospace"}}>
+                        1 {fxFrom} = {rate?.toFixed(6)} {fxTo} · ECB {allRatesDate || rateDate}
+                      </span>
+                    </div>
+                  );
+                })()}
+                <div style={{marginTop:12,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <span className="v2-fx-badge">ECB · {allRatesDate || rateDate || "..."}</span>
+                  <button className="v2-btn-ghost v2-btn-sm" onClick={async () => { setAllRatesLoading(true); try { const r=await fetch("/api/fx"); const d=await r.json(); if(d.rates){setAllRates(d.rates);setAllRatesDate(d.date);} } catch(e){} setAllRatesLoading(false); }}>
+                    {allRatesLoading ? "…" : "Refresh FX"}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="v2-card">
+              <div className="v2-card-hdr">
+                <div className="v2-card-icon">📊</div>
+                <span className="v2-card-title">FX Rates</span>
+                <span className="v2-card-sub">European Central Bank · updated daily</span>
+              </div>
+              <div style={{padding:0}}>
+                <div className="v2-fx-hdr">
+                  <div/>
+                  <div>Currency</div>
+                  <div style={{textAlign:"right"}}>Rate to EUR</div>
+                  <div style={{textAlign:"right"}}>EUR per unit</div>
+                </div>
+                {Object.entries(allRates).length === 0 ? (
+                  <div style={{padding:"24px 20px",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Loading rates…</div>
+                ) : (
+                  [
+                    {code:"USD",flag:"🇺🇸",name:"US Dollar"},
+                    {code:"GBP",flag:"🇬🇧",name:"Pound Sterling"},
+                    {code:"CHF",flag:"🇨🇭",name:"Swiss Franc"},
+                    {code:"JPY",flag:"🇯🇵",name:"Japanese Yen"},
+                    {code:"CNY",flag:"🇨🇳",name:"Chinese Yuan"},
+                    {code:"CAD",flag:"🇨🇦",name:"Canadian Dollar"},
+                    {code:"AUD",flag:"🇦🇺",name:"Australian Dollar"},
+                    {code:"HKD",flag:"🇭🇰",name:"Hong Kong Dollar"},
+                    {code:"KRW",flag:"🇰🇷",name:"South Korean Won"},
+                    {code:"INR",flag:"🇮🇳",name:"Indian Rupee"},
+                    {code:"TRY",flag:"🇹🇷",name:"Turkish Lira"},
+                    {code:"NOK",flag:"🇳🇴",name:"Norwegian Krone"},
+                    {code:"SEK",flag:"🇸🇪",name:"Swedish Krona"},
+                    {code:"DKK",flag:"🇩🇰",name:"Danish Krone"},
+                    {code:"PLN",flag:"🇵🇱",name:"Polish Zloty"},
+                    {code:"CZK",flag:"🇨🇿",name:"Czech Koruna"},
+                  ].filter(({code}) => allRates[code]).map(({code,flag,name}) => {
+                    const rate = allRates[code];
+                    if (!rate) return null;
+                    const rateToEur = 1/rate;
                     return (
-                      <div style={{ background: "#f0f7f4", borderRadius: 2, padding: "20px 20px" }}>
-                        <div
-                          style={{
-                            fontFamily: "var(--font-courier-prime), monospace",
-                            fontSize: 28,
-                            color: "#10b981",
-                            letterSpacing: 2,
-                          }}
-                        >
-                          {converted.toLocaleString("de-LU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}{" "}
-                          <span style={{ fontSize: 16, color: "#6b7280" }}>{fxTo}</span>
-                        </div>
-                        <div
-                          style={{
-                            marginTop: 8,
-                            fontSize: 12,
-                            color: "#6b7280",
-                            fontFamily: "var(--font-courier-prime), monospace",
-                          }}
-                        >
-                          1 {fxFrom} = {rate?.toFixed(6)} {fxTo}
-                        </div>
-                        {allRatesDate && (
-                          <div
-                            style={{
-                              marginTop: 4,
-                              fontSize: 11,
-                              color: "#6b7280",
-                              fontFamily: "var(--font-courier-prime), monospace",
-                            }}
-                          >
-                            ECB rate · {allRatesDate}
-                          </div>
-                        )}
+                      <div key={code} className="v2-fx-row">
+                        <span className="v2-fx-flag">{flag}</span>
+                        <div className="v2-fx-name">{name}<span className="v2-fx-code">{code}</span></div>
+                        <div className="v2-fx-rate">{rateToEur.toFixed(4)}</div>
+                        <div className="v2-fx-inv">{rate.toFixed(4)} EUR/{code}</div>
                       </div>
                     );
-                  })()}
-                  <button
-                    onClick={() => {
-                      const tmp = fxFrom;
-                      setFxFrom(fxTo);
-                      setFxTo(tmp);
-                    }}
-                    className="btn-ghost"
-                    style={{
-                      marginTop: 14,
-                      width: "100%",
-                      padding: "10px",
-                      background: "none",
-                      border: "1px solid #e2e8f0",
-                      color: "#6b7280",
-                      fontSize: 11,
-                      letterSpacing: 2,
-                      textTransform: "uppercase",
-                      borderRadius: 2,
-                    }}
-                  >
-                    swap currencies
-                  </button>
-                </div>
-                <div
-                  style={{
-                    marginTop: 12,
-                    fontSize: 11,
-                    color: "#6b7280",
-                    fontFamily: "var(--font-courier-prime), monospace",
-                    lineHeight: 1.7,
-                  }}
-                >
-                  Rates sourced from the European Central Bank via{" "}
-                  <a href="https://www.frankfurter.app" target="_blank" rel="noopener" style={{ color: "#10b98155" }}>
-                    frankfurter.app ↗
-                  </a>{" "}
-                  · Updated daily on ECB business days · Not for financial transactions
-                </div>
-              </div>
-
-              <div>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}
-                >
-                  <div className="section-label" style={{ marginBottom: 0 }}>
-                    Live Rates vs EUR
-                  </div>
-                  {allRatesDate && (
-                    <span
-                      style={{ fontSize: 10, color: "#6b7280", fontFamily: "var(--font-courier-prime), monospace" }}
-                    >
-                      {allRatesDate}
-                    </span>
-                  )}
-                </div>
-                {allRatesLoading ? (
-                  <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
-                    <Spinner />
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "52px 1fr 1fr 1fr",
-                        gap: 0,
-                        background: "#e8f4f0",
-                        flexShrink: 0,
-                        padding: "9px 14px",
-                        borderRadius: 2,
-                        alignItems: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 13,
-                          color: "#10b981",
-                          fontWeight: 700,
-                        }}
-                      >
-                        EUR
-                      </span>
-                      <span style={{ fontSize: 11, color: "#6b7280" }}>Euro (base)</span>
-                      <span
-                        style={{
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 13,
-                          color: "#6b7280",
-                          textAlign: "right",
-                        }}
-                      >
-                        1.000000
-                      </span>
-                      <span
-                        className="fx-hide"
-                        style={{
-                          fontFamily: "var(--font-courier-prime), monospace",
-                          fontSize: 11,
-                          color: "#6b7280",
-                          textAlign: "right",
-                        }}
-                      >
-                        —
-                      </span>
-                    </div>
-                    {Object.entries(allRates)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([code, eurRate], i) => {
-                        const toEur = 1 / eurRate;
-                        return (
-                          <div
-                            key={code}
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "52px 1fr 1fr 1fr",
-                              gap: 0,
-                              background: i % 2 === 0 ? "#f0f7f4" : "#fff",
-                              padding: "9px 14px",
-                              alignItems: "center",
-                              cursor: "pointer",
-                              transition: "background 0.15s",
-                            }}
-                            onClick={() => {
-                              setFxFrom(code);
-                              setFxTo("EUR");
-                            }}
-                            title={`Click to convert ${code} → EUR`}
-                          >
-                            <span
-                              style={{
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                fontSize: 13,
-                                color: "#111827",
-                              }}
-                            >
-                              {code}
-                            </span>
-                            <span style={{ fontSize: 11, color: "#6b7280" }}>1 EUR =</span>
-                            <span
-                              style={{
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                fontSize: 13,
-                                color: "#6b7280",
-                                textAlign: "right",
-                              }}
-                            >
-                              {eurRate.toFixed(4)}
-                            </span>
-                            <span
-                              className="fx-hide"
-                              style={{
-                                fontFamily: "var(--font-courier-prime), monospace",
-                                fontSize: 11,
-                                color: "#6b7280",
-                                textAlign: "right",
-                              }}
-                            >
-                              1 {code} = {toEur.toFixed(4)} €
-                            </span>
-                          </div>
-                        );
-                      })}
-                  </div>
+                  })
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* REFERENCE TAB */}
-        {tab === "rulings" && (
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <div className="section-label">Tariff Classification Decisions</div>
-            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 20, lineHeight: 1.6 }}>
-              Binding Tariff Information (BTI) decisions and classification rulings are legally binding determinations
-              issued by customs authorities. Use them to confirm the correct CN8 code for difficult or borderline products.
-            </p>
-
-            {/* Code search field */}
-            <div style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: 20, marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#9ca3af", marginBottom: 10, fontFamily: "var(--font-oswald), sans-serif" }}>
-                Search by CN / HS Code
+         {tab === "rulings" && (
+          <div className="v2-tab-wrap">
+            <div className="v2-card">
+              <div className="v2-card-hdr">
+                <div className="v2-card-icon">⚖️</div>
+                <span className="v2-card-title">Binding Tariff Information</span>
+                <span className="v2-card-sub">BTI rulings database · EBTI search</span>
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="text"
-                  placeholder="e.g. 8471.30 or 847130"
-                  value={hsCode}
-                  onChange={(e) => setHsCode(e.target.value.replace(/[^0-9.]/g, ""))}
-                  style={{ flex: 1, fontFamily: "var(--font-courier-prime), monospace" }}
-                />
-                <div style={{ fontSize: 11, color: "#9ca3af", alignSelf: "center", whiteSpace: "nowrap" }}>
-                  {hsCode ? `→ ${hsCode.replace(/\D/g, "").padEnd(8, "·")}` : "enter code"}
+              <div className="v2-card-body">
+                <div className="v2-lbl">Search by CN / HS Code</div>
+                <div className="v2-inp-row" style={{marginBottom:12}}>
+                  <input
+                    className="v2-inp"
+                    type="text"
+                    placeholder="e.g. 8471.30 or 847130"
+                    value={hsCode}
+                    onChange={(e) => setHsCode(e.target.value.replace(/[^0-9.]/g,""))}
+                  />
+                  <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"#9CA3AF",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
+                    {hsCode ? `→ ${hsCode.replace(/\D/g,"").padEnd(8,"·")}` : "enter code"}
+                  </span>
+                </div>
+                <div className="v2-pill v2-pill-blue" style={{marginBottom:16}}>
+                  BTI rulings are legally binding for 3 years. Check EBTI before requesting a new one. Shared with HS Lookup &amp; Calculator tabs.
+                </div>
+                <div className="v2-sec-h">Classification databases</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {[
+                    {name:"EU EBTI — European Binding Tariff Information",authority:"European Commission / DG TAXUD",desc:"Legally binding BTI decisions issued by EU member states. Binding across the entire EU for 3 years.",url:`https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp?Lang=en${hsCode.replace(/\D/g,"").length>=4?`&nomenc=${hsCode.replace(/\D/g,"").slice(0,8)}`:""}`,flag:"🇪🇺",badge:"Binding · EU-wide",badgeColor:"#059669"},
+                    {name:"TARES — Décisions de Classification",authority:"BAZG / Switzerland",desc:"Swiss customs classification decisions. Useful for CH/LI goods and EU comparison.",url:"https://www.bazg.admin.ch/fr/decisions-classification-tarifaire-tares",flag:"🇨🇭",badge:"Switzerland",badgeColor:"#dc2626"},
+                    {name:"UK BTI — Binding Tariff Information",authority:"HMRC / UK Trade Tariff",desc:"UK post-Brexit BTI decisions. Useful for UK-origin goods.",url:`https://www.trade-tariff.service.gov.uk/binding_tariff_information${hsCode.replace(/\D/g,"").length>=4?`?commodity_code=${hsCode.replace(/\D/g,"")}`:""}`,flag:"🇬🇧",badge:"Post-Brexit",badgeColor:"#1d4ed8"},
+                    {name:"WCO — Classification Opinions",authority:"World Customs Organization",desc:"International HS Committee opinions. Authoritative for HS6 chapter-level disputes.",url:"https://www.wcoomd.org/en/topics/nomenclature/instrument-and-tools/hs_classification_opinions.aspx",flag:"🌐",badge:"HS6 · Global",badgeColor:"#7c3aed"},
+                    {name:"ECICS — Chemical Substances",authority:"European Commission",desc:"EU classification of chemical substances. Essential for Chapter 28/29/38 goods.",url:"https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_consultation.jsp?Lang=en",flag:"⚗️",badge:"Ch. 28–38",badgeColor:"#d97706"},
+                  ].map(({name,authority,desc,url,flag,badge,badgeColor}) => (
+                    <a key={name} href={url} target="_blank" rel="noopener noreferrer" className="v2-ruling-card">
+                      <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+                        <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{flag}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                            <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>{name}</span>
+                            <span style={{fontSize:10,fontWeight:700,letterSpacing:1,padding:"2px 7px",borderRadius:10,background:`${badgeColor}18`,color:badgeColor,textTransform:"uppercase",fontFamily:"var(--font-oswald),sans-serif"}}>{badge}</span>
+                          </div>
+                          <div className="v2-ruling-meta">{authority}</div>
+                          <div className="v2-ruling-desc" style={{marginTop:4}}>{desc}</div>
+                        </div>
+                        <span style={{fontSize:14,color:"#10b981",flexShrink:0}}>↗</span>
+                      </div>
+                    </a>
+                  ))}
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 6, fontFamily: "var(--font-courier-prime), monospace" }}>
-                Shared with HS Lookup &amp; Calculator tabs
-              </div>
-            </div>
-
-            {/* Database links */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                {
-                  name: "EU EBTI — European Binding Tariff Information",
-                  authority: "European Commission / DG TAXUD",
-                  desc: "Legally binding BTI decisions issued by EU member states. Binding across the entire EU for 3 years.",
-                  url: `https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp?Lang=en${hsCode.replace(/\D/g, "").length >= 4 ? `&nomenc=${hsCode.replace(/\D/g, "").slice(0, 8)}` : ""}`,
-                  flag: "🇪🇺",
-                  badge: "Binding · EU-wide",
-                  badgeColor: "#059669",
-                },
-                {
-                  name: "TARES — Décisions de Classification Tarifaire",
-                  authority: "BAZG / Switzerland",
-                  desc: "Swiss customs authority classification decisions. Useful for CH/LI goods and for comparison with EU classifications.",
-                  url: `https://www.bazg.admin.ch/fr/decisions-classification-tarifaire-tares`,
-                  flag: "🇨🇭",
-                  badge: "Switzerland",
-                  badgeColor: "#dc2626",
-                },
-                {
-                  name: "UK BTI — Binding Tariff Information",
-                  authority: "HMRC / UK Trade Tariff",
-                  desc: "UK Customs authority BTI decisions post-Brexit. Useful for UK-origin goods and for comparison.",
-                  url: `https://www.trade-tariff.service.gov.uk/binding_tariff_information${hsCode.replace(/\D/g, "").length >= 4 ? `?commodity_code=${hsCode.replace(/\D/g, "")}` : ""}`,
-                  flag: "🇬🇧",
-                  badge: "Post-Brexit",
-                  badgeColor: "#1d4ed8",
-                },
-                {
-                  name: "WCO — Classification Opinions",
-                  authority: "World Customs Organization",
-                  desc: "International Harmonized System Committee classification opinions. Authoritative for HS6 chapter-level disputes.",
-                  url: "https://www.wcoomd.org/en/topics/nomenclature/instrument-and-tools/hs_classification_opinions.aspx",
-                  flag: "🌐",
-                  badge: "HS6 · Global",
-                  badgeColor: "#7c3aed",
-                },
-                {
-                  name: "ECICS — Chemical Substances",
-                  authority: "European Commission",
-                  desc: "EU classification of chemical substances. Essential for Chapter 28/29/38 goods.",
-                  url: `https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_consultation.jsp?Lang=en`,
-                  flag: "⚗️",
-                  badge: "Ch. 28–38",
-                  badgeColor: "#d97706",
-                },
-              ].map(({ name, authority, desc, url, flag, badge, badgeColor }) => (
-                <a
-                  key={name}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "block", background: "#fff", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", textDecoration: "none", transition: "all 0.15s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.background = "#f0fdf4"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "#fff"; }}
-                >
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>{flag}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{name}</span>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, padding: "2px 7px", borderRadius: 10, background: `${badgeColor}18`, color: badgeColor, textTransform: "uppercase" }}>{badge}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2, fontFamily: "var(--font-courier-prime), monospace" }}>{authority}</div>
-                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>{desc}</div>
-                    </div>
-                    <span style={{ fontSize: 14, color: "#10b981", flexShrink: 0 }}>↗</span>
-                  </div>
-                </a>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 20, padding: "12px 16px", background: "#f9fafb", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11, color: "#9ca3af", lineHeight: 1.7 }}>
-              <strong style={{ color: "#6b7280" }}>Note:</strong> BTI decisions are product- and applicant-specific. They are not universally applicable but provide strong classification guidance. For Luxembourg imports, EU EBTI decisions are directly applicable. Verify final classification with ADA or a licensed customs representative.
             </div>
           </div>
         )}
 
-        {tab === "reference" && (
-          <div className="two-col" style={{ gap: 32 }}>
-            <div>
-              <div className="section-label">EU Import Thresholds</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {[
-                  {
-                    label: "De minimis (duty)",
-                    value: "≤ €150",
-                    note: "No customs duty; VAT still due",
-                    color: "green",
-                  },
-                  {
-                    label: "Low-value VAT relief",
-                    value: "ABOLISHED",
-                    note: "Since July 2021, all imports are VAT-liable",
-                    color: "red",
-                  },
-                  {
-                    label: "Informal entry threshold",
-                    value: "≤ €1,000",
-                    note: "Simplified declaration possible",
-                    color: "amber",
-                  },
-                  {
-                    label: "Formal entry required",
-                    value: "> €1,000",
-                    note: "Full customs declaration (SAD)",
-                    color: "red",
-                  },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    style={{ background: "#fff", border: "1px solid #e2e8f0", padding: "14px 16px", borderRadius: 2 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13 }}>{item.label}</span>
-                      <span className={`tag tag-${item.color}`}>{item.value}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontFamily: "var(--font-courier-prime), monospace" }}>
-                      {item.note}
-                    </div>
-                  </div>
-                ))}
+         {tab === "reference" && (
+          <div className="v2-tab-wrap">
+            <div className="v2-card">
+              <div className="v2-card-hdr">
+                <div className="v2-card-icon">📚</div>
+                <span className="v2-card-title">Reference</span>
+                <span className="v2-card-sub">Official sources &amp; tools</span>
               </div>
-
-              <div className="section-label" style={{ marginTop: 28 }}>
-                Luxembourg VAT Rates
+              <div className="v2-card-body">
+                <div className="v2-sec-h" style={{marginBottom:10}}>EU Customs</div>
+                <div className="v2-ref-grid" style={{marginBottom:20}}>
+                  <a className="v2-ref-link" href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener"><div className="v2-ref-link-title">TARIC Consultation</div><div className="v2-ref-link-desc">Official EU TARIC database — duty rates, measures, suspensions</div><div className="v2-ref-link-url">ec.europa.eu/taxation_customs</div></a>
+                  <a className="v2-ref-link" href="https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp" target="_blank" rel="noopener"><div className="v2-ref-link-title">EBTI — BTI Rulings</div><div className="v2-ref-link-desc">European BTI database — binding classification rulings</div><div className="v2-ref-link-url">ec.europa.eu/…/ebti</div></a>
+                  <a className="v2-ref-link" href="https://www.wcotradetools.org/en/harmonized-system" target="_blank" rel="noopener"><div className="v2-ref-link-title">WCO — HS Nomenclature</div><div className="v2-ref-link-desc">HS 2022 explanatory notes and classification opinions</div><div className="v2-ref-link-url">wcotradetools.org</div></a>
+                  <a className="v2-ref-link" href="https://cbam.ec.europa.eu/" target="_blank" rel="noopener"><div className="v2-ref-link-title">CBAM Registry</div><div className="v2-ref-link-desc">EU CBAM — register, certificates, embedded emissions</div><div className="v2-ref-link-url">cbam.ec.europa.eu</div></a>
+                  <a className="v2-ref-link" href="https://trade.ec.europa.eu/access-to-markets/en/home" target="_blank" rel="noopener"><div className="v2-ref-link-title">EU Market Access</div><div className="v2-ref-link-desc">Trade agreements, tariff concessions and rules of origin</div><div className="v2-ref-link-url">trade.ec.europa.eu</div></a>
+                  <a className="v2-ref-link" href="https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html" target="_blank" rel="noopener"><div className="v2-ref-link-title">ECB Exchange Rates</div><div className="v2-ref-link-desc">Official ECB reference rates — updated daily</div><div className="v2-ref-link-url">ecb.europa.eu</div></a>
+                </div>
+                <div className="v2-sec-h" style={{marginBottom:10}}>Luxembourg</div>
+                <div className="v2-ref-grid" style={{marginBottom:20}}>
+                  <a className="v2-ref-link" href="https://douanes.public.lu" target="_blank" rel="noopener"><div className="v2-ref-link-title">ADA Luxembourg</div><div className="v2-ref-link-desc">Administration des douanes et accises — excise rates, procedures</div><div className="v2-ref-link-url">douanes.public.lu</div></a>
+                  <a className="v2-ref-link" href="https://aed.public.lu" target="_blank" rel="noopener"><div className="v2-ref-link-title">AED — TVA</div><div className="v2-ref-link-desc">Luxembourg VAT rules and registrations</div><div className="v2-ref-link-url">aed.public.lu</div></a>
+                  <a className="v2-ref-link" href="https://tarlux.public.lu/" target="_blank" rel="noopener"><div className="v2-ref-link-title">TARLUX — Simulation</div><div className="v2-ref-link-desc">ADA Luxembourg — official duty simulation tool</div><div className="v2-ref-link-url">tarlux.public.lu</div></a>
+                  <a className="v2-ref-link" href="https://guichet.public.lu/fr/entreprises/finances-fiscalite/douane-accises.html" target="_blank" rel="noopener"><div className="v2-ref-link-title">Guichet.lu — Customs</div><div className="v2-ref-link-desc">Business guide to import/export procedures in Luxembourg</div><div className="v2-ref-link-url">guichet.public.lu</div></a>
+                </div>
+                <div className="v2-sec-h" style={{marginBottom:10}}>Luxembourg VAT Rates</div>
+                <table className="v2-tbl" style={{marginBottom:20}}>
+                  <thead><tr><th>Rate</th><th>%</th><th>Applies to</th></tr></thead>
+                  <tbody>
+                    <tr><td className="v2-bold">Standard</td><td className="v2-mono">17%</td><td>Most goods &amp; services</td></tr>
+                    <tr><td className="v2-bold">Intermediate</td><td className="v2-mono">14%</td><td>Wines, advertising, some fuel</td></tr>
+                    <tr><td className="v2-bold">Reduced</td><td className="v2-mono">8%</td><td>Gas, electricity, tourism</td></tr>
+                    <tr><td className="v2-bold">Super-reduced</td><td className="v2-mono">3%</td><td>Food, books, medicine, children&apos;s goods</td></tr>
+                  </tbody>
+                </table>
+                <div className="v2-sec-h" style={{marginBottom:10}}>What&apos;s changing</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  <div className="v2-pill v2-pill-red">🚨 <strong>1 Jul 2026</strong> — €150 e-commerce duty-free threshold removed. New €3 flat duty per item until 2028, then full TARIC rates.</div>
+                  <div className="v2-pill v2-pill-amber">⚠️ <strong>Jan 2026</strong> — CBAM full financial obligations begin. Certificates surrendered quarterly at EU ETS price.</div>
+                  <div className="v2-pill v2-pill-blue">🔄 <strong>2028</strong> — New EU Customs Authority and Data Hub replace current fragmented national systems.</div>
+                  <div className="v2-pill v2-pill-green">✓ <strong>2024–2026</strong> — New FTAs in force: EU-NZ (2024), EU-Chile updated, EU-Australia pending.</div>
+                </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {[
-                  { label: "Standard rate", value: "17%", note: "Most goods & services" },
-                  { label: "Intermediate rate", value: "14%", note: "Wines, advertising, some fuel" },
-                  { label: "Reduced rate", value: "8%", note: "Gas, electricity, tourism" },
-                  { label: "Super-reduced rate", value: "3%", note: "Food, books, medicine, children's goods" },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    style={{ background: "#fff", border: "1px solid #e2e8f0", padding: "14px 16px", borderRadius: 2 }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13 }}>{item.label}</span>
-                      <span className="tag tag-amber">{item.value}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#6b7280", fontFamily: "var(--font-courier-prime), monospace" }}>
-                      {item.note}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="section-label">Trade Agreements (EU)</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {Object.entries(ORIGIN_AGREEMENTS)
-                  .sort((a, b) => a[1].name.localeCompare(b[1].name))
-                  .map(([code, info]) => (
-                    <div
-                      key={code}
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
-                        padding: "10px 16px",
-                        borderRadius: 2,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <div>
-                        <span style={{ fontSize: 13 }}>{info.name}</span>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b7280",
-                            fontFamily: "var(--font-courier-prime), monospace",
-                            marginTop: 2,
-                          }}
-                        >
-                          {info.note}
-                        </div>
-                      </div>
-                      <span className={`tag tag-${info.pref ? "green" : "red"}`}>{info.pref ? "FTA" : "MFN"}</span>
-                    </div>
-                  ))}
-              </div>
-
-              <div className="section-label" style={{ marginTop: 28 }}>
-                Useful Links
-              </div>
-              {[
-                {
-                  label: "TARIC Consultation",
-                  url: "https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp",
-                  desc: "Official EU tariff database",
-                },
-                {
-                  label: "Access2Markets",
-                  url: "https://trade.ec.europa.eu/access-to-markets/en/content",
-                  desc: "EU trade & market access portal",
-                },
-                {
-                  label: "Luxembourg Customs (ADA)",
-                  url: "https://douanes.public.lu",
-                  desc: "Administration des Douanes et Accises",
-                },
-                {
-                  label: "ECB Exchange Rates",
-                  url: "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
-                  desc: "Official ECB reference rates",
-                },
-              ].map((link, i) => (
-                <a
-                  key={i}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener"
-                  className="ref-link"
-                  style={{
-                    display: "block",
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    padding: "12px 16px",
-                    borderRadius: 2,
-                    textDecoration: "none",
-                    marginBottom: 2,
-                  }}
-                >
-                  <div style={{ color: "#10b981", fontSize: 13 }}>{link.label} ↗</div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: "#6b7280",
-                      fontFamily: "var(--font-courier-prime), monospace",
-                      marginTop: 2,
-                    }}
-                  >
-                    {link.desc}
-                  </div>
-                </a>
-              ))}
             </div>
           </div>
         )}

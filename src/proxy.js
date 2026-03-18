@@ -24,5 +24,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|mockup.*\.html).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|mockup.*\.html|dutify-v.+\.html).*)'],
 }

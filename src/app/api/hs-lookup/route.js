@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { z } from "zod";
+export const maxDuration = 60; // Allow up to 60s for Claude AI calls
 
 const classifySchema = z.object({
   type: z.literal("classify"),
