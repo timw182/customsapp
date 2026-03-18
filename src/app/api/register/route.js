@@ -29,8 +29,9 @@ export async function POST(req) {
 
   const { email, name, password, inviteCode } = parsed.data;
 
+  // Check invite exists and is not expired (pre-check only — race condition handled below)
   const invite = await prisma.inviteCode.findUnique({ where: { code: inviteCode } });
-  if (!invite || invite.usedAt) {
+  if (!invite) {
     return NextResponse.json({ error: "Invalid or already used invite code" }, { status: 400 });
   }
   if (invite.expiresAt && invite.expiresAt < new Date()) {
@@ -39,18 +40,33 @@ export async function POST(req) {
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+    return NextResponse.json({ error: "Email already in use" }, { status: 400 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.$transaction([
-    prisma.user.create({ data: { email, name, passwordHash } }),
-    prisma.inviteCode.update({
+  // Atomic claim: updateMany with usedAt=null guard prevents two simultaneous registrations
+  // using the same invite code (TOCTOU race condition fix)
+  const claimed = await prisma.inviteCode.updateMany({
+    where: { code: inviteCode, usedAt: null },
+    data: { usedAt: new Date(), usedBy: email },
+  });
+
+  if (claimed.count === 0) {
+    // Another request won the race — code was just used
+    return NextResponse.json({ error: "Invalid or already used invite code" }, { status: 400 });
+  }
+
+  try {
+    await prisma.user.create({ data: { email, name, passwordHash } });
+  } catch (err) {
+    // If user creation fails, roll back the invite claim so it can be reused
+    await prisma.inviteCode.update({
       where: { code: inviteCode },
-      data: { usedAt: new Date(), usedBy: email },
-    }),
-  ]);
+      data: { usedAt: null, usedBy: null },
+    });
+    throw err;
+  }
 
   return NextResponse.json({ ok: true });
 }

@@ -19,9 +19,31 @@ export default function HsLookupTabV2({
   const confWidth = hsResult?.confidence === "high" ? "90%"
     : hsResult?.confidence === "medium" ? "60%" : "30%";
 
+  // CBAM goods — precise 4-digit heading / 6-digit subheading level check
+  // EU Reg. 2023/956 Annex I: cement, iron/steel, aluminium, fertilizers, electricity, hydrogen
+  // Broad chapter checks (25, 27, 28) were incorrect — chapter 25 has mostly non-CBAM minerals,
+  // chapter 27 covers petroleum/gas (not CBAM), chapter 28 covers many non-CBAM chemicals
+  const CBAM_HEADINGS = new Set([
+    // Iron & steel (Chapter 72)
+    "7201","7202","7203","7204","7205","7206","7207","7208","7209","7210","7211","7212","7213","7214","7215","7216","7217","7218","7219","7220","7221","7222","7223","7224","7225","7226","7227","7228","7229",
+    // Articles of iron/steel (Chapter 73) — selected CBAM headings
+    "7301","7302","7303","7304","7305","7306","7307","7308","7309","7310","7311","7312","7313","7314","7315","7316","7317","7318","7319","7320","7321","7322","7323","7324","7325","7326",
+    // Aluminium (Chapter 76)
+    "7601","7602","7603","7604","7605","7606","7607","7608","7609","7610","7611","7612","7613","7614","7615","7616",
+    // Cement (Chapter 25 — only heading 2523)
+    "2523",
+    // Fertilizers (Chapter 28 + 31)
+    "2808","2814","2834",  // nitric acid, ammonia, nitrates (Ch28)
+    "3101","3102","3103","3104","3105",  // all fertilizer headings (Ch31)
+    // Electricity (Chapter 27 — only heading 2716)
+    "2716",
+    // Hydrogen (Chapter 28 — only 2804.10)
+    "2804",
+  ]);
   const isCBAM = (() => {
     const code = ((hsResult?.cn8 || hsResult?.hs6) || "").replace(/\D/g,"");
-    return ["72","73","76","25","28","31","27"].includes(code.substring(0,2));
+    if (code.length < 4) return false;
+    return CBAM_HEADINGS.has(code.substring(0, 4));
   })();
 
   return (

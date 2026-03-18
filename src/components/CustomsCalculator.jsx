@@ -1013,20 +1013,29 @@ export default function CustomsCalculator({ user }) {
       const parsed = await resp.json();
       if (!parsed.error) {
         setTaricData(parsed);
-        // Use preferential rate for the specific country if TARIC returned one,
-        // otherwise fall back to MFN rate
-        const prefMeasure = parsed.preferential?.find(m => m.dutyRate != null);
-        const prefRate = prefMeasure ? parseFloat(prefMeasure.dutyRate) : null;
+        // Use preferential rate if available, else MFN
+        // New API: preferential measures have dutyRate.adValorem (parsed object)
+        const prefMeasure = parsed.preferential?.find(m => m.dutyRate?.adValorem != null);
+        const prefRate = prefMeasure ? prefMeasure.dutyRate.adValorem : null;
         const appliedRate = (hasPref && prefRate != null) ? prefRate : (parsed.mfnRate ?? "");
         setDutyRate(String(appliedRate));
+
+        // Warn if MFN is specific/compound duty (ad valorem rate may not capture full cost)
+        const hasSpecificDuty = parsed.mfnRateType === 'specific' || parsed.mfnRateType === 'compound';
+
         setDutyRateSource({
           taricLive: true,
           aiGenerated: false,
           description: parsed.description,
           referenceDate: parsed.referenceDate,
           antiDumping: parsed.antiDumping,
+          countervailing: parsed.countervailing,
+          safeguard: parsed.safeguard,
           mfnRate: parsed.mfnRate,
-          prefRate: prefRate,
+          mfnRateType: parsed.mfnRateType,
+          mfnRateParsed: parsed.mfnRateParsed,
+          hasSpecificDuty,
+          prefRate,
           usingPref: hasPref && prefRate != null,
           note: "Live from TARIC (" + parsed.referenceDate + ")",
         });
@@ -1572,6 +1581,21 @@ export default function CustomsCalculator({ user }) {
                               ? `⚡ AI: ${dutyRateSource.chapter || "Ch." + hsChapter} · ${dutyRateSource.desc || ""} · VAT ${((getLuVAT(hsCode)) * 100).toFixed(0)}%`
                               : `✓ TARIC live · ${dutyRateSource.desc || ""} · VAT ${((getLuVAT(hsCode)) * 100).toFixed(0)}%`
                             }
+                          </div>
+                        )}
+                        {dutyRateSource?.hasSpecificDuty && (
+                          <div className="v2-hint" style={{color:"#d97706",marginTop:4}}>
+                            ⚠ Specific/compound duty applies ({dutyRateSource.mfnRateParsed?.raw}) — enter the ad valorem component only; calculate specific duty (€/kg) separately
+                          </div>
+                        )}
+                        {dutyRateSource?.countervailing && (
+                          <div className="v2-hint" style={{color:"#dc2626",marginTop:4}}>
+                            ⚠ Countervailing Duty (CVD) active — enter CVD rate in the ADD field above (separate from anti-dumping)
+                          </div>
+                        )}
+                        {dutyRateSource?.safeguard && (
+                          <div className="v2-hint" style={{color:"#dc2626",marginTop:4}}>
+                            ⚠ Safeguard duty active on this product — additional tariff applies, check TARIC for current rate
                           </div>
                         )}
                       </div>
