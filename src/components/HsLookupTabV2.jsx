@@ -69,7 +69,7 @@ export default function HsLookupTabV2({
             />
             <button
               className={styles.btnGold}
-              onClick={lookupHS}
+              onClick={() => lookupHS()}
               disabled={hsLoading || !description.trim()}
             >
               {hsLoading ? <><span className={styles.spinner}/>Classifying…</> : "Classify"}
