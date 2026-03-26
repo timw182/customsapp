@@ -8,16 +8,43 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  passwordHash String
-  role         String        @default("USER")
-  createdAt    DateTime      @default(now())
-  shipments    Shipment[]
-  favourites   HSFavourite[]
-  accounts     Account[]
-  sessions     Session[]
+  id            String          @id @default(cuid())
+  email         String          @unique
+  name          String?
+  passwordHash  String
+  role          String          @default("USER")
+  createdAt     DateTime        @default(now())
+  shipments     Shipment[]
+  favourites    HSFavourite[]
+  accounts      Account[]
+  sessions      Session[]
+  hsHistory     HsSearchHistory[]
+}
+
+// Global cache — keyed by normalised description so any user benefits from a prior lookup
+model HsLookupCache {
+  id              String   @id @default(cuid())
+  descriptionNorm String   @unique
+  description     String
+  resultJson      String
+  hitCount        Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Per-user search history (references cache row; also stores result for instant replay)
+model HsSearchHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  description String
+  hs6         String?
+  cn8         String?
+  dutyRate    Float?
+  fromCache   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model Account {

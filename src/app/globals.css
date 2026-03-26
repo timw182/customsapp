@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f0dfc0;
+  --background: #f0f7f4;
   --foreground: #111827;
   --gold: #10b981;
   --gold-hi: #34d399;
@@ -194,3 +194,8 @@ input[type="number"]::placeholder {
 .v2-tag-amber{background:rgba(245,158,11,.09);color:#d97706;border:1px solid rgba(245,158,11,.28)}
 .v2-bk-total{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;font-weight:700;font-size:13px}
 .v2-bk-grand{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,rgba(16,185,129,.08),rgba(52,211,153,.03));border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:18px 20px;margin-top:16px}
+
+/* ── Calculator two-column layout ── */
+.calc-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.calc-result-sticky{position:sticky;top:76px}
+@media(max-width:960px){.calc-layout{grid-template-columns:1fr}.calc-result-sticky{position:static}}

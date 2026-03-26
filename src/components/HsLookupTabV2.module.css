@@ -102,9 +102,39 @@
 .answerPillAmber{background:var(--amber-bg);border:1px solid #fbbf24;color:#92400e}
 .answerPillGray{background:var(--bg);border:1px solid var(--border-md);color:var(--body)}
 
+/* CANDIDATE ROWS */
+.candidateRow{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.candidateRow:hover{border-color:var(--gold-border);background:var(--gold-bg)}
+.candidatePct{font-size:10px;font-family:var(--f-head);font-weight:700;letter-spacing:.5px;color:var(--muted);background:var(--bg);padding:2px 7px;border-radius:10px;white-space:nowrap}
+
+/* PROGRESS BAR */
+.progressWrap{margin-top:12px}
+.progressBar{width:100%;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.progressFill{height:100%;background:linear-gradient(90deg,#10b981,#34d399);border-radius:3px;transition:width .6s ease}
+.progressLabel{margin-top:5px;font-size:11px;color:var(--muted);font-family:var(--f-head);letter-spacing:.8px;text-transform:uppercase}
+
 /* SPINNER */
 .spinner{width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:v2spin .6s linear infinite;flex-shrink:0}
 @keyframes v2spin{to{transform:rotate(360deg)}}
 
 /* EMPTY STATE */
 .emptyState{padding:28px 20px;text-align:center;font-size:13px;color:var(--subtle)}
+
+/* FLIP CARD */
+.flipWrapper{perspective:1200px}
+.flipInner{
+  display:grid;
+  grid-template-columns:1fr;
+  transform-style:preserve-3d;
+  transition:transform .55s cubic-bezier(.4,0,.2,1);
+}
+.flipInner.flipped{transform:rotateY(180deg)}
+.cardFront,.cardBack{
+  grid-area:1/1;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  min-width:0;
+}
+.cardBack{transform:rotateY(180deg)}
+.backBtn{background:transparent;border:none;cursor:pointer;color:var(--muted);font-family:var(--f-head);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:0;margin-right:6px;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;transition:.15s}
+.backBtn:hover{color:var(--text)}

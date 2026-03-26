@@ -811,6 +811,7 @@ export default function CustomsCalculator({ user }) {
   const [fxAmount, setFxAmount] = useState("1");
   const [fxFrom, setFxFrom] = useState("USD");
   const [fxTo, setFxTo] = useState("EUR");
+  const [fxRefreshKey, setFxRefreshKey] = useState(0);
 
   const [exciseCategory, setExciseCategory] = useState("beer");
   const [exciseInputs, setExciseInputs] = useState({ breweryTier: "large", above15: false });
@@ -913,7 +914,7 @@ export default function CustomsCalculator({ user }) {
         }
       });
     return () => controller.abort();
-  }, [currency]);
+  }, [currency, fxRefreshKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1387,11 +1388,20 @@ export default function CustomsCalculator({ user }) {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background: "#f0dfc0",
+        background: "#f0f7f4",
         color: "#111827",
         fontFamily: "var(--font-dm-sans), sans-serif",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      {/* Background blobs — matching login page */}
+      <div style={{position:"fixed",inset:0,zIndex:0,overflow:"hidden",pointerEvents:"none"}}>
+        <div className="auth-blob auth-blob-1" />
+        <div className="auth-blob auth-blob-2" />
+        <div className="auth-blob auth-blob-3" />
+      </div>
+      <div style={{position:"relative",zIndex:1}}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -1418,21 +1428,21 @@ export default function CustomsCalculator({ user }) {
         .btn-ghost:active { transform: translateY(0); }
         .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; }
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .v2-nav { display:flex; align-items:center; height:56px; background:#10b981; padding:0 24px; position:sticky; top:0; z-index:200; border-bottom:1px solid rgba(255,255,255,.06); }
+        .v2-nav { display:flex; align-items:center; height:56px; background:#fff; padding:0 24px; position:sticky; top:0; z-index:200; border-bottom:1px solid rgba(0,0,0,.07); box-shadow:0 1px 12px rgba(0,0,0,.06); }
         .v2-nav-logo { display:flex; align-items:center; gap:10px; margin-right:32px; text-decoration:none; }
-        .v2-nav-logo-icon { width:30px; height:30px; border-radius:7px; background:#111827; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .v2-nav-logo-text { font-family:var(--font-oswald),sans-serif; font-size:20px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#fff; }
+        .v2-nav-logo-icon { width:30px; height:30px; border-radius:7px; background:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .v2-nav-logo-text { font-family:var(--font-oswald),sans-serif; font-size:20px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#111827; }
         .v2-nav-tabs { display:flex; gap:2px; flex:1; overflow-x:auto; scrollbar-width:none; }
         .v2-nav-tabs::-webkit-scrollbar { display:none; }
-        .v2-tab-btn { padding:6px 16px; border-radius:6px; font-family:var(--font-oswald),sans-serif; font-size:13px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:rgba(255,255,255,.75); cursor:pointer; border:none; background:none; white-space:nowrap; transition:.15s; position:relative; }
-        .v2-tab-btn:hover { color:#fff; background:rgba(255,255,255,.07); }
-        .v2-tab-btn.active { color:#fff; background:rgba(0,0,0,.15); }
-        .v2-tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:12px; right:12px; height:2px; background:#fff; border-radius:2px; }
+        .v2-tab-btn { padding:6px 16px; border-radius:6px; font-family:var(--font-oswald),sans-serif; font-size:13px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#6b7280; cursor:pointer; border:none; background:none; white-space:nowrap; transition:.15s; position:relative; }
+        .v2-tab-btn:hover { color:#111827; background:rgba(0,0,0,.04); }
+        .v2-tab-btn.active { color:#10b981; background:rgba(16,185,129,.08); }
+        .v2-tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:12px; right:12px; height:2px; background:#10b981; border-radius:2px; }
         .v2-nav-right { display:flex; align-items:center; gap:10px; margin-left:auto; }
-        .v2-nav-user { display:flex; align-items:center; gap:7px; font-size:12px; color:rgba(255,255,255,.75); font-family:var(--font-courier-prime),monospace; }
-        .v2-nav-avatar { width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; font-family:var(--font-oswald),sans-serif; }
-        .v2-nav-btn { font-size:11px; font-family:var(--font-oswald),sans-serif; letter-spacing:1px; text-transform:uppercase; color:rgba(255,255,255,.75); background:none; border:1px solid rgba(255,255,255,.25); border-radius:5px; padding:4px 11px; cursor:pointer; transition:.15s; text-decoration:none; display:inline-flex; align-items:center; }
-        .v2-nav-btn:hover { color:#fff; border-color:rgba(255,255,255,.5); }
+        .v2-nav-user { display:flex; align-items:center; gap:7px; font-size:12px; color:#6b7280; font-family:var(--font-courier-prime),monospace; }
+        .v2-nav-avatar { width:24px; height:24px; border-radius:50%; background:#10b981; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; font-family:var(--font-oswald),sans-serif; }
+        .v2-nav-btn { font-size:11px; font-family:var(--font-oswald),sans-serif; letter-spacing:1px; text-transform:uppercase; color:#6b7280; background:none; border:1px solid rgba(0,0,0,.12); border-radius:5px; padding:4px 11px; cursor:pointer; transition:.15s; text-decoration:none; display:inline-flex; align-items:center; }
+        .v2-nav-btn:hover { color:#111827; border-color:rgba(0,0,0,.25); }
         .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
         .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
@@ -1521,14 +1531,18 @@ export default function CustomsCalculator({ user }) {
             const totalDuties = result
               ? (result.customsDuty || 0) + (result.antiDumpingDuty || 0) + (result.exciseDutyAmt || 0) + (result.importVAT || 0)
               : 0;
+            const stepIcon = {fontFamily:"var(--font-oswald),sans-serif",fontWeight:700,fontSize:11,letterSpacing:1,color:"#10b981",background:"rgba(16,185,129,.09)",border:"1px solid rgba(16,185,129,.28)"};
 
             return (
-              <div className="v2-tab-wrap">
+              <div className="calc-layout">
+
+                {/* ── LEFT COLUMN: INPUTS ── */}
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
                 {/* ── Card 1: Goods ── */}
                 <div className="v2-card">
                   <div className="v2-card-hdr">
-                    <div className="v2-card-icon">📦</div>
+                    <div className="v2-card-icon" style={stepIcon}>01</div>
                     <span className="v2-card-title">Goods</span>
                     <span className="v2-card-sub">Describe the item · find its CN / TARIC code</span>
                   </div>
@@ -1613,7 +1627,7 @@ export default function CustomsCalculator({ user }) {
                 {/* ── Card 2: Shipment ── */}
                 <div className="v2-card">
                   <div className="v2-card-hdr">
-                    <div className="v2-card-icon">✈️</div>
+                    <div className="v2-card-icon" style={stepIcon}>02</div>
                     <span className="v2-card-title">Shipment</span>
                     <span className="v2-card-sub">CIF = customs duty base (cost + insurance + freight to EU border)</span>
                   </div>
@@ -1703,7 +1717,7 @@ export default function CustomsCalculator({ user }) {
                               : "FX rate unavailable"
                           }
                         </span>
-                        <button className="v2-btn-ghost v2-btn-sm" onClick={() => setCurrency(c => c)}>Refresh FX</button>
+                        <button className="v2-btn-ghost v2-btn-sm" onClick={() => setFxRefreshKey(k => k+1)}>Refresh FX</button>
                       </div>
                     )}
                   </div>
@@ -1712,7 +1726,7 @@ export default function CustomsCalculator({ user }) {
                 {/* ── Card 3: Origin & Rates ── */}
                 <div className="v2-card">
                   <div className="v2-card-hdr">
-                    <div className="v2-card-icon">🌍</div>
+                    <div className="v2-card-icon" style={stepIcon}>03</div>
                     <span className="v2-card-title">Origin &amp; Rates</span>
                     <span className="v2-card-sub">Country of origin determines preferential treatment &amp; anti-dumping</span>
                   </div>
@@ -1738,7 +1752,7 @@ export default function CustomsCalculator({ user }) {
                             : originInfo.type === "gsp" || originInfo.type === "gsp+" ? "v2-pill-blue"
                             : "v2-pill-amber"
                           }`} style={{marginTop:6}}>
-                            {originInfo.flag} {originInfo.name} · {originInfo.desc || originInfo.type?.toUpperCase()}
+                            {originInfo.name} · {originInfo.note || originInfo.type?.toUpperCase()}
                           </div>
                         )}
                       </div>
@@ -1841,107 +1855,6 @@ export default function CustomsCalculator({ user }) {
                   </div>
                 </div>
 
-                {/* ── Breakdown ── */}
-                {result && (
-                  <div className="v2-bk-card">
-                    <div className="v2-card-hdr">
-                      <div className="v2-card-icon" style={{background:"rgba(16,185,129,0.1)"}}>📋</div>
-                      <span className="v2-card-title">Calculation Breakdown</span>
-                      <span className="v2-card-sub" style={{color:"#10b981",fontFamily:"var(--font-courier-prime),monospace",fontWeight:700}}>
-                        Total: €{fmt(result.total)}
-                      </span>
-                    </div>
-                    <div className="v2-card-body">
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 40px"}}>
-                        <div>
-                          <div className="v2-sec-h">Customs Value (CIF)</div>
-                          <div className="v2-bk-row"><span className="v2-bk-lbl">Item value (EUR)</span><span className="v2-bk-val">€{fmt(result.valEUR)}</span></div>
-                          {result.frEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Freight ({result.airfreightPct ?? 100}%)</span><span className="v2-bk-val">€{fmt(result.frEUR)}</span></div>}
-                          {result.insEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Insurance</span><span className="v2-bk-val">€{fmt(result.insEUR)}</span></div>}
-                          <div className="v2-bk-sep"/>
-                          <div className="v2-bk-total"><span>CIF Value</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(result.cifEUR)}</span></div>
-                        </div>
-                        <div>
-                          <div className="v2-sec-h">Duties &amp; Taxes</div>
-                          {result.deMinimisExpiringSoon && (
-                            <div style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#92400e",marginBottom:8}}>
-                              ⚠️ <strong>€150 de minimis abolished 1 July 2026</strong> — customs duty will apply to this shipment after that date
-                            </div>
-                          )}
-                          <div className="v2-bk-row">
-                            <span className="v2-bk-lbl">Customs duty {result.dutyFree ? "(waived — de minimis)" : result.effectiveDutyRate.toFixed(1) + "%"}</span>
-                            <span className="v2-bk-val">€{fmt(result.customsDuty)}</span>
-                          </div>
-                          {result.antiDumpingDuty > 0 && (
-                            <div className="v2-bk-row">
-                              <span className="v2-bk-lbl">Anti-dumping {result.addRate?.toFixed(1)}%</span>
-                              <span className="v2-bk-val">€{fmt(result.antiDumpingDuty)}</span>
-                            </div>
-                          )}
-                          <div className="v2-bk-row">
-                            <span className="v2-bk-lbl">Import VAT {((result.vatRate || 0.17) * 100).toFixed(0)}%</span>
-                            <span className="v2-bk-val">€{fmt(result.importVAT)}</span>
-                          </div>
-                          <div className="v2-bk-sep"/>
-                          <div className="v2-bk-total"><span>Total duties</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(totalDuties)}</span></div>
-                        </div>
-                      </div>
-                      <div className="v2-bk-grand">
-                        <div>
-                          <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
-                          <div style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:28,fontWeight:700,color:"var(--foreground)",letterSpacing:-1}}>€{fmt(result.total)}</div>
-                        </div>
-                        <div style={{display:"flex",gap:8}}>
-                          <button
-                            className="v2-btn-ghost v2-btn-sm"
-                            onClick={() => saveFavourite(hsCode)}
-                          >⭐ Save HS</button>
-                          <button
-                            className="v2-btn-gold v2-btn-sm"
-                            onClick={downloadPDF}
-                            
-                          >⬇ Export PDF</button>
-                        </div>
-                      </div>
-                      {/* Proportion bar */}
-                      {result.cifEUR > 0 && (
-                        <div style={{marginTop:16}}>
-                          <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#9ca3af",marginBottom:6,fontFamily:"var(--font-oswald),sans-serif"}}>Composition</div>
-                          <div style={{height:8,borderRadius:4,overflow:"hidden",display:"flex"}}>
-                            {(() => {
-                              const segments = [
-                                { val: result.valEUR, color: "#e2e8f0" },
-                                { val: result.customsDuty, color: "#6366f1" },
-                                { val: result.antiDumpingDuty || 0, color: "#dc2626" },
-                                { val: result.exciseDutyAmt || 0, color: "#d97706" },
-                                { val: result.importVAT, color: "#10b981" },
-                              ].filter(s => s.val > 0);
-                              const tv = segments.reduce((a, s) => a + s.val, 0);
-                              return segments.map((s, i) => (
-                                <div key={i} style={{flex: s.val / tv, background: s.color}} />
-                              ));
-                            })()}
-                          </div>
-                          <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
-                            {[
-                              {label:"Goods",color:"#e2e8f0",text:"#9ca3af"},
-                              {label:"Duty",color:"#6366f1",text:"#6366f1"},
-                              ...(result.antiDumpingDuty > 0 ? [{label:"ADD",color:"#dc2626",text:"#dc2626"}] : []),
-                              ...(result.exciseDutyAmt > 0 ? [{label:"Excise",color:"#d97706",text:"#d97706"}] : []),
-                              {label:"VAT",color:"#10b981",text:"#10b981"},
-                            ].map(({label,color,text}) => (
-                              <div key={label} style={{display:"flex",alignItems:"center",gap:4,fontSize:9}}>
-                                <div style={{width:8,height:8,borderRadius:2,background:color}}/>
-                                <span style={{color:text}}>{label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Excise / CBAM alerts */}
                 {isExcisable && (
                   <div style={{background:"rgba(245,158,11,.05)",border:"1px solid rgba(245,158,11,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
@@ -1969,6 +1882,115 @@ export default function CustomsCalculator({ user }) {
                   ⚠ Estimate only. Verify at{" "}
                   <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener" style={{color:"var(--gold)"}}>TARIC ↗</a>.
                 </div>
+                </div>{/* end left column */}
+
+                {/* ── RIGHT COLUMN: STICKY RESULT ── */}
+                <div className="calc-result-sticky" ref={resultRef}>
+                  {!result ? (
+                    <div style={{background:"#fff",border:"1px solid var(--border)",borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
+                      <div style={{fontSize:32,marginBottom:12}}>📊</div>
+                      <div style={{fontFamily:"var(--font-oswald),sans-serif",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--foreground)",marginBottom:6}}>Results Panel</div>
+                      <div style={{fontSize:12,color:"#9ca3af",lineHeight:1.6}}>Fill in goods, shipment &amp; origin on the left, then press <strong>Calculate</strong>.</div>
+                    </div>
+                  ) : (
+                    <div className="v2-bk-card">
+                      <div className="v2-card-hdr">
+                        <div className="v2-card-icon" style={{background:"rgba(16,185,129,0.1)"}}>📋</div>
+                        <span className="v2-card-title">Breakdown</span>
+                        <span className="v2-card-sub" style={{color:"#10b981",fontFamily:"var(--font-courier-prime),monospace",fontWeight:700}}>
+                          €{fmt(result.total)}
+                        </span>
+                      </div>
+                      <div className="v2-card-body">
+                        {/* CIF section */}
+                        <div className="v2-sec-h">Customs Value (CIF)</div>
+                        <div className="v2-bk-row"><span className="v2-bk-lbl">Item value (EUR)</span><span className="v2-bk-val">€{fmt(result.valEUR)}</span></div>
+                        {result.frEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Freight ({result.airfreightPct ?? 100}%)</span><span className="v2-bk-val">€{fmt(result.frEUR)}</span></div>}
+                        {result.insEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Insurance</span><span className="v2-bk-val">€{fmt(result.insEUR)}</span></div>}
+                        <div className="v2-bk-sep"/>
+                        <div className="v2-bk-total"><span>CIF Value</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(result.cifEUR)}</span></div>
+
+                        {/* Duties section */}
+                        <div className="v2-sec-h" style={{marginTop:16}}>Duties &amp; Taxes</div>
+                        {result.deMinimisExpiringSoon && (
+                          <div style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#92400e",marginBottom:8}}>
+                            ⚠️ <strong>€150 de minimis abolished 1 July 2026</strong> — customs duty will apply to this shipment after that date
+                          </div>
+                        )}
+                        <div className="v2-bk-row">
+                          <span className="v2-bk-lbl">Customs duty {result.dutyFree ? "(waived — de minimis)" : result.effectiveDutyRate.toFixed(1) + "%"}</span>
+                          <span className="v2-bk-val">€{fmt(result.customsDuty)}</span>
+                        </div>
+                        {result.antiDumpingDuty > 0 && (
+                          <div className="v2-bk-row">
+                            <span className="v2-bk-lbl">Anti-dumping {result.addRate?.toFixed(1)}%</span>
+                            <span className="v2-bk-val">€{fmt(result.antiDumpingDuty)}</span>
+                          </div>
+                        )}
+                        <div className="v2-bk-row">
+                          <span className="v2-bk-lbl">Import VAT {((result.vatRate || 0.17) * 100).toFixed(0)}%</span>
+                          <span className="v2-bk-val">€{fmt(result.importVAT)}</span>
+                        </div>
+                        <div className="v2-bk-sep"/>
+                        <div className="v2-bk-total"><span>Total duties</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(totalDuties)}</span></div>
+
+                        {/* Grand total */}
+                        <div className="v2-bk-grand">
+                          <div>
+                            <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
+                            <div style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:28,fontWeight:700,color:"var(--foreground)",letterSpacing:-1}}>€{fmt(result.total)}</div>
+                          </div>
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                            <button
+                              className="v2-btn-ghost v2-btn-sm"
+                              onClick={() => saveFavourite({hs6:hsCode, description, standardDutyRate:parseFloat(dutyRate)||0})}
+                            >⭐ Save HS</button>
+                            <button
+                              className="v2-btn-gold v2-btn-sm"
+                              onClick={downloadPDF}
+                            >⬇ Export PDF</button>
+                          </div>
+                        </div>
+
+                        {/* Proportion bar */}
+                        {result.cifEUR > 0 && (
+                          <div style={{marginTop:16}}>
+                            <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#9ca3af",marginBottom:6,fontFamily:"var(--font-oswald),sans-serif"}}>Composition</div>
+                            <div style={{height:8,borderRadius:4,overflow:"hidden",display:"flex"}}>
+                              {(() => {
+                                const segments = [
+                                  { val: result.valEUR, color: "#e2e8f0" },
+                                  { val: result.customsDuty, color: "#6366f1" },
+                                  { val: result.antiDumpingDuty || 0, color: "#dc2626" },
+                                  { val: result.exciseDutyAmt || 0, color: "#d97706" },
+                                  { val: result.importVAT, color: "#10b981" },
+                                ].filter(s => s.val > 0);
+                                const tv = segments.reduce((a, s) => a + s.val, 0);
+                                return segments.map((s, i) => (
+                                  <div key={i} style={{flex: s.val / tv, background: s.color}} />
+                                ));
+                              })()}
+                            </div>
+                            <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
+                              {[
+                                {label:"Goods",color:"#e2e8f0",text:"#9ca3af"},
+                                {label:"Duty",color:"#6366f1",text:"#6366f1"},
+                                ...(result.antiDumpingDuty > 0 ? [{label:"ADD",color:"#dc2626",text:"#dc2626"}] : []),
+                                ...(result.exciseDutyAmt > 0 ? [{label:"Excise",color:"#d97706",text:"#d97706"}] : []),
+                                {label:"VAT",color:"#10b981",text:"#10b981"},
+                              ].map(({label,color,text}) => (
+                                <div key={label} style={{display:"flex",alignItems:"center",gap:4,fontSize:9}}>
+                                  <div style={{width:8,height:8,borderRadius:2,background:color}}/>
+                                  <span style={{color:text}}>{label}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>{/* end right column */}
 
               </div>
             );
@@ -2185,7 +2207,7 @@ export default function CustomsCalculator({ user }) {
                     onChange={(e) => setExciseCifValue(e.target.value)}
                   />
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>
-                    If provided, import VAT ({EXCISE_SCHEMAS[exciseCategory]?.vatRate * 100 ?? 17}%) is calculated on
+                    If provided, import VAT ({(EXCISE_SCHEMAS[exciseCategory]?.vatRate ?? 0.17) * 100}%) is calculated on
                     goods value + excise.
                   </div>
                 </div>
@@ -2438,8 +2460,8 @@ export default function CustomsCalculator({ user }) {
                             <option key={k} value={k}>{v.label}</option>
                           ))}
                         </select>
-                        {sector?.cn && (
-                          <div className="v2-hint">CN codes: {sector.cn}</div>
+                        {sector?.cnCodes && (
+                          <div className="v2-hint">CN codes: {sector.cnCodes}</div>
                         )}
                       </div>
                       <div>
@@ -2546,7 +2568,7 @@ export default function CustomsCalculator({ user }) {
                     {cbamResult && (
                       <div className={`v2-pill ${cbamResult.netCost > 0 ? "v2-pill-amber" : "v2-pill-green"}`} style={{marginTop:16}}>
                         {cbamResult.netCost > 0
-                          ? `⚠ CBAM liability: €${fmt(cbamResult.netCost)} · ${cbamResult.emissionFactor?.toFixed(3)} t CO₂e/t · ${fmt(cbamResult.totalEmissions)} t CO₂e total`
+                          ? `⚠ CBAM liability: €${fmt(cbamResult.netCost)} · ${cbamResult.defaultPerTonne?.toFixed(3)} t CO₂e/t · ${fmt(cbamResult.totalEmbedded)} t CO₂e total`
                           : `✓ No CBAM liability — carbon price paid in origin country covers EU ETS cost`
                         }
                       </div>
@@ -2811,6 +2833,7 @@ export default function CustomsCalculator({ user }) {
           </div>
         )}
       </div>
+      </div>{/* end position:relative content wrapper */}
     </div>
   );
 }

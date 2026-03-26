@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { z } from "zod";
+import { prisma } from "@/lib/prisma";
 export const maxDuration = 60;
+
+// Cache entries older than 180 days are considered stale (CN codes update annually)
+const CACHE_MAX_AGE_DAYS = 180;
+
+function normalizeDescription(s) {
+  return s.toLowerCase().trim().replace(/\s+/g, " ");
+}
 
 const TARIC_SOAP_URL = "https://ec.europa.eu/taxation_customs/dds2/taric/services/goods";
 const UK_TARIFF_BASE = "https://www.trade-tariff.service.gov.uk/api/v2";
@@ -169,10 +177,19 @@ async function callClaude(system, userMsg) {
       messages: [{ role: "user", content: userMsg }],
     }),
   });
-  if (!resp.ok) throw new Error("Claude error");
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "");
+    console.error("[hs-lookup] Claude API error:", resp.status, errText.slice(0, 300));
+    throw new Error(`Claude API ${resp.status}`);
+  }
   const data = await resp.json();
   const text = data.content?.find(b => b.type === "text")?.text || "";
-  return JSON.parse(text.replace(/```json|```/g, "").trim());
+  try {
+    return JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch (e) {
+    console.error("[hs-lookup] JSON parse error. Raw text:", text.slice(0, 500));
+    throw e;
+  }
 }
 
 const CLASSIFY_SYSTEM = `You are a customs classification expert specializing in EU TARIC and Luxembourg import rules.
@@ -200,6 +217,7 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single code):
   "confidence": "high | medium",
   "reasoning": "concise explanation of classification logic",
   "chapter": "HS chapter name",
+  "mfnRate": <EU MFN ad-valorem duty rate as a number, e.g. 3.5 for 3.5%. Use 0 for duty-free. Estimate from your training data if uncertain.>,
   "notes": "any ambiguity or assumptions"
 }
 
@@ -257,6 +275,17 @@ CRITICAL PRIORITY RULES FOR CHOOSING OPTIONS:
 - Priority order: Option 1 (classify) > Option 3 (candidates with %) > Option 2 (ask questions) > Option 4 (fatal, nearly never).
 - When in doubt, provide your best candidates with percentages (Option 3). It is always better to give an educated estimate than to return nothing.`;
 
+// ── Saturn (Luxembourg ADA) verification URL ──────────────────────────────────
+// The Saturn API backend is WAF-restricted (server-to-server requests return 403).
+// We generate a direct deep-link so users can verify in one click.
+
+function saturnUrl(cn10) {
+  const code = (cn10 || "").replace(/\D/g, "");
+  if (!code) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  return `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn?sd=${today}&d=I&l=en&ql=en&cn=${code}`;
+}
+
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req) {
@@ -296,10 +325,32 @@ export async function POST(req) {
         result.cn8 = v.code10.slice(0, 8);
       }
     }
+    result.saturnUrl = saturnUrl(result.cn10 || result.cn8);
     return NextResponse.json(result);
   }
 
   // ── Classification ────────────────────────────────────────────────────────
+
+  // Cache check — avoid burning API tokens for repeated lookups
+  const descNorm = normalizeDescription(data.description);
+  const staleThreshold = new Date(Date.now() - CACHE_MAX_AGE_DAYS * 86400000);
+  const cached = await prisma.hsLookupCache.findUnique({ where: { descriptionNorm: descNorm } });
+  if (cached && cached.updatedAt > staleThreshold) {
+    const result = JSON.parse(cached.resultJson);
+    // Record in user history and bump hit counter (fire-and-forget)
+    prisma.$transaction([
+      prisma.hsLookupCache.update({ where: { id: cached.id }, data: { hitCount: { increment: 1 } } }),
+      prisma.hsSearchHistory.create({ data: {
+        userId: session.user.id,
+        description: data.description,
+        hs6: result.hs6 || null,
+        cn8: result.cn8 || null,
+        dutyRate: result.standardDutyRate ?? null,
+        fromCache: true,
+      }}),
+    ]).catch(() => {});
+    return NextResponse.json({ ...result, fromCache: true });
+  }
 
   // Step 1 + 2: Claude and UK Trade Tariff search in parallel
   let claudeResult, ukCandidates;
@@ -341,7 +392,10 @@ export async function POST(req) {
       })
     );
     return NextResponse.json({
-      isCandidates: true, candidates: verified,
+      isCandidates: true, candidates: verified.map(c => ({
+        ...c,
+        saturnUrl: saturnUrl(c.cn10),
+      })),
       partialReasoning: claudeResult.partial_reasoning,
       ukCandidates: ukCandidates.slice(0, 3),
     });
@@ -445,6 +499,12 @@ These sources disagree at the HS6 level. Carefully reconsider — do any of the 
     if (finalResult.confidence === "high") finalResult.confidence = "medium";
   }
 
+  // Fallback: use Claude's estimated mfnRate if TARIC didn't provide one
+  if (finalResult.standardDutyRate == null && finalResult.mfnRate != null) {
+    finalResult.standardDutyRate = finalResult.mfnRate;
+    finalResult.mfnRateEstimated = true;
+  }
+
   // Step 7: Get valid siblings from UK Tariff (replaces brute-force TARIC probe)
   const ukChildren = await ukHeadingChildren(heading);
   if (ukChildren.length > 1) {
@@ -458,6 +518,8 @@ These sources disagree at the HS6 level. Carefully reconsider — do any of the 
           cn10: v.code10,
           description: v.description,
           declarable: true,
+          mfnRate: v.mfnRate,
+          mfnRateRaw: v.mfnRateRaw,
         });
       }
     }
@@ -468,6 +530,26 @@ These sources disagree at the HS6 level. Carefully reconsider — do any of the 
       finalResult.taricSiblings = ukChildren.slice(0, 10);
     }
   }
+
+  finalResult.saturnUrl = saturnUrl(finalResult.cn10);
+
+  // Save to global cache + user history (fire-and-forget, don't block response)
+  const resultJson = JSON.stringify(finalResult);
+  prisma.$transaction([
+    prisma.hsLookupCache.upsert({
+      where: { descriptionNorm: descNorm },
+      create: { descriptionNorm: descNorm, description: data.description, resultJson, hitCount: 1 },
+      update: { resultJson, hitCount: { increment: 1 } },
+    }),
+    prisma.hsSearchHistory.create({ data: {
+      userId: session.user.id,
+      description: data.description,
+      hs6: finalResult.hs6 || null,
+      cn8: finalResult.cn8 || null,
+      dutyRate: finalResult.standardDutyRate ?? null,
+      fromCache: false,
+    }}),
+  ]).catch(() => {});
 
   return NextResponse.json(finalResult);
 }

@@ -1,6 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import styles from "./HsLookupTabV2.module.css";
+
+const PROGRESS_STAGES = [
+  { label: "AI classifying goods…",         pct: 18, ms: 0    },
+  { label: "Cross-referencing UK Tariff…",  pct: 42, ms: 3500 },
+  { label: "Verifying with EU TARIC…",      pct: 65, ms: 7000 },
+  { label: "Loading valid subheadings…",    pct: 84, ms: 11000 },
+  { label: "Finalising result…",            pct: 95, ms: 16000 },
+];
 
 export default function HsLookupTabV2({
   description, setDescription,
@@ -10,6 +18,60 @@ export default function HsLookupTabV2({
   setTab, setHsCode,
 }) {
   const [dismissedQuestions, setDismissedQuestions] = useState(new Set());
+  const [progress, setProgress] = useState({ pct: 0, label: "", active: false });
+  const timersRef = useRef([]);
+  const [history, setHistory] = useState([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  // Load search history
+  useEffect(() => {
+    fetch("/api/hs-lookup/history")
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { setHistory(data); setHistoryLoaded(true); })
+      .catch(() => setHistoryLoaded(true));
+  }, []);
+
+  // Refresh history after each completed lookup
+  useEffect(() => {
+    if (!hsLoading && historyLoaded) {
+      fetch("/api/hs-lookup/history")
+        .then(r => r.ok ? r.json() : [])
+        .then(setHistory)
+        .catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hsLoading]);
+
+  function deleteHistoryItem(id) {
+    fetch(`/api/hs-lookup/history?id=${id}`, { method: "DELETE" }).catch(() => {});
+    setHistory(h => h.filter(x => x.id !== id));
+  }
+
+  function clearHistory() {
+    fetch("/api/hs-lookup/history", { method: "DELETE" }).catch(() => {});
+    setHistory([]);
+  }
+
+  useEffect(() => {
+    if (hsLoading) {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+      setProgress({ pct: PROGRESS_STAGES[0].pct, label: PROGRESS_STAGES[0].label, active: true });
+      PROGRESS_STAGES.slice(1).forEach(({ label, pct, ms }) => {
+        const t = setTimeout(() => setProgress(p => p.active ? { pct, label, active: true } : p), ms);
+        timersRef.current.push(t);
+      });
+    } else {
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+      if (progress.active) {
+        setProgress(p => ({ ...p, pct: 100, label: "Done" }));
+        const t = setTimeout(() => setProgress({ pct: 0, label: "", active: false }), 500);
+        timersRef.current.push(t);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hsLoading]);
   // Prefer cn10 (10-digit TARIC code), fall back to cn8
   const primaryCode = hsResult?.cn10 || hsResult?.cn8 || "";
   const cn8Fmt = primaryCode.replace(/\D/g,"").replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_, a, b, c, d) =>
@@ -81,10 +143,68 @@ export default function HsLookupTabV2({
             Claude AI classifies based on your description. Always verify against official TARIC before lodging a declaration.
           </div>
 
+          {/* Progress bar */}
+          {progress.active && (
+            <div className={styles.progressWrap}>
+              <div className={styles.progressBar}>
+                <div className={styles.progressFill} style={{ width: `${progress.pct}%` }} />
+              </div>
+              <div className={styles.progressLabel}>{progress.label}</div>
+            </div>
+          )}
+
           {/* Error */}
           {hsResult?.error && (
             <div className={`${styles.infoPill} ${styles.pillRed}`} style={{marginTop:14}}>
               ⚠️ {hsResult.error}
+            </div>
+          )}
+
+          {/* ── CANDIDATES RESULT ── */}
+          {hsResult?.isCandidates && (
+            <div style={{marginTop:16}}>
+              <div className={styles.lbl} style={{marginBottom:8}}>
+                Multiple candidates — select the best match:
+              </div>
+              {hsResult.partialReasoning && (
+                <div className={styles.rationale} style={{marginBottom:10}}>
+                  {hsResult.partialReasoning}
+                </div>
+              )}
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {hsResult.candidates.map((c) => {
+                  const digits = (c.cn10||c.cn8||'').replace(/\D/g,'');
+                  const fmt = digits.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_,a,b,cc,d) => d ? `${a}.${b}.${cc}.${d}` : `${a}.${b}.${cc}`);
+                  return (
+                    <div key={c.cn10||c.cn8} className={styles.candidateRow}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3,flexWrap:'wrap'}}>
+                          <span style={{fontFamily:'var(--f-mono)',fontWeight:700,fontSize:13,color:'var(--text)'}}>{fmt}</span>
+                          {c.confidencePct != null && (
+                            <span className={styles.candidatePct}>{c.confidencePct}%</span>
+                          )}
+                          {c.mfnRate != null && (
+                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>MFN {c.mfnRate}%</span>
+                          )}
+                          {c.taricVerified && (
+                            <span className={`${styles.tag} ${styles.tagGold}`}>✓ TARIC</span>
+                          )}
+                        </div>
+                        <div style={{fontSize:12.5,color:'var(--body)'}}>{c.description || c.label}</div>
+                        {c.reasoning && (
+                          <div style={{fontSize:11,color:'var(--muted)',marginTop:3,lineHeight:1.5}}>{c.reasoning}</div>
+                        )}
+                      </div>
+                      <button
+                        className={`${styles.btnGold} ${styles.btnSm}`}
+                        onClick={() => { setHsCode(c.hs6 || (c.cn8||'').slice(0,6) || ''); setTab('calculator'); }}
+                      >
+                        Use in Calc
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -191,13 +311,15 @@ export default function HsLookupTabV2({
                 <div className={styles.resultDesc}>{hsResult.description}</div>
                 <div className={styles.resultRates}>
                   <span className={styles.resultRateItem}>
-                    MFN duty: <strong>{hsResult.standardDutyRate}%</strong>
+                    MFN duty: <strong>{hsResult.standardDutyRate ?? "—"}%</strong>
+                    {hsResult.mfnRateEstimated && <span style={{fontSize:9,color:'#d97706',marginLeft:4}}>(AI est.)</span>}
                   </span>
                   <span className={styles.resultRateItem}>
                     Luxembourg VAT: <strong>{hsResult.vatRateLU || 17}%</strong>
                   </span>
                   {isCBAM && <span className={`${styles.tag} ${styles.tagAmber}`}>CBAM eligible</span>}
                   {hsResult.antiDumping && <span className={`${styles.tag} ${styles.tagRed}`}>Anti-dumping ⚠️</span>}
+                  {hsResult.fromCache && <span className={`${styles.tag} ${styles.tagGold}`}>⚡ Cached</span>}
                 </div>
                 {hsResult.taricVerified === true && (
                   <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,marginBottom:2}}>
@@ -221,11 +343,17 @@ export default function HsLookupTabV2({
                         const dispCode = s.cn10 || s.cn8;
                         const isSelected = (s.cn10 && s.cn10 === (hsResult.cn10||hsResult.cn8)) || s.cn8 === hsResult.cn8;
                         return (
-                        <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? '#dcfce7' : 'white',border: isSelected ? '1px solid #86efac' : '1px solid #e5e7eb',cursor:'pointer'}}
-                          onClick={() => { setHsCode(dispCode); }}>
+                        <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? '#dcfce7' : 'white',border: isSelected ? '1px solid #86efac' : '1px solid #e5e7eb'}}>
                           <span style={{fontFamily:'monospace',fontWeight:700,fontSize:12,color:'#166534',minWidth:85}}>{dispCode.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/,(_, a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`)}</span>
                           <span style={{fontSize:12,color:'#374151',flex:1}}>{s.description}</span>
-                          {isSelected && <span style={{fontSize:10,color:'#16a34a'}}>← selected</span>}
+                          {s.mfnRate != null && <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{s.mfnRate}%</span>}
+                          {isSelected && <span style={{fontSize:10,color:'#16a34a',whiteSpace:'nowrap'}}>← AI pick</span>}
+                          <button
+                            className={`${styles.btnGhost} ${styles.btnSm}`}
+                            onClick={() => { setHsCode(dispCode); setTab('calculator'); }}
+                          >
+                            Use →
+                          </button>
                         </div>
                         );
                       })}
@@ -241,11 +369,11 @@ export default function HsLookupTabV2({
                 </div>
                 <div className={styles.resultActions}>
                   <a
-                    href={`https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbt`}
+                    href={hsResult.saturnUrl || `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn`}
                     target="_blank" rel="noreferrer"
                     className={`${styles.btnGhost} ${styles.btnSm}`}
                   >
-                    Verify in LU TARIC ↗
+                    Verify on Saturn (LU) ↗
                   </a>
                   <button
                     className={`${styles.btnGhost} ${styles.btnSm}`}
@@ -330,56 +458,54 @@ export default function HsLookupTabV2({
         </div>
       </div>
 
-      {/* ── SAVED HS CODES ── */}
-      <div className={styles.card}>
-        <div className={styles.cardHdr}>
-          <div className={styles.cardIcon}>⭐</div>
-          <span className={styles.cardTitle}>Saved HS Codes</span>
-        </div>
-        {favourites.length === 0 ? (
-          <div className={styles.emptyState}>
-            No saved codes yet — classify a product to get started
+      {/* ── RECENT SEARCHES ── */}
+      {history.length > 0 && (
+        <div className={styles.card}>
+          <div className={styles.cardHdr}>
+            <div className={styles.cardIcon}>🕒</div>
+            <span className={styles.cardTitle}>Recent Searches</span>
+            <span className={styles.cardSub}>Cached — no API tokens used</span>
+            <button
+              onClick={clearHistory}
+              style={{marginLeft:'auto',fontSize:10,color:'var(--muted)',background:'none',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',cursor:'pointer',fontFamily:'var(--f-head)',letterSpacing:.5,textTransform:'uppercase'}}
+            >
+              Clear all
+            </button>
           </div>
-        ) : (
-          <table className={styles.tbl}>
-            <thead>
-              <tr>
-                <th>CN Code</th>
-                <th>Description</th>
-                <th>MFN Duty</th>
-                <th>VAT</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {favourites.map((fav) => (
-                <tr key={fav.id}>
-                  <td className={`${styles.mono} ${styles.bold}`}>{fav.hsCode}</td>
-                  <td>{fav.description}</td>
-                  <td className={styles.mono}>{fav.dutyRate != null ? `${fav.dutyRate}%` : "—"}</td>
-                  <td className={styles.mono}>17%</td>
-                  <td>
-                    <div style={{display:"flex",gap:6}}>
-                      <button
-                        className={`${styles.btnGhost} ${styles.btnSm}`}
-                        onClick={() => { setHsCode(fav.hsCode); setTab("calculator"); }}
-                      >
-                        Use
-                      </button>
-                      <button
-                        onClick={() => removeFavourite(fav.id, fav.hsCode)}
-                        style={{height:28,padding:"0 8px",background:"transparent",border:"1px solid rgba(220,38,38,.2)",borderRadius:5,color:"#DC2626",fontSize:10,fontFamily:"var(--font-oswald,Oswald),sans-serif",cursor:"pointer",letterSpacing:".5px"}}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+          <div className={styles.cardBody} style={{padding:'10px 14px'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {history.map((item) => {
+                const code = item.cn8 || item.hs6 || '';
+                const fmt = code.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_,a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`);
+                const ago = (() => {
+                  const diff = Date.now() - new Date(item.createdAt).getTime();
+                  if (diff < 3600000) return `${Math.round(diff/60000)}m ago`;
+                  if (diff < 86400000) return `${Math.round(diff/3600000)}h ago`;
+                  return `${Math.round(diff/86400000)}d ago`;
+                })();
+                return (
+                  <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface,#fff)',cursor:'pointer',transition:'.15s'}}
+                    onMouseEnter={e => e.currentTarget.style.borderColor='rgba(16,185,129,.4)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}
+                    onClick={() => { setDescription(item.description); lookupHS(item.description); }}
+                  >
+                    <span style={{fontSize:12,color:'var(--body)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description}</span>
+                    {fmt && <span style={{fontFamily:'var(--f-mono)',fontSize:11,fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>{fmt}</span>}
+                    {item.dutyRate != null && <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{item.dutyRate}%</span>}
+                    {item.fromCache && <span style={{fontSize:9,color:'#059669',whiteSpace:'nowrap',fontFamily:'var(--f-head)',letterSpacing:.5}}>⚡ cached</span>}
+                    <span style={{fontSize:10,color:'var(--subtle)',whiteSpace:'nowrap'}}>{ago}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}
+                      style={{fontSize:12,color:'var(--subtle)',background:'none',border:'none',cursor:'pointer',padding:'0 2px',lineHeight:1,flexShrink:0}}
+                      title="Remove"
+                    >×</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
