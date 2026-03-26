@@ -10,9 +10,11 @@ export default function HsLookupTabV2({
   setTab, setHsCode,
 }) {
   const [dismissedQuestions, setDismissedQuestions] = useState(new Set());
-  const cn8Fmt = hsResult?.cn8
-    ? hsResult.cn8.replace(/(\d{4})(\d{2})(\d{2})/, "$1.$2.$3")
-    : (hsResult?.hs6 || "");
+  // Prefer cn10 (10-digit TARIC code), fall back to cn8
+  const primaryCode = hsResult?.cn10 || hsResult?.cn8 || "";
+  const cn8Fmt = primaryCode.replace(/\D/g,"").replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_, a, b, c, d) =>
+    d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`
+  ) || (hsResult?.hs6 || "");
 
   const confColor = hsResult?.confidence === "high" ? "#10b981"
     : hsResult?.confidence === "medium" ? "#D97706" : "#DC2626";
@@ -197,6 +199,39 @@ export default function HsLookupTabV2({
                   {isCBAM && <span className={`${styles.tag} ${styles.tagAmber}`}>CBAM eligible</span>}
                   {hsResult.antiDumping && <span className={`${styles.tag} ${styles.tagRed}`}>Anti-dumping ⚠️</span>}
                 </div>
+                {hsResult.taricVerified === true && (
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,marginBottom:2}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,color:'#059669',background:'#d1fae5',border:'1px solid #6ee7b7',borderRadius:4,padding:'2px 8px'}}>
+                      ✓ TARIC verified (LU)
+                    </span>
+                  </div>
+                )}
+                {hsResult.taricVerified === false && (
+                  <div style={{marginTop:4,marginBottom:2,padding:'6px 10px',background:'#fef3c7',border:'1px solid #fbbf24',borderRadius:4,fontSize:11.5,color:'#92400e'}}>
+                    ⚠️ {hsResult.taricWarning}
+                  </div>
+                )}
+                {hsResult.taricSiblings?.length > 1 && (
+                  <div style={{marginTop:6,padding:'8px 10px',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:6}}>
+                    <div style={{fontSize:11,fontWeight:600,color:'#166534',marginBottom:6,textTransform:'uppercase',letterSpacing:'.5px'}}>
+                      📋 Valid 10-digit TARIC codes under {hsResult.hs6} — pick the most specific:
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                      {hsResult.taricSiblings.map((s) => {
+                        const dispCode = s.cn10 || s.cn8;
+                        const isSelected = (s.cn10 && s.cn10 === (hsResult.cn10||hsResult.cn8)) || s.cn8 === hsResult.cn8;
+                        return (
+                        <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? '#dcfce7' : 'white',border: isSelected ? '1px solid #86efac' : '1px solid #e5e7eb',cursor:'pointer'}}
+                          onClick={() => { setHsCode(dispCode); }}>
+                          <span style={{fontFamily:'monospace',fontWeight:700,fontSize:12,color:'#166534',minWidth:85}}>{dispCode.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/,(_, a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`)}</span>
+                          <span style={{fontSize:12,color:'#374151',flex:1}}>{s.description}</span>
+                          {isSelected && <span style={{fontSize:10,color:'#16a34a'}}>← selected</span>}
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className={styles.confRow}>
                   <span className={styles.confLabel}>Confidence</span>
                   <div className={styles.confBar}>
@@ -206,11 +241,11 @@ export default function HsLookupTabV2({
                 </div>
                 <div className={styles.resultActions}>
                   <a
-                    href={`https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp?Lang=en&number=${(hsResult.cn8||"").replace(/\D/g,"")}0000&LangDescr=en`}
+                    href={`https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbt`}
                     target="_blank" rel="noreferrer"
                     className={`${styles.btnGhost} ${styles.btnSm}`}
                   >
-                    Verify in TARIC ↗
+                    Verify in LU TARIC ↗
                   </a>
                   <button
                     className={`${styles.btnGhost} ${styles.btnSm}`}
