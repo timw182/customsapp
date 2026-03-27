@@ -962,6 +962,23 @@ export default function CustomsCalculator({ user }) {
     return () => controller.abort();
   }, []);
 
+  // Re-fetch duty rate when origin country or preferential settings change
+  const originCountryRef = useRef(originCountry);
+  const preferentialRef = useRef(preferential);
+  const hasProofRef = useRef(hasProofOfOrigin);
+  useEffect(() => {
+    const changed = originCountryRef.current !== originCountry
+      || preferentialRef.current !== preferential
+      || hasProofRef.current !== hasProofOfOrigin;
+    originCountryRef.current = originCountry;
+    preferentialRef.current = preferential;
+    hasProofRef.current = hasProofOfOrigin;
+    if (changed && hsCode && hsCode.replace(/\D/g, "").length >= 6) {
+      lookupDutyRate(hsCode);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originCountry, preferential, hasProofOfOrigin]);
+
   const convertFX = (amount, from, to) => {
     if (from === to) return parseFloat(amount);
     const rates = { EUR: 1, ...allRates };
@@ -1810,35 +1827,43 @@ export default function CustomsCalculator({ user }) {
                       <div>
                         <div className="v2-lbl">Preferential Treatment</div>
                         {hasPref ? (
-                          <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:4}}>
-                            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
-                              <input
-                                type="checkbox"
-                                checked={preferential}
-                                onChange={(e) => { setPreferential(e.target.checked); if (!e.target.checked) setHasProofOfOrigin(false); }}
-                              />
-                              Claim preferential rate ({originInfo?.type?.toUpperCase()})
-                            </label>
+                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid rgba(16,185,129,.25)',background:'rgba(16,185,129,.04)'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:10}}>
+                              <button
+                                onClick={() => { setPreferential(!preferential); if (preferential) setHasProofOfOrigin(false); }}
+                                style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: preferential ? '#10b981' : '#d1d5db',flexShrink:0}}
+                              >
+                                <span style={{position:'absolute',top:2,left: preferential ? 20 : 2,width:16,height:16,borderRadius:8,background:'#fff',transition:'.2s',boxShadow:'0 1px 2px rgba(0,0,0,.15)'}}/>
+                              </button>
+                              <span style={{fontSize:13,fontWeight:600,color: preferential ? '#065f46' : '#6b7280'}}>
+                                Claim preferential rate
+                                <span style={{fontWeight:700,marginLeft:4,fontSize:11,padding:'1px 6px',borderRadius:3,background: preferential ? '#d1fae5' : '#f3f4f6',color: preferential ? '#059669' : '#9ca3af',letterSpacing:'.5px'}}>{originInfo?.type?.toUpperCase()}</span>
+                              </span>
+                            </div>
                             {preferential && (
-                              <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer"}}>
-                                <input
-                                  type="checkbox"
-                                  checked={hasProofOfOrigin}
-                                  onChange={(e) => setHasProofOfOrigin(e.target.checked)}
-                                />
-                                Proof of origin held (EUR.1 / invoice declaration)
-                              </label>
+                              <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(16,185,129,.15)',display:'flex',alignItems:'center',gap:10}}>
+                                <button
+                                  onClick={() => setHasProofOfOrigin(!hasProofOfOrigin)}
+                                  style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: hasProofOfOrigin ? '#10b981' : '#d1d5db',flexShrink:0}}
+                                >
+                                  <span style={{position:'absolute',top:2,left: hasProofOfOrigin ? 20 : 2,width:16,height:16,borderRadius:8,background:'#fff',transition:'.2s',boxShadow:'0 1px 2px rgba(0,0,0,.15)'}}/>
+                                </button>
+                                <span style={{fontSize:12.5,color: hasProofOfOrigin ? '#065f46' : '#6b7280'}}>
+                                  Proof of origin held
+                                  <span style={{color:'#9ca3af',marginLeft:4}}>(EUR.1 / invoice declaration)</span>
+                                </span>
+                              </div>
                             )}
-                            <div className="v2-hint" style={{marginTop:2}}>
+                            <div style={{marginTop:8,fontSize:11.5,lineHeight:1.5,color: preferential && hasProofOfOrigin ? '#059669' : '#92400e',fontWeight: preferential && hasProofOfOrigin ? 600 : 400}}>
                               {preferential && hasProofOfOrigin
-                                ? "✓ Preferential rate will be applied"
+                                ? "✓ Preferential rate will be applied to this calculation"
                                 : preferential
-                                  ? "Confirm you hold proof of origin to apply the rate"
-                                  : originInfo?.note || "Preferential rate available — check the box to apply"}
+                                  ? "⚠ Confirm you hold proof of origin to apply the rate"
+                                  : originInfo?.note || "Preferential rate available — toggle to apply"}
                             </div>
                           </div>
                         ) : (
-                          <div style={{marginTop:6,fontSize:13,color:"#9ca3af"}}>
+                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:13,color:'#9ca3af'}}>
                             No EU preferential agreement — MFN rate applies
                             {originInfo?.type === "sanctioned" && <span style={{color:"#dc2626",fontWeight:600}}> ⚠️ Sanctioned country</span>}
                           </div>

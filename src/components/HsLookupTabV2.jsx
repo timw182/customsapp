@@ -4,9 +4,9 @@ import styles from "./HsLookupTabV2.module.css";
 
 const PROGRESS_STAGES = [
   { label: "AI classifying goods…",         pct: 18, ms: 0    },
-  { label: "Cross-referencing UK Tariff…",  pct: 42, ms: 3500 },
-  { label: "Verifying with EU TARIC…",      pct: 65, ms: 7000 },
-  { label: "Loading valid subheadings…",    pct: 84, ms: 11000 },
+  { label: "Verifying with EU TARIC…",      pct: 42, ms: 3500 },
+  { label: "Browsing valid subheadings…",   pct: 65, ms: 7000 },
+  { label: "Loading duty rates…",           pct: 84, ms: 11000 },
   { label: "Finalising result…",            pct: 95, ms: 16000 },
 ];
 
@@ -183,9 +183,11 @@ export default function HsLookupTabV2({
                           {c.confidencePct != null && (
                             <span className={styles.candidatePct}>{c.confidencePct}%</span>
                           )}
-                          {c.mfnRate != null && (
+                          {c.mfnRateRaw ? (
+                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={c.mfnRateRaw}>MFN {c.mfnRateRaw}</span>
+                          ) : c.mfnRate != null ? (
                             <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>MFN {c.mfnRate}%</span>
-                          )}
+                          ) : null}
                           {c.taricVerified && (
                             <span className={`${styles.tag} ${styles.tagGold}`}>✓ TARIC</span>
                           )}
@@ -346,7 +348,13 @@ export default function HsLookupTabV2({
                         <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? '#dcfce7' : 'white',border: isSelected ? '1px solid #86efac' : '1px solid #e5e7eb'}}>
                           <span style={{fontFamily:'monospace',fontWeight:700,fontSize:12,color:'#166534',minWidth:85}}>{dispCode.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/,(_, a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`)}</span>
                           <span style={{fontSize:12,color:'#374151',flex:1}}>{s.description}</span>
-                          {s.mfnRate != null && <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{s.mfnRate}%</span>}
+                          {s.mfnRateRaw ? (
+                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={s.mfnRateRaw}>{s.mfnRateRaw}</span>
+                          ) : s.mfnRate != null ? (
+                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{s.mfnRate}%</span>
+                          ) : (
+                            <span style={{fontSize:10,fontWeight:600,color:'#9CA3AF',background:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>—</span>
+                          )}
                           {isSelected && <span style={{fontSize:10,color:'#16a34a',whiteSpace:'nowrap'}}>← AI pick</span>}
                           <button
                             className={`${styles.btnGhost} ${styles.btnSm}`}

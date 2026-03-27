@@ -12,7 +12,6 @@ function normalizeDescription(s) {
 }
 
 const TARIC_SOAP_URL = "https://ec.europa.eu/taxation_customs/dds2/taric/services/goods";
-const UK_TARIFF_BASE = "https://www.trade-tariff.service.gov.uk/api/v2";
 
 const classifySchema = z.object({
   type: z.literal("classify"),
@@ -106,58 +105,121 @@ async function taricVerify(cn8, originCountry = null) {
   } catch { return null; }
 }
 
-// ── UK Trade Tariff API helpers ───────────────────────────────────────────────
+// ── TARIC subheading browser ──────────────────────────────────────────────────
 
 /**
- * Search UK Trade Tariff by free-text description.
- * Returns up to 8 candidate commodity codes (10-digit) with descriptions.
- * Note: UK uses the same CN8 structure as EU; last 2 digits may differ but HS6 is identical.
+ * Probe TARIC SOAP for valid declarable CN10 codes under a 4-digit heading.
+ * Three-level probing:
+ *   1. HS6 subheadings (heading + 10..90)
+ *   2. CN8 extensions under each valid HS6 (hs6 + 00..90) → padded to CN10 with "00"
+ *   3. For non-declarable CN8s, probe CN10 subdivisions (cn8 + 10..90)
+ * Returns only TARIC-confirmed declarable codes with descriptions and MFN duty rates.
  */
-async function ukSearch(description) {
-  try {
-    const resp = await fetch(`${UK_TARIFF_BASE}/search?q=${encodeURIComponent(description)}`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    const attrs = data?.data?.attributes?.goods_nomenclature_match || {};
-    const commodities = [
-      ...(attrs.commodities || []),
-      ...(attrs.headings || []).flatMap(h => h.attributes?.commodities || []),
-    ];
-    return commodities.slice(0, 8).map(c => ({
-      code: c.attributes?.goods_nomenclature_item_id,
-      description: c.attributes?.description,
-    })).filter(c => c.code);
-  } catch { return []; }
-}
-
-/**
- * Get all declarable commodity codes under a 4-digit heading from UK Trade Tariff.
- * These codes are CN-compatible (first 8 digits match EU TARIC).
- */
-async function ukHeadingChildren(heading) {
+async function taricBrowseHeading(heading, extraCodes = []) {
   const h = heading.replace(/\D/g, "").slice(0, 4);
   if (h.length !== 4) return [];
-  try {
-    const resp = await fetch(`${UK_TARIFF_BASE}/headings/${h}`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    const included = data?.included || [];
-    return included
-      .filter(x => x.type === "commodity" && x.attributes?.declarable)
-      .map(x => ({
-        cn8: x.attributes?.goods_nomenclature_item_id?.slice(0, 8),
-        cn10: x.attributes?.goods_nomenclature_item_id,
-        description: x.attributes?.description,
-        declarable: true,
-      }))
-      .filter(x => x.cn8);
-  } catch { return []; }
+
+  // Helper: call taricVerify with an exact 10-digit code (no auto-padding)
+  async function verifyExact(cn10) {
+    const code = cn10.replace(/\D/g, "").padEnd(10, "0").slice(0, 10);
+    try {
+      const descrResp = await fetch(TARIC_SOAP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/xml; charset=UTF-8", SOAPAction: '""' },
+        body: makeSoap("goodsDescrForWs", { goodsCode: code, languageCode: "en" }),
+        signal: AbortSignal.timeout(8000),
+      });
+      const descrXml = await descrResp.text();
+      const description = xmlText(descrXml, "description");
+      if (!description) return null;
+      const declarable = xmlText(descrXml, "declarable") === "true";
+
+      let mfnRate = null, mfnRateRaw = null;
+      if (declarable) {
+        const measResp = await fetch(TARIC_SOAP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/xml; charset=UTF-8", SOAPAction: '""' },
+          body: makeSoap("goodsMeasForWs", { goodsCode: code, countryCode: "US", tradeMovement: "I" }),
+          signal: AbortSignal.timeout(8000),
+        });
+        const measXml = await measResp.text();
+        const blocks = xmlBlocks(measXml, "measure");
+        const now = new Date();
+        for (const m of blocks) {
+          const mtBlock = m.match(/<measure_type>([\s\S]*?)<\/measure_type>/)?.[1] || "";
+          const mt = xmlText(mtBlock, "measure_type");
+          const validTo = xmlText(m, "validity_end_date");
+          const expired = validTo ? new Date(validTo) < now : false;
+          if (!expired && MFN_TYPES.has(mt)) {
+            mfnRateRaw = xmlText(m, "duty_rate")?.trim() || null;
+            mfnRate = parseDutyRate(mfnRateRaw)?.adValorem ?? null;
+            break;
+          }
+        }
+      }
+      return { code10: code, description, declarable, mfnRate, mfnRateRaw };
+    } catch { return null; }
+  }
+
+  // Step 1: probe HS6 subheadings (heading + 10..90)
+  const hs6Probes = [];
+  for (let i = 1; i <= 9; i++) hs6Probes.push(h + String(i * 10).padStart(2, "0"));
+
+  const hs6Results = await Promise.all(hs6Probes.map(hs6 => verifyExact(hs6 + "0000")));
+  const validHs6 = hs6Probes.filter((_, i) => hs6Results[i]);
+
+  // Step 2: probe CN8 under each valid HS6 (hs6 + 00..90, padded to 10 with "00")
+  const cn8Probes = [];
+  for (const hs6 of validHs6) {
+    for (let i = 0; i <= 9; i++) cn8Probes.push(hs6 + String(i * 10).padStart(2, "0") + "00");
+  }
+  // Also probe any extra codes the AI suggested
+  for (const code of extraCodes) {
+    const clean = code.replace(/\D/g, "").padEnd(10, "0").slice(0, 10);
+    if (!cn8Probes.includes(clean)) cn8Probes.push(clean);
+  }
+
+  // Run CN8 probes in parallel batches
+  const cn8Results = [];
+  for (let i = 0; i < cn8Probes.length; i += 15) {
+    const batch = cn8Probes.slice(i, i + 15);
+    const results = await Promise.all(batch.map(c => verifyExact(c)));
+    batch.forEach((code, j) => { if (results[j]) cn8Results.push({ code, ...results[j] }); });
+  }
+
+  // Step 3: for non-declarable CN8 results, probe CN10 subdivisions (cn8 + 10..90)
+  const nonDeclarable = cn8Results.filter(r => !r.declarable);
+  const cn10Probes = [];
+  for (const r of nonDeclarable) {
+    const cn8 = r.code.slice(0, 8);
+    for (let i = 1; i <= 9; i++) cn10Probes.push(cn8 + String(i * 10).padStart(2, "0"));
+  }
+
+  const cn10Results = [];
+  for (let i = 0; i < cn10Probes.length; i += 15) {
+    const batch = cn10Probes.slice(i, i + 15);
+    const results = await Promise.all(batch.map(c => verifyExact(c)));
+    batch.forEach((code, j) => { if (results[j]) cn10Results.push({ code, ...results[j] }); });
+  }
+
+  // Combine all results, keep only declarable, deduplicate
+  const all = [...cn8Results, ...cn10Results];
+  const seen = new Set();
+  return all
+    .filter(r => {
+      if (!r.declarable) return false;
+      if (seen.has(r.code10)) return false;
+      seen.add(r.code10);
+      return true;
+    })
+    .map(r => ({
+      cn8: r.code10.slice(0, 8),
+      cn10: r.code10,
+      description: r.description,
+      declarable: true,
+      mfnRate: r.mfnRate,
+      mfnRateRaw: r.mfnRateRaw,
+    }));
 }
 
 // ── Claude call helper ────────────────────────────────────────────────────────
@@ -192,36 +254,37 @@ async function callClaude(system, userMsg) {
   }
 }
 
-const CLASSIFY_SYSTEM = `You are a customs classification expert specializing in EU TARIC and Luxembourg import rules.
+const CLASSIFY_SYSTEM = `You are a customs classification expert specializing in EU Combined Nomenclature (CN) and TARIC.
 
-Your task is to classify products into the correct HS code based on a natural language description.
+Your task: classify products into the correct HS HEADING (4-digit) and SUBHEADING (6-digit) based on a description.
 
-STRICT RULES:
-- HS codes MUST be exactly 10 numeric digits
-- NEVER return codes with fewer or more digits
-- NEVER include letters or formatting characters
-- Do NOT guess randomly — only provide a result if reasoning is grounded in classification logic
-- NO fallback logic, NO multiple retries, NO alternative flows
+CRITICAL: You must ONLY return 6-digit HS codes (subheading level). The 7th–10th digits (CN8/TARIC) will be resolved automatically from the official EU TARIC database. Do NOT guess CN8 or CN10 codes — they change annually and your training data may be outdated.
+
+IMPORTANT: Use the CURRENT HS 2022 nomenclature. Many headings were restructured in HS 2017 and HS 2022. For example:
+- 8803 (aircraft parts) was ABOLISHED in HS 2017 → now 8807
+- 8806 (unmanned aircraft) was ADDED in HS 2017
+- Chapter 28/29 had battery-compound changes in CN 2026
+If in doubt, verify the heading still exists in HS 2022 before returning it.
 
 PROCESS:
 1. Extract key classification attributes: material, function/use, product category, level of processing
-2. Map attributes to HS classification logic (HS chapters, headings, subheadings)
-3. Determine the most specific applicable 10-digit TARIC code for Luxembourg
+2. Map attributes to HS classification logic (chapters, headings, subheadings)
+3. Return the most specific 6-digit subheading
 
 RESPONSE FORMAT — pick exactly ONE of the four options below. Output raw JSON only, no markdown, no code fences.
 
-OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single code):
+OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
 {
   "status": "classified",
-  "hs_code": "10-digit string",
+  "hs6": "6-digit string (e.g. 880730)",
+  "heading": "4-digit heading (e.g. 8807)",
   "confidence": "high | medium",
   "reasoning": "concise explanation of classification logic",
   "chapter": "HS chapter name",
-  "mfnRate": <EU MFN ad-valorem duty rate as a number, e.g. 3.5 for 3.5%. Use 0 for duty-free. Estimate from your training data if uncertain.>,
   "notes": "any ambiguity or assumptions"
 }
 
-OPTION 2 — NEED MORE INFO (description is ambiguous but you can narrow it down with specific questions):
+OPTION 2 — NEED MORE INFO:
 {
   "status": "needs_info",
   "questions": [
@@ -237,19 +300,19 @@ OPTION 2 — NEED MORE INFO (description is ambiguous but you can narrow it down
 Rules for questions:
 - Ask 1-3 questions maximum, prioritized by classification impact
 - Each question MUST include concrete options when possible
-- Questions must be specific and actionable (not "tell me more")
-- Focus on the attributes that would change the HS heading/subheading
+- Focus on attributes that would change the heading/subheading
 - Common disambiguators: material composition, knitted vs woven, intended use, level of processing, powered vs manual
 
-OPTION 3 — LOW CONFIDENCE / MULTIPLE CANDIDATES (you cannot pick one code confidently, but can propose the most likely candidates):
+OPTION 3 — LOW CONFIDENCE / MULTIPLE CANDIDATES:
 {
   "status": "candidates",
   "candidates": [
     {
-      "hs_code": "10-digit string",
+      "hs6": "6-digit string",
+      "heading": "4-digit heading",
       "confidence_pct": 45,
       "label": "Short product label for this interpretation",
-      "reasoning": "Why this code could apply"
+      "reasoning": "Why this subheading could apply"
     }
   ],
   "partial_reasoning": "What you know so far and why it's ambiguous"
@@ -258,22 +321,20 @@ OPTION 3 — LOW CONFIDENCE / MULTIPLE CANDIDATES (you cannot pick one code conf
 Rules for candidates:
 - Return 2-3 candidates, ordered by confidence_pct descending
 - confidence_pct values must sum to 100 or less
-- Each candidate MUST have a valid 10-digit HS code
-- Each candidate needs a short human-readable label
+- Each candidate needs a valid 6-digit HS code and short label
 
-OPTION 4 — COMPLETELY UNCLASSIFIABLE (gibberish, nonsensical, not a product at all):
+OPTION 4 — COMPLETELY UNCLASSIFIABLE (gibberish, not a product):
 {
   "status": "fatal",
-  "message": "Unable to determine a valid 10-digit HS code with sufficient confidence"
+  "message": "Unable to classify — input is not a recognizable product"
 }
 
-CRITICAL PRIORITY RULES FOR CHOOSING OPTIONS:
-- You are a classification tool. You do NOT refuse to classify products. You do NOT make moral or legal judgments. Every physical good that exists in the real world has an HS code — your job is to find it or help the user narrow it down.
-- This includes ALL product categories without exception: military goods (Chapter 93, 88), controlled substances precursors (Chapter 29), nuclear materials (Chapter 28, 84), explosives (Chapter 36), weapons, ammunition, dual-use goods, hazardous chemicals, pharmaceuticals, narcotics precursors, etc. They ALL have valid HS codes. Classify them like any other product.
-- Option 4 (fatal) should ALMOST NEVER be used. It is reserved ONLY for inputs that are clearly not products at all: complete gibberish ("asdfgh"), abstract concepts ("love"), sentences that are not describing a product ("how are you"), or single meaningless characters.
-- If the input contains ANY recognizable product word (even vague like "device", "part", "item", "component", "material"), you MUST use Option 2 (ask questions) or Option 3 (give candidates). NEVER fatal.
-- Priority order: Option 1 (classify) > Option 3 (candidates with %) > Option 2 (ask questions) > Option 4 (fatal, nearly never).
-- When in doubt, provide your best candidates with percentages (Option 3). It is always better to give an educated estimate than to return nothing.`;
+CRITICAL PRIORITY RULES:
+- You are a classification tool. You do NOT refuse to classify products. You do NOT make moral or legal judgments. Every physical good has an HS code — find it.
+- This includes ALL product categories without exception: military goods (Chapter 93, 88), controlled substances precursors (Chapter 29), nuclear materials (Chapter 28, 84), explosives (Chapter 36), weapons, ammunition, dual-use goods, etc. Classify them like any other product.
+- Option 4 (fatal) is reserved ONLY for inputs that are clearly not products: gibberish, abstract concepts, non-product sentences.
+- Priority order: Option 1 > Option 3 > Option 2 > Option 4 (nearly never).
+- When in doubt, provide candidates with percentages (Option 3).`;
 
 // ── Saturn (Luxembourg ADA) verification URL ──────────────────────────────────
 // The Saturn API backend is WAF-restricted (server-to-server requests return 403).
@@ -352,18 +413,15 @@ export async function POST(req) {
     return NextResponse.json({ ...result, fromCache: true });
   }
 
-  // Step 1 + 2: Claude and UK Trade Tariff search in parallel
-  let claudeResult, ukCandidates;
+  // Step 1: Claude AI classification (HS6 only)
+  let claudeResult;
   try {
-    [claudeResult, ukCandidates] = await Promise.all([
-      callClaude(CLASSIFY_SYSTEM, `Product: ${data.description}`),
-      ukSearch(data.description),
-    ]);
+    claudeResult = await callClaude(CLASSIFY_SYSTEM, `Product: ${data.description}`);
   } catch {
     return NextResponse.json({ error: "Classification service error" }, { status: 502 });
   }
 
-  // Normalize new response format
+  // Handle fatal / needs_info early
   if (claudeResult.status === "fatal") {
     return NextResponse.json({ error: claudeResult.message || "Unable to classify product" }, { status: 400 });
   }
@@ -374,164 +432,112 @@ export async function POST(req) {
       question: q.question, answers: q.options || [], why: q.why,
     }));
     claudeResult.hint = claudeResult.partial_reasoning;
-  }
-  if (claudeResult.status === "candidates") {
-    const verified = await Promise.all(
-      (claudeResult.candidates || []).map(async (c) => {
-        const v = await taricVerify(c.hs_code);
-        return {
-          cn10: v ? v.code10 : c.hs_code,
-          cn8: v ? v.code10.slice(0, 8) : (c.hs_code || "").slice(0, 8),
-          hs6: (c.hs_code || "").slice(0, 6),
-          description: v?.description || c.label,
-          label: c.label, reasoning: c.reasoning,
-          confidencePct: c.confidence_pct,
-          mfnRate: v?.mfnRate, mfnRateRaw: v?.mfnRateRaw,
-          taricVerified: !!v, declarable: v?.declarable,
-        };
-      })
-    );
-    return NextResponse.json({
-      isCandidates: true, candidates: verified.map(c => ({
-        ...c,
-        saturnUrl: saturnUrl(c.cn10),
-      })),
-      partialReasoning: claudeResult.partial_reasoning,
-      ukCandidates: ukCandidates.slice(0, 3),
-    });
-  }
-  if (claudeResult.status === "classified") {
-    const code = (claudeResult.hs_code || "").replace(/\D/g, "");
-    claudeResult.cn10 = code;
-    claudeResult.cn8 = code.slice(0, 8);
-    claudeResult.hs6 = code.slice(0, 6);
-    claudeResult.taricChapter = code.slice(0, 2);
-    claudeResult.rationale = claudeResult.reasoning;
-  }
-
-  // If Claude needs more info, return immediately
-  if (claudeResult.needsMoreInfo) {
-    claudeResult.ukCandidates = ukCandidates.slice(0, 3);
     return NextResponse.json(claudeResult);
   }
 
-  // Step 3: Compare Claude vs UK Trade Tariff results
-  const claudeHs6 = (claudeResult.cn10 || claudeResult.cn8 || "").slice(0, 6);
-  const claudeChapter = claudeHs6.slice(0, 2);
-  const ukHs6Set = new Set(ukCandidates.map(c => (c.code || "").slice(0, 6)));
-  const ukChapterSet = new Set(ukCandidates.map(c => (c.code || "").slice(0, 2)));
+  // Step 2: For candidates, browse TARIC for each heading to find real codes
+  if (claudeResult.status === "candidates") {
+    const candidateHeadings = [...new Set((claudeResult.candidates || []).map(c => (c.hs6 || "").slice(0, 4)).filter(h => h.length === 4))];
 
-  const sourcesAgreeOnHs6 = ukHs6Set.has(claudeHs6);
-  const sourcesAgreeOnChapter = ukChapterSet.has(claudeChapter);
+    // Browse TARIC for all candidate headings in parallel
+    const browseResults = await Promise.all(
+      candidateHeadings.map(h => taricBrowseHeading(h))
+    );
+    const allVerifiedByHeading = {};
+    candidateHeadings.forEach((h, i) => { allVerifiedByHeading[h] = browseResults[i]; });
 
-  let finalResult = claudeResult;
-  finalResult.sourceComparison = {
-    claudeHs6,
-    ukTopCandidates: ukCandidates.slice(0, 5).map(c => ({
-      code: c.code,
-      description: c.description,
-    })),
-    agreement: sourcesAgreeOnHs6 ? "hs6" : sourcesAgreeOnChapter ? "chapter" : "none",
+    const verified = (claudeResult.candidates || []).map(c => {
+      const heading = (c.hs6 || "").slice(0, 4);
+      const siblings = allVerifiedByHeading[heading] || [];
+      // Find exact match or closest sibling
+      const exact = siblings.find(s => s.cn8.startsWith(c.hs6));
+      const best = exact || siblings[0];
+      return {
+        cn10: best?.cn10 || null,
+        cn8: best?.cn8 || null,
+        hs6: c.hs6,
+        description: best?.description || c.label,
+        label: c.label,
+        reasoning: c.reasoning,
+        confidencePct: c.confidence_pct,
+        mfnRate: best?.mfnRate ?? null,
+        mfnRateRaw: best?.mfnRateRaw || null,
+        taricVerified: !!best,
+        declarable: best?.declarable || false,
+        saturnUrl: saturnUrl(best?.cn10 || c.hs6),
+        siblings: siblings.slice(0, 8),
+      };
+    }).filter(c => c.taricVerified);
+
+    if (verified.length === 0) {
+      return NextResponse.json({
+        error: "AI suggested codes that do not exist in EU TARIC. Try a more specific description.",
+        aiSuggestions: claudeResult.candidates?.map(c => c.hs6),
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      isCandidates: true,
+      candidates: verified,
+      partialReasoning: claudeResult.partial_reasoning,
+    });
+  }
+
+  // Step 3: Single classification — extract HS6 from Claude
+  const hs6 = (claudeResult.hs6 || "").replace(/\D/g, "").slice(0, 6);
+  const heading = hs6.slice(0, 4);
+
+  if (hs6.length < 4) {
+    return NextResponse.json({ error: "Classification service returned an invalid code" }, { status: 502 });
+  }
+
+  let finalResult = {
+    ...claudeResult,
+    hs6,
+    taricChapter: hs6.slice(0, 2),
+    rationale: claudeResult.reasoning,
   };
 
-  // Step 4: If Claude and UK disagree at HS6 level, re-ask Claude with UK context
-  if (!sourcesAgreeOnHs6 && ukCandidates.length > 0) {
-    const ukContext = ukCandidates.slice(0, 5)
-      .map(c => `  - ${c.code}: ${c.description}`)
-      .join("\n");
-    try {
-      const revised = await callClaude(
-        CLASSIFY_SYSTEM,
-        `Product: ${data.description}
+  // Step 4: Browse TARIC for valid declarable codes under this heading
+  const siblings = await taricBrowseHeading(heading);
 
-The UK Trade Tariff search returned these candidate codes for this description:
-${ukContext}
-
-Your initial classification was ${claudeResult.cn10 || claudeResult.cn8} (${claudeResult.hs6}).
-These sources disagree at the HS6 level. Carefully reconsider — do any of the UK candidates better match the product? Return your best classification as the JSON object. If your original is correct, return it with updated confidence.`
-      );
-      if (!revised.needsMoreInfo) {
-        finalResult = { ...claudeResult, ...revised };
-        // Preserve source comparison
-        finalResult.sourceComparison = {
-          ...finalResult.sourceComparison,
-          claudeRevised: true,
-          originalHs6: claudeHs6,
-          revisedHs6: (revised.cn10 || revised.cn8 || "").slice(0, 6),
-        };
-      }
-    } catch { /* keep original if revision fails */ }
-  }
-
-  // Step 5: Boost/adjust confidence based on source agreement
-  if (sourcesAgreeOnHs6 && finalResult.confidence === "low") finalResult.confidence = "medium";
-  if (sourcesAgreeOnHs6 && finalResult.confidence === "medium") finalResult.confidence = "high";
-  if (!sourcesAgreeOnChapter && finalResult.confidence === "high") finalResult.confidence = "medium";
-
-  // Step 6: EU TARIC verification of the final code
-  const cn10 = (finalResult.cn10 || finalResult.cn8 || "").replace(/\D/g, "");
-  const hs6 = cn10.slice(0, 6);
-  const heading = cn10.slice(0, 4);
-
-  const codesToTry = [cn10, ...(finalResult.alternativeHS || []).map(c => c.replace(/\D/g, ""))];
-  let verified = null, verifiedCode = null;
-  for (const code of codesToTry) {
-    if (code.length < 8) continue;
-    const v = await taricVerify(code);
-    if (v) { verified = v; verifiedCode = code; break; }
-  }
-
-  if (verified) {
-    finalResult.cn8 = verifiedCode.slice(0, 8);
-    finalResult.cn10 = verified.code10;
-    finalResult.hs6 = verifiedCode.slice(0, 6);
-    finalResult.description = verified.description;
-    finalResult.taricVerified = true;
-    if (verified.mfnRate !== null) {
-      finalResult.standardDutyRate = verified.mfnRate;
-      finalResult.mfnRateRaw = verified.mfnRateRaw;
-    }
-    // Boost confidence if all 3 sources agree
-    if (sourcesAgreeOnHs6) finalResult.confidence = "high";
-  } else {
+  if (siblings.length === 0) {
+    // Heading doesn't exist in TARIC — Claude hallucinated it
     finalResult.taricVerified = false;
-    finalResult.taricWarning = "This CN code could not be verified in EU TARIC. Verify manually before use.";
-    if (finalResult.confidence === "high") finalResult.confidence = "medium";
-  }
+    finalResult.taricWarning = `Heading ${heading} does not exist in EU TARIC. This code may be outdated or incorrect. Verify manually.`;
+    finalResult.confidence = "low";
+    finalResult.saturnUrl = saturnUrl(hs6);
+  } else {
+    // Find the best match: exact HS6 match first, then closest sibling
+    const exactMatch = siblings.find(s => s.cn8.startsWith(hs6));
+    const bestMatch = exactMatch || siblings[0];
 
-  // Fallback: use Claude's estimated mfnRate if TARIC didn't provide one
-  if (finalResult.standardDutyRate == null && finalResult.mfnRate != null) {
-    finalResult.standardDutyRate = finalResult.mfnRate;
-    finalResult.mfnRateEstimated = true;
-  }
+    finalResult.cn8 = bestMatch.cn8;
+    finalResult.cn10 = bestMatch.cn10;
+    finalResult.hs6 = bestMatch.cn8.slice(0, 6);
+    finalResult.description = bestMatch.description;
+    finalResult.taricVerified = true;
+    finalResult.saturnUrl = saturnUrl(bestMatch.cn10);
 
-  // Step 7: Get valid siblings from UK Tariff (replaces brute-force TARIC probe)
-  const ukChildren = await ukHeadingChildren(heading);
-  if (ukChildren.length > 1) {
-    // Verify each against EU TARIC to confirm EU declarability (spot check first 6)
-    const verified_siblings = [];
-    for (const child of ukChildren.slice(0, 10)) {
-      const v = await taricVerify(child.cn10 || child.cn8);
-      if (v) {
-        verified_siblings.push({
-          cn8: child.cn8,
-          cn10: v.code10,
-          description: v.description,
-          declarable: true,
-          mfnRate: v.mfnRate,
-          mfnRateRaw: v.mfnRateRaw,
-        });
-      }
+    if (bestMatch.mfnRate !== null) {
+      finalResult.standardDutyRate = bestMatch.mfnRate;
+      finalResult.mfnRateRaw = bestMatch.mfnRateRaw;
     }
-    if (verified_siblings.length > 1) {
-      finalResult.taricSiblings = verified_siblings;
-    } else if (ukChildren.length > 1) {
-      // Fall back to UK children even without EU TARIC confirmation
-      finalResult.taricSiblings = ukChildren.slice(0, 10);
+
+    // If Claude's HS6 didn't match any sibling, flag it
+    if (!exactMatch) {
+      finalResult.taricWarning = `AI suggested ${hs6} but nearest valid code is ${bestMatch.cn8.slice(0, 6)}. Review the siblings below.`;
+      if (finalResult.confidence === "high") finalResult.confidence = "medium";
+    } else {
+      // Boost confidence when TARIC confirms the code
+      if (finalResult.confidence === "medium") finalResult.confidence = "high";
+    }
+
+    // Include all siblings with duty rates
+    if (siblings.length > 1) {
+      finalResult.taricSiblings = siblings;
     }
   }
-
-  finalResult.saturnUrl = saturnUrl(finalResult.cn10);
 
   // Save to global cache + user history (fire-and-forget, don't block response)
   const resultJson = JSON.stringify(finalResult);
