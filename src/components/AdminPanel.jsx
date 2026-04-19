@@ -1,151 +1,104 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const s = {
-  page: {
-    minHeight: "100vh",
-    background: "#f0f7f4",
-    color: "#111827",
-    fontFamily: "'DM Sans', sans-serif",
-    padding: 32,
-  },
-  header: { borderBottom: "1px solid #e2e8f0", paddingBottom: 24, marginBottom: 32 },
-  label: {
-    fontFamily: "'Oswald', sans-serif",
-    fontSize: 10,
-    letterSpacing: 5,
-    color: "#10b981",
-    textTransform: "uppercase",
-  },
-  title: {
-    fontFamily: "'Oswald', sans-serif",
-    fontSize: 28,
-    fontWeight: 700,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    marginTop: 6,
-  },
-  card: {
-    background: "#fff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 4,
-    padding: 28,
-    marginBottom: 24,
-    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-  },
-  btn: {
-    padding: "11px 22px",
-    background: "linear-gradient(135deg, #34d399, #10b981)",
-    border: "none",
-    color: "#111827",
-    fontSize: 11,
-    letterSpacing: 3,
-    textTransform: "uppercase",
-    fontWeight: 700,
-    borderRadius: 2,
-    cursor: "pointer",
-    fontFamily: "'Oswald', sans-serif",
-    transition: "box-shadow 0.2s, transform 0.1s",
-  },
-  btnSm: {
-    padding: "4px 10px",
-    background: "none",
-    border: "1px solid #e2e8f0",
-    color: "#dc2626",
-    fontSize: 11,
-    borderRadius: 2,
-    cursor: "pointer",
-    fontFamily: "'Oswald', sans-serif",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    transition: "border-color 0.2s",
-  },
-  btnSmSend: {
-    padding: "4px 10px",
-    background: "none",
-    border: "1px solid #e2e8f0",
-    color: "#2563eb",
-    fontSize: 11,
-    borderRadius: 2,
-    cursor: "pointer",
-    fontFamily: "'Oswald', sans-serif",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    transition: "border-color 0.2s, background 0.2s",
-  },
-  input: {
-    background: "#f0f7f4",
-    border: "1px solid #e2e8f0",
-    color: "#111827",
-    padding: "8px 12px",
-    fontFamily: "monospace",
-    fontSize: 13,
-    borderRadius: 2,
-    width: 90,
-    outline: "none",
-    transition: "border-color 0.2s",
-  },
-  sectionLabel: {
-    fontFamily: "'Oswald', sans-serif",
-    fontSize: 10,
-    textTransform: "uppercase",
-    letterSpacing: 4,
-    color: "#6b7280",
-    marginBottom: 14,
-  },
-  code: { fontFamily: "monospace", fontSize: 14, color: "#10b981", letterSpacing: 2 },
-  tag: (used) => ({
-    display: "inline-block",
-    padding: "2px 10px",
-    borderRadius: 2,
-    fontSize: 10,
-    fontFamily: "'Oswald', sans-serif",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    background: used ? "#fee2e2" : "#dcfce7",
-    border: `1px solid ${used ? "#fca5a5" : "#86efac"}`,
-    color: used ? "#dc2626" : "#15803d",
-  }),
-};
-
 export default function AdminPanel() {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [expiresInDays, setExpiresInDays] = useState("");
   const [copied, setCopied] = useState(null);
-  // sendModal: { codeId, codeStr } | null
   const [sendModal, setSendModal] = useState(null);
   const [sendEmail, setSendEmail] = useState("");
   const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState(null); // { ok: bool, msg: string }
+  const [sendResult, setSendResult] = useState(null);
 
-  const [exciseMeta, setExciseMeta] = useState(null); // { lastChecked, source, notes }
+  const [exciseMeta, setExciseMeta] = useState(null);
   const [exciseRefreshing, setExciseRefreshing] = useState(false);
   const [exciseRefreshResult, setExciseRefreshResult] = useState(null);
 
+  // Mobile tokens
+  const [tokens, setTokens] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [tokenUserId, setTokenUserId] = useState("");
+  const [tokenName, setTokenName] = useState("");
+  const [issuing, setIssuing] = useState(false);
+  const [issuedToken, setIssuedToken] = useState(null); // { plaintext, token }
+  const [tokenCopied, setTokenCopied] = useState(false);
+
   useEffect(() => {
     fetchCodes();
-    fetch('/api/excise-rates')
-      .then(r => r.json())
-      .then(d => setExciseMeta(d))
+    fetchTokens();
+    fetchUsers();
+    fetch("/api/excise-rates")
+      .then((r) => r.json())
+      .then((d) => setExciseMeta(d))
       .catch(() => {});
   }, []);
+
+  async function fetchTokens() {
+    const res = await fetch("/api/admin/tokens");
+    if (res.ok) setTokens(await res.json());
+  }
+
+  async function fetchUsers() {
+    const res = await fetch("/api/admin/users");
+    if (res.ok) setUsers(await res.json());
+  }
+
+  async function issueNewToken() {
+    if (!tokenUserId || !tokenName.trim()) return;
+    setIssuing(true);
+    try {
+      const res = await fetch("/api/admin/tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: tokenUserId, name: tokenName.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIssuedToken(data);
+        setTokenName("");
+        fetchTokens();
+      } else {
+        alert(data.error ?? "Failed to issue token");
+      }
+    } catch {
+      alert("Network error");
+    }
+    setIssuing(false);
+  }
+
+  async function revokeTokenById(id) {
+    if (!confirm("Revoke this token? The device using it will be signed out.")) return;
+    await fetch("/api/admin/tokens", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchTokens();
+  }
+
+  function copyIssuedToken() {
+    if (!issuedToken?.plaintext) return;
+    navigator.clipboard.writeText(issuedToken.plaintext);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 2000);
+  }
 
   async function refreshExciseRates() {
     setExciseRefreshing(true);
     setExciseRefreshResult(null);
     try {
-      const res = await fetch('/api/admin/excise-rates', { method: 'POST' });
+      const res = await fetch("/api/admin/excise-rates", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setExciseMeta(m => ({ ...m, lastChecked: data.lastChecked, source: data.notes ?? m?.source }));
-        setExciseRefreshResult({ ok: true, msg: data.updated ? `${data.changes.length} rate(s) updated` : 'Rates confirmed — no changes' });
+        setExciseMeta((m) => ({ ...m, lastChecked: data.lastChecked, source: data.notes ?? m?.source }));
+        setExciseRefreshResult({ ok: true, msg: data.updated ? `${data.changes.length} rate(s) updated` : "Rates confirmed — no changes" });
       } else {
-        setExciseRefreshResult({ ok: false, msg: data.error ?? 'Refresh failed' });
+        setExciseRefreshResult({ ok: false, msg: data.error ?? "Refresh failed" });
       }
     } catch {
-      setExciseRefreshResult({ ok: false, msg: 'Network error' });
+      setExciseRefreshResult({ ok: false, msg: "Network error" });
     }
     setExciseRefreshing(false);
   }
@@ -180,15 +133,6 @@ export default function AdminPanel() {
     setCodes((c) => c.filter((x) => x.id !== id));
   }
 
-  async function sendInviteEmail(codeId, email) {
-    const res = await fetch("/api/invites/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codeId, email }),
-    });
-    return res.ok;
-  }
-
   function openSendModal(c) {
     setSendModal({ codeId: c.id, codeStr: c.code });
     setSendEmail("");
@@ -213,7 +157,7 @@ export default function AdminPanel() {
     });
     const data = await res.json();
     if (res.ok) {
-      setCodes((cs) => cs.map((c) => c.id === sendModal.codeId ? { ...c, sentTo: data.invite.sentTo } : c));
+      setCodes((cs) => cs.map((c) => (c.id === sendModal.codeId ? { ...c, sentTo: data.invite.sentTo } : c)));
       closeSendModal();
     } else {
       setSendResult({ ok: false, msg: data.error ?? "Failed to send" });
@@ -231,390 +175,403 @@ export default function AdminPanel() {
     d ? new Date(d).toLocaleDateString("de-LU", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
   return (
-    <div style={s.page}>
-      <div style={s.header}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-          <svg width="30" height="30" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="11" fill="#1f2937" />
-            <rect x="25" y="8" width="6" height="18" rx="3" fill="url(#aGold)" />
-            <path
-              d="M13 22L28 39L43 22"
-              stroke="url(#aGold)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <rect x="10" y="43" width="36" height="4" rx="2" fill="url(#aGold)" />
-            <defs>
-              <linearGradient id="aGold" x1="13" y1="8" x2="43" y2="47" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#34d399" />
-                <stop offset="100%" stopColor="#059669" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <span
-            style={{
-              fontFamily: "'Oswald', sans-serif",
-              fontSize: 20,
-              fontWeight: 700,
-              letterSpacing: 4,
-              textTransform: "uppercase",
-              color: "#111827",
-            }}
-          >
-            Dutify
-          </span>
+    <div className="dossier-folder">
+      {/* Masthead */}
+      <header className="admin-head">
+        <div>
+          <span className="eyebrow">Registrar · Internal</span>
+          <h1 className="display display-md">The Admin Ledger</h1>
+          <p className="serif italic-serif muted">
+            Issue invite codes, monitor excise rate freshness, and revoke access.
+          </p>
         </div>
-        <div style={s.label}>Admin</div>
-        <h1 style={s.title}>Invite Codes</h1>
-      </div>
+        <a href="/calculator" className="btn btn-ghost">← Back to calculator</a>
+      </header>
+
+      <hr className="hairline-double" />
 
       {/* Generate */}
-      <div style={s.card}>
-        <div style={s.sectionLabel}>Generate Invite Code</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <label
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontSize: 10,
-                color: "#6b7280",
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Expires in (days)
-            </label>
+      <section className="dossier-card dossier-card--tabbed mt-6">
+        <div className="section-header">
+          <span className="section-num">§ 01</span>
+          <h2 className="section-title">Issue an invite</h2>
+        </div>
+
+        <div className="row gap-4 row-wrap" style={{ alignItems: "flex-end" }}>
+          <div style={{ width: 180 }}>
+            <label className="field-label" htmlFor="adm-exp">Expires in (days)</label>
             <input
+              id="adm-exp"
               type="number"
               placeholder="never"
               value={expiresInDays}
               onChange={(e) => setExpiresInDays(e.target.value)}
-              style={s.input}
-              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
-              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
             />
           </div>
-          <button
-            onClick={generate}
-            disabled={generating}
-            style={{ ...s.btn, opacity: generating ? 0.7 : 1 }}
-            onMouseEnter={(e) => {
-              if (!generating) {
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = "none";
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            {generating ? "Generating..." : "+ Generate Code"}
+          <button onClick={generate} disabled={generating} className="btn btn-cta">
+            {generating ? "Issuing…" : "+  Issue code"}
           </button>
         </div>
-      </div>
+      </section>
 
       {/* Codes list */}
-      <div style={s.card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <div style={s.sectionLabel}>Invite Codes ({codes.length})</div>
-          <button
-            onClick={fetchCodes}
-            style={{ ...s.btnSm, color: "#6b7280" }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#10b981")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
-          >
+      <section className="dossier-card mt-5">
+        <div className="section-header">
+          <span className="section-num">§ 02</span>
+          <h2 className="section-title">Issued codes</h2>
+          <span className="section-sub">{codes.length} on register</span>
+          <button onClick={fetchCodes} className="btn btn-plain btn-sm" style={{ marginLeft: "auto" }}>
             Refresh
           </button>
         </div>
 
         {loading ? (
-          <div style={{ color: "#6b7280", fontSize: 13 }}>Loading...</div>
+          <div className="muted italic-serif">Loading the ledger…</div>
         ) : codes.length === 0 ? (
-          <div style={{ color: "#6b7280", fontSize: 13, fontStyle: "italic" }}>No codes yet — generate one above.</div>
+          <div className="muted italic-serif">No codes yet — issue one above.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {/* Header row */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 90px 100px 100px 120px 140px",
-                gap: 12,
-                padding: "6px 12px",
-                fontFamily: "'Oswald', sans-serif",
-                fontSize: 10,
-                color: "#6b7280",
-                textTransform: "uppercase",
-                letterSpacing: 2,
-              }}
-            >
-              <span>Code</span>
-              <span>Status</span>
-              <span>Created</span>
-              <span>Expires</span>
-              <span>Used by</span>
-              <span></span>
-            </div>
-            {codes.map((c, i) => (
-              <div
-                key={c.id}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 90px 100px 100px 120px 140px",
-                  gap: 12,
-                  padding: "10px 12px",
-                  alignItems: "center",
-                  background: i % 2 === 0 ? "#f0f7f4" : "#fff",
-                  borderRadius: 2,
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <span style={{ ...s.code, cursor: "pointer" }} onClick={() => copyCode(c.code)} title="Click to copy">
-                  {c.code} {copied === c.code ? <span style={{ color: "#15803d" }}>✓</span> : ""}
-                </span>
-                <span style={s.tag(!!c.usedAt)}>{c.usedAt ? "used" : "available"}</span>
-                <span style={{ fontSize: 12, color: "#6b7280", fontFamily: "monospace" }}>{fmt(c.createdAt)}</span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: c.expiresAt && new Date(c.expiresAt) < new Date() ? "#dc2626" : "#6b7280",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  {fmt(c.expiresAt)}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#6b7280",
-                    fontFamily: "monospace",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {c.usedBy || "—"}
-                </span>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", gap: 6 }}>
-                  {!c.usedAt && (
-                    c.sentTo ? (
-                      <button disabled style={{ ...s.btnSmSend, color: "#6b7280", borderColor: "#e2e8f0", cursor: "not-allowed", opacity: 0.6 }}>
-                        Sent
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => openSendModal(c)}
-                        style={s.btnSmSend}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = "#60a5fa";
-                          e.currentTarget.style.background = "#dbeafe";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = "#e2e8f0";
-                          e.currentTarget.style.background = "none";
-                        }}
-                      >
-                        Send
-                      </button>
-                    )
-                  )}
-                  <button
-                    onClick={() => deleteCode(c.id)}
-                    style={s.btnSm}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#fca5a5";
-                      e.currentTarget.style.background = "#fee2e2";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.background = "none";
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-                {c.sentTo && (
-                  <span style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    ✉ {c.sentTo}
-                  </span>
-                )}
-                </div>
-              </div>
-            ))}
+          <div style={{ overflowX: "auto" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Expires</th>
+                  <th>Used by</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map((c) => {
+                  const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                  return (
+                    <tr key={c.id}>
+                      <td>
+                        <button
+                          onClick={() => copyCode(c.code)}
+                          className="code-pill"
+                          title="Click to copy"
+                        >
+                          <span className="mono" style={{ fontSize: 14, letterSpacing: 2, color: "var(--ink-forest-deep)" }}>
+                            {c.code}
+                          </span>
+                          {copied === c.code && <span className="brass mono" style={{ fontSize: 10 }}>COPIED</span>}
+                        </button>
+                      </td>
+                      <td>
+                        {c.usedAt ? (
+                          <span className="tag tag-oxblood">USED</span>
+                        ) : (
+                          <span className="tag tag-forest">OPEN</span>
+                        )}
+                      </td>
+                      <td className="mono muted text-xs">{fmt(c.createdAt)}</td>
+                      <td className={"mono text-xs " + (expired ? "oxblood" : "muted")}>{fmt(c.expiresAt)}</td>
+                      <td className="mono text-xs muted truncate" style={{ maxWidth: 180 }}>
+                        {c.usedBy || "—"}
+                      </td>
+                      <td>
+                        <div className="row gap-2" style={{ justifyContent: "flex-end" }}>
+                          {!c.usedAt && (
+                            c.sentTo ? (
+                              <span className="tag">✉ Sent</span>
+                            ) : (
+                              <button onClick={() => openSendModal(c)} className="btn btn-plain btn-sm">Send</button>
+                            )
+                          )}
+                          <button onClick={() => deleteCode(c.id)} className="btn btn-danger btn-sm">Delete</button>
+                        </div>
+                        {c.sentTo && (
+                          <div className="mono text-xs muted truncate mt-1" style={{ textAlign: "right" }}>
+                            ✉ {c.sentTo}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
-      </div>
+      </section>
 
-      <div style={{ marginTop: 24 }}>
-        <a
-          href="/calculator"
-          style={{
-            fontFamily: "'Oswald', sans-serif",
-            fontSize: 12,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: "#10b981",
-            textDecoration: "none",
-          }}
-        >
-          ← Back to calculator
-        </a>
-      </div>
+      {/* Mobile tokens */}
+      <section className="dossier-card mt-5">
+        <div className="section-header">
+          <span className="section-num">§ 03</span>
+          <h2 className="section-title">Mobile tokens</h2>
+          <span className="section-sub">Per-device bearer tokens for Dutify Pocket</span>
+        </div>
+
+        {/* Issue form */}
+        <div className="row gap-4 row-wrap" style={{ alignItems: "flex-end" }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <label className="field-label" htmlFor="tok-user">User</label>
+            <select
+              id="tok-user"
+              value={tokenUserId}
+              onChange={(e) => setTokenUserId(e.target.value)}
+            >
+              <option value="">Select a user…</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.email} {u.name ? `· ${u.name}` : ""} {u._count?.apiTokens ? `· ${u._count.apiTokens} token(s)` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <label className="field-label" htmlFor="tok-name">Device name</label>
+            <input
+              id="tok-name"
+              type="text"
+              placeholder="Tim's iPhone"
+              value={tokenName}
+              onChange={(e) => setTokenName(e.target.value)}
+            />
+          </div>
+          <button
+            onClick={issueNewToken}
+            disabled={issuing || !tokenUserId || !tokenName.trim()}
+            className="btn btn-cta"
+          >
+            {issuing ? "Issuing…" : "+  Issue token"}
+          </button>
+        </div>
+
+        {/* One-time plaintext — shown only once */}
+        {issuedToken && (
+          <div className="alert alert-warn mt-4" style={{ position: "relative" }}>
+            <div style={{ flex: 1 }}>
+              <div className="alert-title">Token issued — copy it now</div>
+              <p className="text-sm mt-1" style={{ color: "var(--brass-deep)" }}>
+                This is the only time you will see the plaintext. Once dismissed, only the first 8 characters remain visible.
+              </p>
+              <div
+                className="mono mt-3"
+                style={{
+                  padding: "12px 14px",
+                  background: "var(--paper-cream)",
+                  border: "1.5px solid var(--brass)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: 14,
+                  letterSpacing: "0.04em",
+                  color: "var(--ink-forest-deep)",
+                  wordBreak: "break-all",
+                }}
+              >
+                {issuedToken.plaintext}
+              </div>
+              <div className="row gap-2 mt-3">
+                <button onClick={copyIssuedToken} className="btn btn-brass btn-sm">
+                  {tokenCopied ? "Copied ✓" : "Copy to clipboard"}
+                </button>
+                <button onClick={() => setIssuedToken(null)} className="btn btn-plain btn-sm">
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tokens table */}
+        {tokens.length > 0 && (
+          <div style={{ overflowX: "auto", marginTop: "var(--sp-5)" }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Device</th>
+                  <th>Prefix</th>
+                  <th>Created</th>
+                  <th>Last used</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.map((t) => {
+                  const revoked = !!t.revokedAt;
+                  const expired = t.expiresAt && new Date(t.expiresAt) < new Date();
+                  return (
+                    <tr key={t.id}>
+                      <td>
+                        <div className="mono text-xs">{t.userEmail}</div>
+                        {t.userName && <div className="text-xs muted">{t.userName}</div>}
+                      </td>
+                      <td>{t.name}</td>
+                      <td className="mono text-xs brass">dty_live_{t.prefix}…</td>
+                      <td className="mono text-xs muted">{fmt(t.createdAt)}</td>
+                      <td className="mono text-xs muted">{t.lastUsedAt ? fmt(t.lastUsedAt) : "—"}</td>
+                      <td>
+                        {revoked ? (
+                          <span className="tag tag-oxblood">REVOKED</span>
+                        ) : expired ? (
+                          <span className="tag tag-oxblood">EXPIRED</span>
+                        ) : (
+                          <span className="tag tag-forest">ACTIVE</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {!revoked && !expired && (
+                          <button onClick={() => revokeTokenById(t.id)} className="btn btn-danger btn-sm">
+                            Revoke
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {tokens.length === 0 && (
+          <p className="muted italic-serif mt-4">No tokens issued yet.</p>
+        )}
+      </section>
 
       {/* Excise Rates */}
-      <div style={s.card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-          <div style={s.sectionLabel}>Excise Rates</div>
+      <section className="dossier-card mt-5">
+        <div className="section-header">
+          <span className="section-num">§ 04</span>
+          <h2 className="section-title">Excise rates</h2>
           <button
             onClick={refreshExciseRates}
             disabled={exciseRefreshing}
-            style={{ ...s.btnSm, color: exciseRefreshing ? "#6b7280" : "#2563eb", opacity: exciseRefreshing ? 0.7 : 1 }}
-            onMouseEnter={(e) => { if (!exciseRefreshing) e.currentTarget.style.borderColor = "#2563eb"; }}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
+            className="btn btn-brass btn-sm"
+            style={{ marginLeft: "auto" }}
           >
-            {exciseRefreshing ? "Checking..." : "Refresh Now"}
+            {exciseRefreshing ? "Checking…" : "Refresh now"}
           </button>
         </div>
-        {exciseMeta && (() => {
-          const daysOld = Math.floor((Date.now() - new Date(exciseMeta.lastChecked)) / 86400000);
-          const stale = daysOld > 14;
-          return (
-            <div style={{ fontSize: 12, fontFamily: "monospace", lineHeight: 1.8 }}>
-              <div>
-                <span style={{ color: "#6b7280" }}>Last checked: </span>
-                <span style={{ color: stale ? "#dc2626" : "#15803d", fontWeight: 600 }}>
-                  {daysOld === 0 ? "today" : `${daysOld} day${daysOld !== 1 ? "s" : ""} ago`}
-                  {stale ? " ⚠ stale" : " ✓"}
-                </span>
+
+        {exciseMeta &&
+          (() => {
+            const daysOld = Math.floor((Date.now() - new Date(exciseMeta.lastChecked)) / 86400000);
+            const stale = daysOld > 14;
+            return (
+              <div className="kv-grid">
+                <div className="kv">
+                  <span className="kv-label">Last checked</span>
+                  <span className={"kv-value " + (stale ? "oxblood" : "forest")}>
+                    {daysOld === 0 ? "Today" : `${daysOld} day${daysOld !== 1 ? "s" : ""} ago`}
+                    {stale ? "  ⚠" : "  ✓"}
+                  </span>
+                </div>
+                <div className="kv">
+                  <span className="kv-label">Source</span>
+                  <span className="kv-value text-sm">{exciseMeta.source}</span>
+                </div>
+                {exciseMeta.notes && (
+                  <div className="kv span-2">
+                    <span className="kv-label">Notes</span>
+                    <span className="text-sm muted italic-serif">{exciseMeta.notes}</span>
+                  </div>
+                )}
               </div>
-              <div style={{ color: "#6b7280", fontSize: 11 }}>{exciseMeta.source}</div>
-              {exciseMeta.notes && <div style={{ color: "#6b7280", fontSize: 11 }}>{exciseMeta.notes}</div>}
-            </div>
-          );
-        })()}
+            );
+          })()}
+
         {exciseRefreshResult && (
-          <div style={{
-            marginTop: 12, padding: "8px 12px", borderRadius: 2, fontSize: 12,
-            background: exciseRefreshResult.ok ? "#dcfce7" : "#fee2e2",
-            border: `1px solid ${exciseRefreshResult.ok ? "#86efac" : "#fca5a5"}`,
-            color: exciseRefreshResult.ok ? "#15803d" : "#dc2626",
-          }}>
-            {exciseRefreshResult.msg}
+          <div className={"alert mt-4 " + (exciseRefreshResult.ok ? "alert-info" : "alert-danger")}>
+            <div>
+              <div className="alert-title">{exciseRefreshResult.ok ? "Updated" : "Failed"}</div>
+              {exciseRefreshResult.msg}
+            </div>
           </div>
         )}
-        <div style={{ marginTop: 12, fontSize: 11, color: "#9ca3af", fontFamily: "monospace" }}>
+
+        <p className="mono text-xs faint mt-4">
           Auto-checked every 14 days via cron · source: ae.gouvernement.lu
-        </div>
-      </div>
+        </p>
+      </section>
 
       {/* Send email modal */}
       {sendModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(17,24,39,0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 999,
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) closeSendModal(); }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #e2e8f0",
-              borderRadius: 6,
-              padding: 32,
-              width: 420,
-              maxWidth: "90vw",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
-            }}
-          >
-            <div style={{ ...s.sectionLabel, marginBottom: 6 }}>Send Invite by Email</div>
-            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#10b981", letterSpacing: 4, marginBottom: 20 }}>
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeSendModal()}>
+          <div className="dossier-card dossier-card-lg modal-panel stamp-in">
+            <span className="eyebrow">Dispatch by mail</span>
+            <h3 className="display display-sm mt-1">Send invite</h3>
+            <div className="mono mt-3" style={{ fontSize: 18, letterSpacing: 3, color: "var(--brass-deep)" }}>
               {sendModal.codeStr}
             </div>
 
-            <label
-              style={{
-                fontFamily: "'Oswald', sans-serif",
-                fontSize: 10,
-                color: "#6b7280",
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Recipient email
-            </label>
+            <hr className="hairline mt-4 mb-4" />
+
+            <label className="field-label" htmlFor="send-email">Recipient email</label>
             <input
+              id="send-email"
               type="email"
               placeholder="invitee@example.com"
               value={sendEmail}
               onChange={(e) => setSendEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") submitSendModal(); }}
-              style={{ ...s.input, width: "100%", boxSizing: "border-box", marginBottom: 16 }}
-              onFocus={(e) => (e.target.style.borderColor = "#10b981")}
-              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+              onKeyDown={(e) => e.key === "Enter" && submitSendModal()}
               autoFocus
             />
 
             {sendResult && (
-              <div
-                style={{
-                  marginBottom: 14,
-                  padding: "8px 12px",
-                  borderRadius: 2,
-                  fontSize: 12,
-                  fontFamily: "'Oswald', sans-serif",
-                  letterSpacing: 1,
-                  background: sendResult.ok ? "#dcfce7" : "#fee2e2",
-                  border: `1px solid ${sendResult.ok ? "#86efac" : "#fca5a5"}`,
-                  color: sendResult.ok ? "#15803d" : "#dc2626",
-                }}
-              >
-                {sendResult.ok ? "✓ " : "✗ "}{sendResult.msg}
+              <div className={"alert mt-3 " + (sendResult.ok ? "alert-info" : "alert-danger")}>
+                <div>
+                  <div className="alert-title">{sendResult.ok ? "Sent" : "Failed"}</div>
+                  {sendResult.msg}
+                </div>
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button
-                onClick={closeSendModal}
-                style={{ ...s.btnSm, color: "#6b7280" }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#10b981")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitSendModal}
-                disabled={sending || !sendEmail}
-                style={{ ...s.btn, padding: "8px 20px", opacity: sending || !sendEmail ? 0.6 : 1 }}
-                onMouseEnter={(e) => {
-                  if (!sending && sendEmail) {
-                    e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3)";
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
-                {sending ? "Sending..." : "Send Email"}
+            <div className="row gap-2 mt-5" style={{ justifyContent: "flex-end" }}>
+              <button onClick={closeSendModal} className="btn btn-plain">Cancel</button>
+              <button onClick={submitSendModal} disabled={sending || !sendEmail} className="btn btn-cta">
+                {sending ? "Sending…" : "Send email"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .admin-head {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: var(--sp-5);
+          margin-bottom: var(--sp-5);
+        }
+        .admin-head h1 { color: var(--ink-forest-deep); margin-top: var(--sp-1); }
+        .code-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 10px;
+          background: var(--brass-wash);
+          border: 1px solid var(--brass-soft);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all var(--dur-fast) var(--ease-out);
+        }
+        .code-pill:hover { background: var(--brass); color: var(--paper-cream); }
+        .code-pill:hover .mono { color: var(--paper-cream) !important; }
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(20, 40, 30, 0.35);
+          backdrop-filter: blur(2px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 999;
+          padding: var(--sp-4);
+          animation: fade-in 160ms var(--ease-out);
+        }
+        .modal-panel {
+          width: 460px;
+          max-width: 100%;
+          background: var(--paper-cream);
+          border-top: 3px solid var(--brass);
+        }
+      `}</style>
     </div>
   );
 }

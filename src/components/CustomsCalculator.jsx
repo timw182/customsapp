@@ -1,10 +1,9 @@
 "use client";
 import HsLookupTabV2 from "./HsLookupTabV2";
-import dynamic from "next/dynamic";
-const CustomsFlow = dynamic(() => import("./CustomsFlow"), { ssr: false, loading: () => <div style={{padding:40,color:"#6b7280",textAlign:"center"}}>Loading flow…</div> });
 import T1DraftTab from "./T1DraftTab";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { signOut } from "next-auth/react";
+// import { signOut } from "next-auth/react";
+const signOut = () => {};
 
 // Luxembourg VAT rates (Loi TVA, 2026)
 // Maps HS chapter to applicable VAT rate
@@ -777,6 +776,7 @@ function Spinner() {
 
 export default function CustomsCalculator({ user }) {
   const [tab, setTab] = useState("calculator");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [hsCode, setHsCode] = useState("");
   const [dutyRate, setDutyRate] = useState("");
@@ -1405,84 +1405,79 @@ export default function CustomsCalculator({ user }) {
       style={{
         minHeight: "100vh",
         width: "100%",
-        background: "#f0f7f4",
-        color: "#111827",
-        fontFamily: "var(--font-dm-sans), sans-serif",
+        background: "var(--paper-bone)",
+        color: "var(--ink-forest-deep)",
+        fontFamily: "var(--font-body)",
         position: "relative",
-        overflow: "hidden",
       }}
     >
-      {/* Background blobs — matching login page */}
-      <div style={{position:"fixed",inset:0,zIndex:0,overflow:"hidden",pointerEvents:"none"}}>
-        <div className="auth-blob auth-blob-1" />
-        <div className="auth-blob auth-blob-2" />
-        <div className="auth-blob auth-blob-3" />
-      </div>
-      <div style={{position:"relative",zIndex:1}}>
+      <div style={{ position: "relative", zIndex: 1 }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes trailGrow { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
         @keyframes arrivalPulse { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        input, select { background: #fff; border: 1px solid var(--border); color: var(--foreground); padding: 8px 12px; font-family: var(--font-courier-prime), monospace; font-size: 13px; border-radius: 2px; width: 100%; outline: none; transition: border-color 0.2s; }
-        input:focus, select:focus { border-color: var(--gold); }
-        select option { background: #fff; color: var(--foreground); }
-        button { cursor: pointer; font-family: var(--font-dm-sans), sans-serif; }
-        .tag { display: inline-flex; align-items: center; justify-content: center; min-width: 90px; padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: 700; font-family: var(--font-courier-prime), monospace; letter-spacing: 0.5px; backdrop-filter: blur(6px); text-align: center; }
-        .tag-green { background: rgba(46, 110, 46, 0.1); border: 1px solid #2e6e2e; color: #2e6e2e; }
-        .tag-red { background: rgba(220, 38, 38, 0.1); border: 1px solid #dc2626; color: #dc2626; }
-        .tag-amber { background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; }
-        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+
+        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule-soft); }
         .result-row:last-child { border-bottom: none; }
-        .section-label { font-family: var(--font-oswald), sans-serif; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; color: var(--muted); margin-bottom: 12px; font-weight: 400; }
-        .btn-gold { background: linear-gradient(135deg, var(--gold-hi), var(--gold)); color: #fff; border: none; transition: all 0.2s; cursor: pointer; }
-        .btn-gold:hover { background: linear-gradient(135deg, #a7f3d0, #059669); box-shadow: 0 4px 20px rgba(16,185,129,0.3); transform: translateY(-1px); }
-        .btn-gold:active { transform: translateY(0); box-shadow: none; }
-        .btn-gold:disabled { background: #e2e8f0; color: #9ca3af; box-shadow: none; transform: none; cursor: default; }
-        .btn-ghost { background: none; transition: color 0.2s, border-color 0.2s, transform 0.1s; cursor: pointer; }
-        .btn-ghost:hover { border-color: var(--gold) !important; color: var(--gold) !important; transform: translateY(-1px); }
+
+        .section-label { font-family: var(--font-body); font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-muted); margin-bottom: 12px; font-weight: 500; }
+
+        .btn-gold { background: var(--ink-forest); color: var(--paper-cream); border: 1px solid var(--ink-forest-deep); transition: all .15s ease; cursor: pointer; }
+        .btn-gold:hover { background: var(--ink-forest-deep); transform: translateY(-1px); }
+        .btn-gold:active { transform: translateY(0); }
+        .btn-gold:disabled { background: var(--paper-edge); color: var(--ink-faint); border-color: var(--rule-hair); transform: none; cursor: default; }
+
+        .btn-ghost { background: none; transition: all .15s ease; cursor: pointer; }
+        .btn-ghost:hover { border-color: var(--brass) !important; color: var(--brass-deep) !important; background: var(--brass-wash); }
         .btn-ghost:active { transform: translateY(0); }
         .btn-ghost:disabled { opacity: 0.3; cursor: default; transform: none; }
+
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .v2-nav { display:flex; align-items:center; height:56px; background:#fff; padding:0 24px; position:sticky; top:0; z-index:200; border-bottom:1px solid rgba(0,0,0,.07); box-shadow:0 1px 12px rgba(0,0,0,.06); }
-        .v2-nav-logo { display:flex; align-items:center; gap:10px; margin-right:32px; text-decoration:none; }
-        .v2-nav-logo-icon { width:30px; height:30px; border-radius:7px; background:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .v2-nav-logo-text { font-family:var(--font-oswald),sans-serif; font-size:20px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#111827; }
-        .v2-nav-tabs { display:flex; gap:2px; flex:1; overflow-x:auto; scrollbar-width:none; }
-        .v2-nav-tabs::-webkit-scrollbar { display:none; }
-        .v2-tab-btn { padding:6px 16px; border-radius:6px; font-family:var(--font-oswald),sans-serif; font-size:13px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:#6b7280; cursor:pointer; border:none; background:none; white-space:nowrap; transition:.15s; position:relative; }
-        .v2-tab-btn:hover { color:#111827; background:rgba(0,0,0,.04); }
-        .v2-tab-btn.active { color:#10b981; background:rgba(16,185,129,.08); }
-        .v2-tab-btn.active::after { content:''; position:absolute; bottom:-1px; left:12px; right:12px; height:2px; background:#10b981; border-radius:2px; }
-        .v2-nav-right { display:flex; align-items:center; gap:10px; margin-left:auto; }
-        .v2-nav-user { display:flex; align-items:center; gap:7px; font-size:12px; color:#6b7280; font-family:var(--font-courier-prime),monospace; }
-        .v2-nav-avatar { width:24px; height:24px; border-radius:50%; background:#10b981; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; font-family:var(--font-oswald),sans-serif; }
-        .v2-nav-btn { font-size:11px; font-family:var(--font-oswald),sans-serif; letter-spacing:1px; text-transform:uppercase; color:#6b7280; background:none; border:1px solid rgba(0,0,0,.12); border-radius:5px; padding:4px 11px; cursor:pointer; transition:.15s; text-decoration:none; display:inline-flex; align-items:center; }
-        .v2-nav-btn:hover { color:#111827; border-color:rgba(0,0,0,.25); }
-        .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
-        .page-content { padding: 24px; max-width: 1380px; margin: 0 auto; }
+
+        /* ── Masthead (dossier bar) ── */
+        .v2-nav { display: flex; align-items: center; height: 64px; background: var(--paper-cream); padding: 0 24px; position: sticky; top: 0; z-index: 200; border-bottom: 1px solid var(--rule-strong); box-shadow: 0 1px 0 var(--paper-edge), 0 2px 0 var(--rule-hair); }
+        .v2-nav-logo { display: flex; align-items: baseline; gap: 10px; margin-right: 32px; text-decoration: none; }
+        .v2-nav-logo-icon { display: none; }
+        .v2-nav-logo-text { font-family: var(--font-display); font-size: 24px; font-weight: 500; letter-spacing: -0.015em; color: var(--ink-forest-deep); font-variation-settings: "opsz" 48, "SOFT" 50; }
+        .v2-nav-logo-text::after { content: ""; display: inline-block; width: 4px; height: 4px; background: var(--brass); border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+
+        .v2-nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; align-items: flex-end; height: 100%; }
+        .v2-nav-tabs::-webkit-scrollbar { display: none; }
+
+        .v2-tab-btn { padding: 8px 16px 10px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-family: var(--font-body); font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: var(--ink-muted); cursor: pointer; border: 1px solid transparent; border-bottom: 0; background: transparent; white-space: nowrap; transition: all .12s ease; position: relative; margin-bottom: -1px; }
+        .v2-tab-btn:hover { color: var(--ink-forest-deep); background: var(--brass-wash); }
+        .v2-tab-btn.active { color: var(--ink-forest-deep); background: var(--paper-cream); font-weight: 600; border-color: var(--rule-strong); }
+        .v2-tab-btn.active::before { content: ""; position: absolute; top: -1px; left: -1px; right: -1px; height: 3px; background: var(--brass); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+        .v2-tab-btn.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--paper-cream); }
+
+        .v2-nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+        .v2-nav-user { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-muted); font-family: var(--font-mono); letter-spacing: 0.04em; }
+        .v2-nav-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--ink-forest); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--brass-soft); font-family: var(--font-display); border: 1.5px solid var(--brass); }
+        .v2-nav-btn { font-size: 11px; font-family: var(--font-body); letter-spacing: 0.04em; color: var(--ink-forest); background: none; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); padding: 6px 12px; cursor: pointer; transition: .12s; text-decoration: none; display: inline-flex; align-items: center; font-weight: 500; }
+        .v2-nav-btn:hover { color: var(--ink-forest-deep); border-color: var(--brass); background: var(--brass-wash); }
+
+        .page-content { padding: 28px 24px; max-width: 1380px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
         .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
         .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-        .ref-link:hover { border-color: rgba(16,185,129,0.3) !important; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .ref-link { transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s; }
+        .ref-link { transition: all .15s ease; }
+        .ref-link:hover { border-color: var(--brass) !important; transform: translateX(2px); }
+
         @media (max-width: 1350px) {
-          .v2-tab-btn { padding: 5px 10px; letter-spacing: 0.5px; font-size: 12px; }
-          .v2-nav-logo-text { font-size: 17px; letter-spacing: 2px; }
+          .v2-tab-btn { padding: 6px 10px 8px; font-size: 12px; }
+          .v2-nav-logo-text { font-size: 20px; }
           .v2-nav-logo { margin-right: 16px; }
         }
         @media (max-width: 1100px) {
-          .v2-tab-btn { padding: 5px 8px; letter-spacing: 0; font-size: 11px; }
+          .v2-tab-btn { padding: 6px 8px 8px; font-size: 11px; }
           .v2-nav-user span { display: none; }
         }
         @media (max-width: 700px) {
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
           .v2-nav-tabs { padding: 0 4px; }
-          .v2-tab-btn { padding: 6px 10px; font-size: 11px; letter-spacing: 1px; }
-          
-          .page-content { padding: 16px; }
+          .v2-tab-btn { padding: 6px 10px; font-size: 11px; }
+          .page-content { padding: 20px 16px; }
           .header-right { display: none; }
           .fx-two-col { grid-template-columns: 1fr !important; }
           .fx-grid { grid-template-columns: 44px 1fr 80px; }
@@ -1490,20 +1485,14 @@ export default function CustomsCalculator({ user }) {
         }
       `}</style>
 
-            {/* V2 Navbar */}
+            {/* Dossier masthead */}
       <nav className="v2-nav">
-        <div className="v2-nav-logo">
-          <div className="v2-nav-logo-icon">
-            <svg width="18" height="18" viewBox="0 0 56 56" fill="none">
-              <rect x="25" y="8" width="6" height="18" rx="3" fill="#fff"/>
-              <path d="M13 22L28 39L43 22" stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
-              <rect x="10" y="43" width="36" height="4" rx="2" fill="#fff"/>
-            </svg>
-          </div>
+        <a href="/calculator" className="v2-nav-logo">
           <span className="v2-nav-logo-text">Dutify</span>
-        </div>
+          <span className="mono" style={{ fontSize: 10, letterSpacing: "0.24em", color: "var(--brass-deep)", textTransform: "uppercase", fontWeight: 500 }}>Customs Dossier</span>
+        </a>
         <div className="v2-nav-tabs">
-          {["calculator","excise","cbam","t1","flow","hs-lookup","fx","rulings","reference"].map((t) => (
+          {["calculator","excise","cbam","t1","hs-lookup","fx","rulings","reference"].map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1513,7 +1502,6 @@ export default function CustomsCalculator({ user }) {
                 : t === "excise" ? "Excise"
                 : t === "cbam" ? "CBAM"
                 : t === "t1" ? "T1 Transit"
-                : t === "flow" ? "Import Flow"
                 : t === "hs-lookup" ? "HS Lookup"
                 : t === "fx" ? "FX Rates"
                 : t === "rulings" ? "Rulings"
@@ -2634,7 +2622,6 @@ export default function CustomsCalculator({ user }) {
 
         {/* HS LOOKUP TAB */}
         {tab === "t1" && <T1DraftTab />}
-        {tab === "flow" && <CustomsFlow />}
         {tab === "hs-lookup" && (
           <HsLookupTabV2
             description={description}

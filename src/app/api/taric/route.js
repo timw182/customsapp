@@ -136,7 +136,7 @@ export async function POST(req) {
 
       const measureBlocks = parseXmlBlocks(measXml, 'measure');
       measures = measureBlocks.map(m => {
-        const mtBlock = m.match(/<measure_type>([\s\S]*?)<\/measure_type>/)?.[1] || '';
+        const mtBlock = m.match(/<measure_type>([\s\S]*)<\/measure_type>/)?.[1] || '';
         const validTo = extractText(m, 'validity_end_date');
         return {
           validFrom: extractText(m, 'validity_start_date'),

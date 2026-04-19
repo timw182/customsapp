@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { requireUser } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function GET(req) {
+  const a = await requireUser(req);
+  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
 
   const history = await prisma.hsSearchHistory.findMany({
-    where: { userId: session.user.id },
+    where: { userId: a.userId },
     orderBy: { createdAt: "desc" },
     take: 12,
     select: { id: true, description: true, hs6: true, cn8: true, dutyRate: true, fromCache: true, createdAt: true },
@@ -17,16 +17,16 @@ export async function GET() {
 }
 
 export async function DELETE(req) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const a = await requireUser(req);
+  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
   if (id) {
-    await prisma.hsSearchHistory.deleteMany({ where: { id, userId: session.user.id } });
+    await prisma.hsSearchHistory.deleteMany({ where: { id, userId: a.userId } });
   } else {
-    await prisma.hsSearchHistory.deleteMany({ where: { userId: session.user.id } });
+    await prisma.hsSearchHistory.deleteMany({ where: { userId: a.userId } });
   }
 
   return NextResponse.json({ ok: true });

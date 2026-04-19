@@ -3,2908 +3,1231 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dutify — Luxembourg Import Duty Calculator</title>
+    <title>Dutify — The Luxembourg customs dossier</title>
+    <meta name="description" content="A working dossier for EU import duties, classification, excise and CBAM — for Luxembourg customs brokers and importers." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400,0..100;0,9..144,500,0..100;0,9..144,600,0..100;0,9..144,700,0..100;1,9..144,400,0..100&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <style>
       :root {
-        --bg: #f0f7f4;
-        --bg2: #e8f3ee;
-        --bg-mint: #e2f0e9;
-        --card: #ffffff;
-        --border: rgba(0, 0, 0, 0.05);
-        --accent: #10b981;
-        --accent-light: #d1fae5;
-        --accent-dark: #059669;
-        --text: #111827;
-        --text2: #374151;
-        --muted: #6b7280;
-        --subtle: #9ca3af;
+        --paper-bone:      #F5F1E8;
+        --paper-cream:     #FBF8F0;
+        --paper-edge:      #EDE6D3;
+        --paper-sunk:      #EEE7D0;
+        --ink-forest:      #1F3B2D;
+        --ink-forest-deep: #14281E;
+        --ink:             #20302A;
+        --ink-muted:       #5A6B5F;
+        --ink-faint:       #8A9188;
+        --brass:           #B8914A;
+        --brass-deep:      #8A6A33;
+        --brass-soft:      #D9BE83;
+        --brass-wash:      rgba(184, 145, 74, 0.08);
+        --oxblood:         #6B2C2C;
+        --rule-hair:       #D4C9A8;
+        --rule-strong:     #9A8B5E;
+        --rule-soft:       #E4DCC4;
+        --f-display: "Fraunces", Georgia, "Times New Roman", serif;
+        --f-body:    "DM Sans", ui-sans-serif, system-ui, sans-serif;
+        --f-mono:    "JetBrains Mono", ui-monospace, monospace;
+        --ease:      cubic-bezier(0.2, 0.8, 0.2, 1);
       }
 
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      html {
-        scroll-behavior: smooth;
-      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
 
       body {
-        background: var(--bg);
-        color: var(--text);
-        font-family:
-          "Inter",
-          -apple-system,
-          sans-serif;
+        background: var(--paper-bone);
+        color: var(--ink-forest-deep);
+        font-family: var(--f-body);
         font-size: 16px;
         line-height: 1.6;
-        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "kern";
+        background-image:
+          radial-gradient(1200px 600px at 15% -10%, rgba(184,145,74,0.06), transparent 60%),
+          radial-gradient(900px 500px at 110% 10%, rgba(31,59,45,0.05), transparent 55%);
+        background-attachment: fixed;
       }
 
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 32px;
-        position: relative;
-        z-index: 1;
-      }
+      a { color: var(--ink-forest); text-decoration: underline; text-decoration-color: var(--brass-soft); text-underline-offset: 3px; text-decoration-thickness: 1px; transition: color 150ms var(--ease); }
+      a:hover { color: var(--ink-forest-deep); text-decoration-color: var(--brass); }
 
-      /* Nav */
-      nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        padding: 16px 32px;
-        background: linear-gradient(to bottom, var(--bg) 0%, rgba(240,247,244,0.7) 60%, transparent 100%);
-      }
-      .nav-inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .nav-logo {
-        display: flex;
+      ::selection { background: var(--brass); color: var(--paper-cream); }
+
+      .container { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+      .container-narrow { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+      /* ── Type ─────────────────────────────────── */
+      .display { font-family: var(--f-display); font-weight: 500; letter-spacing: -0.015em; line-height: 1.05; font-variation-settings: "opsz" 144, "SOFT" 50; }
+      .serif   { font-family: var(--f-display); font-variation-settings: "opsz" 24, "SOFT" 50; }
+      .italic-serif { font-family: var(--f-display); font-style: italic; font-variation-settings: "opsz" 24, "SOFT" 50; }
+      .mono    { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+      .eyebrow {
+        display: inline-flex;
         align-items: center;
         gap: 10px;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 22px;
-        color: var(--text);
-      }
-      .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 40px;
-      }
-      .nav-links a {
-        font-size: 15px;
+        font-family: var(--f-mono);
+        font-size: 11px;
         font-weight: 500;
-        color: var(--muted);
-        text-decoration: none;
-        transition: color 0.2s;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--brass-deep);
       }
-      .nav-links a:hover {
-        color: var(--text);
-      }
-      .nav-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+      .eyebrow::before {
+        content: "";
+        width: 18px;
+        height: 1px;
+        background: var(--brass);
       }
 
-      /* Buttons */
+      .ornament {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 48px 0;
+        color: var(--brass);
+      }
+      .ornament::before,
+      .ornament::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--brass) 20%, var(--brass) 80%, transparent);
+      }
+      .ornament-mark {
+        font-family: var(--f-display);
+        font-size: 18px;
+        letter-spacing: 0.5em;
+        padding-left: 0.5em;
+        color: var(--brass-deep);
+        font-variation-settings: "opsz" 24, "SOFT" 50;
+      }
+
+      /* ── Masthead ─────────────────────────────── */
+      .masthead {
+        background: var(--paper-cream);
+        border-bottom: 1px solid var(--rule-strong);
+        box-shadow: 0 1px 0 var(--paper-edge), 0 2px 0 var(--rule-hair);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+      }
+      .masthead-inner {
+        display: flex;
+        align-items: baseline;
+        gap: 24px;
+        padding: 20px 32px;
+        max-width: 1440px;
+        margin: 0 auto;
+      }
+      .masthead-brand {
+        font-family: var(--f-display);
+        font-size: 26px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        letter-spacing: -0.015em;
+        text-decoration: none;
+        font-variation-settings: "opsz" 48, "SOFT" 50;
+        display: inline-flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .masthead-brand::after {
+        content: "";
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        background: var(--brass);
+        border-radius: 50%;
+        transform: translateY(-3px);
+      }
+      .masthead-sub {
+        font-family: var(--f-mono);
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        color: var(--brass-deep);
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+      .masthead-nav {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 28px;
+      }
+      .masthead-nav a {
+        font-size: 14px;
+        color: var(--ink-muted);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 150ms var(--ease);
+      }
+      .masthead-nav a:hover { color: var(--ink-forest-deep); }
+      .masthead-cta {
+        padding: 10px 20px;
+        background: var(--ink-forest);
+        color: var(--paper-cream) !important;
+        border: 1px solid var(--ink-forest-deep);
+        border-radius: 2px;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-decoration: none !important;
+        transition: all 150ms var(--ease);
+      }
+      .masthead-cta:hover {
+        background: var(--ink-forest-deep);
+        transform: translateY(-1px);
+      }
+
+      /* ── Hero ────────────────────────────────── */
+      .hero {
+        padding: 88px 32px 120px;
+        position: relative;
+      }
+      .hero-inner {
+        max-width: 1240px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 64px;
+        align-items: center;
+      }
+
+      .hero-title {
+        font-size: clamp(56px, 9vw, 108px);
+        margin-top: 24px;
+        color: var(--ink-forest-deep);
+        max-width: 16ch;
+      }
+      .hero-title em {
+        color: var(--brass-deep);
+        font-style: italic;
+        font-variation-settings: "opsz" 144, "SOFT" 50;
+      }
+      .hero-sub {
+        margin-top: 28px;
+        max-width: 52ch;
+        font-size: 19px;
+        line-height: 1.55;
+        color: var(--ink-muted);
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 24, "SOFT" 50;
+      }
+      .hero-cta-row {
+        margin-top: 40px;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
       .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font-family: inherit;
-        font-weight: 500;
+        padding: 14px 28px;
+        border: 1px solid transparent;
+        border-radius: 2px;
+        font-family: var(--f-body);
         font-size: 15px;
-        padding: 12px 24px;
-        border-radius: 12px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
         cursor: pointer;
+        transition: all 150ms var(--ease);
         text-decoration: none;
-        transition: all 0.2s;
-        border: none;
+        white-space: nowrap;
       }
-      .btn-primary {
-        background: var(--accent);
-        color: white;
+      .btn-cta {
+        background: var(--ink-forest);
+        color: var(--paper-cream);
+        border-color: var(--ink-forest-deep);
+        box-shadow: inset 0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(31,59,45,0.1);
+      }
+      .btn-cta:hover {
+        background: var(--ink-forest-deep);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(31,59,45,0.22);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--ink-forest);
+        border-color: var(--ink-forest);
+      }
+      .btn-ghost:hover {
+        background: var(--ink-forest);
+        color: var(--paper-cream);
+      }
+
+      /* ── Specimen card (hero visual) ─────────── */
+      .specimen {
+        background: var(--paper-cream);
+        border: 1px solid var(--rule-hair);
+        border-bottom: 1px solid var(--rule-strong);
+        border-top: 3px solid var(--brass);
+        border-radius: 4px;
+        box-shadow: 0 2px 0 var(--paper-edge), 0 8px 24px rgba(31, 59, 45, 0.12);
+        padding: 32px;
         position: relative;
-        overflow: hidden;
-        z-index: 0;
+        transform: rotate(-0.4deg);
       }
-      .btn-primary::before {
+      .specimen::before {
         content: "";
         position: absolute;
-        inset: 0;
-        background: white;
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
+        inset: 12px;
+        border: 1px solid var(--rule-hair);
+        border-radius: 2px;
+        pointer-events: none;
       }
-      .btn-primary:hover::before { transform: translateX(0); }
-      .btn-primary:hover { color: var(--accent); transform: translateY(-1px); }
-
-      .btn-secondary {
-        background: white;
-        color: var(--text);
-        border: 2px solid var(--text);
-        position: relative;
-        overflow: hidden;
-        z-index: 0;
-      }
-      .btn-secondary::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: var(--text);
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
-      }
-      .btn-secondary:hover::before { transform: translateX(0); }
-      .btn-secondary:hover { color: white; }
-
-      .btn-accent {
-        background: var(--accent);
-        color: white;
-        position: relative;
-        overflow: hidden;
-        z-index: 0;
-      }
-      .btn-accent::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: white;
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
-      }
-      .btn-accent:hover::before { transform: translateX(0); }
-      .btn-accent:hover { color: var(--accent); transform: translateY(-1px); }
-
-      /* Hero */
-      #hero {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        padding-top: 96px;
-      }
-      .hero-body {
-        flex: 1;
+      .specimen-title {
+        font-family: var(--f-display);
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        font-variation-settings: "opsz" 32, "SOFT" 50;
         display: flex;
         align-items: center;
-        padding: 60px 0 80px;
+        justify-content: space-between;
+        gap: 12px;
       }
-      .hero-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 80px;
-        align-items: center;
-      }
-      .hero-badge {
+      .specimen-stamp {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: white;
-        border: 2px solid var(--text);
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text2);
-        border-radius: 50px;
-        margin-bottom: 28px;
-      }
-      .hero-badge span {
-        width: 8px;
-        height: 8px;
-        background: var(--accent);
-        border-radius: 50%;
-      }
-      .hero-title {
-        font-size: clamp(44px, 5vw, 64px);
-        font-weight: 700;
-        line-height: 1.1;
-        color: var(--text);
-        margin-bottom: 24px;
-        letter-spacing: -1px;
-      }
-      .hero-sub {
-        font-size: 18px;
-        color: var(--muted);
-        line-height: 1.7;
-        margin-bottom: 40px;
-        max-width: 500px;
-      }
-      .hero-actions {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 48px;
-      }
-      .hero-stats {
-        display: flex;
-        gap: 48px;
-      }
-      .hero-stat {
-        text-align: left;
-      }
-      .hero-stat-num {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--text);
-        letter-spacing: -1px;
-      }
-      .hero-stat-label {
-        font-size: 14px;
-        color: var(--muted);
-        margin-top: 4px;
-      }
-
-      /* Hero preview card */
-      .hero-preview {
-        background: white;
-        border-radius: 24px;
-        box-shadow:
-          0 0 0 1px rgba(0, 0, 0, 0.06),
-          0 0 40px rgba(0, 0, 0, 0.12);
-        overflow: hidden;
-      }
-      .preview-header {
-        padding: 20px 24px;
-        background: #fafafa;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .preview-dots {
-        display: flex;
-        gap: 8px;
-      }
-      .preview-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #e5e5e5;
-      }
-      .preview-dot:first-child {
-        background: #ff5f57;
-      }
-      .preview-dot:nth-child(2) {
-        background: #febc2e;
-      }
-      .preview-dot:nth-child(3) {
-        background: #28c840;
-      }
-      .preview-title {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--muted);
-      }
-      .preview-badge {
-        font-size: 12px;
-        font-weight: 600;
-        padding: 6px 12px;
-        border-radius: 8px;
-        background: var(--accent-light);
-        color: var(--accent-dark);
-      }
-      .preview-body {
-        padding: 28px;
-      }
-      .preview-field {
-        margin-bottom: 20px;
-      }
-      .preview-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-      }
-      .preview-input {
-        background: var(--bg);
-        border-radius: 12px;
-        padding: 14px 16px;
-        font-size: 15px;
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .preview-input .tag {
-        font-size: 11px;
-        font-weight: 600;
         padding: 4px 10px;
-        border-radius: 6px;
-        background: var(--accent-light);
-        color: var(--accent-dark);
+        font-family: var(--f-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--brass-deep);
+        border: 1.5px solid var(--brass);
+        background: var(--brass-wash);
+        border-radius: 2px;
+        transform: rotate(-2deg);
       }
-      .preview-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
-      .preview-divider {
-        height: 1px;
-        background: var(--border);
-        margin: 24px 0;
-      }
-      .preview-result {
+      .specimen-row {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
+        align-items: baseline;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--rule-soft);
+        gap: 16px;
       }
-      .preview-result-label {
-        font-size: 15px;
-        color: var(--muted);
-      }
-      .preview-result-value {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text);
-      }
-      .preview-result.total {
-        padding-top: 20px;
-        margin-top: 8px;
-        border-top: 2px solid var(--bg);
-      }
-      .preview-result.total .preview-result-label {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 16px;
-      }
-      .preview-result.total .preview-result-value {
-        font-size: 28px;
-        color: var(--accent);
-        letter-spacing: -1px;
-      }
-
-      /* Trust bar */
-      #trust {
-        padding: 22px 0;
-        border-top: 1px solid rgba(0, 0, 0, 0.07);
-      }
-      .trust-inner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 48px;
-        flex-wrap: wrap;
-      }
-      .trust-item {
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--muted);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .trust-icon {
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-      }
-
-      /* Sections */
-      .section {
-        padding: 120px 0;
-      }
-      .section-header {
-        text-align: center;
-        margin-bottom: 72px;
-      }
-      .section-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: white;
-        border: 2px solid var(--text);
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        border-radius: 50px;
-        margin-bottom: 20px;
+      .specimen-row:last-child { border-bottom: 0; }
+      .specimen-label {
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.14em;
+        color: var(--ink-muted);
+        font-weight: 500;
+      }
+      .specimen-val {
+        font-family: var(--f-mono);
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+      }
+      .specimen-total {
+        border-top: 3px double var(--rule-strong);
+        border-bottom: 3px double var(--rule-strong);
+        padding: 14px 0;
+        margin-top: 12px;
+        font-size: 22px;
+      }
+      .specimen-total .specimen-label {
+        font-size: 14px;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--ink-forest-deep);
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 24, "SOFT" 50;
+        font-weight: 500;
+      }
+      .specimen-total .specimen-val {
+        font-size: 26px;
+        color: var(--brass-deep);
+        font-weight: 600;
+      }
+      .specimen-foot {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--rule-hair);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .seal {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--ink-forest);
+        color: var(--brass-soft);
+        border: 2px solid var(--brass);
+        box-shadow: 0 0 0 3px var(--paper-cream), 0 0 0 4px var(--brass);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--f-display);
+        font-size: 15px;
+        font-weight: 500;
+        font-variation-settings: "opsz" 24, "SOFT" 50;
+        flex-shrink: 0;
+      }
+      .specimen-sig {
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 14px;
+        color: var(--ink-muted);
+        font-variation-settings: "opsz" 16, "SOFT" 50;
+      }
+
+      /* ── Section (§ XX) ──────────────────────── */
+      .section-header {
+        display: flex;
+        align-items: baseline;
+        gap: 20px;
+        padding-bottom: 18px;
+        margin-bottom: 40px;
+        border-bottom: 1px solid var(--rule-hair);
+      }
+      .section-num {
+        font-family: var(--f-mono);
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.12em;
+        color: var(--brass-deep);
+        white-space: nowrap;
       }
       .section-title {
-        font-size: clamp(36px, 4vw, 52px);
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 20px;
-        line-height: 1.15;
-        letter-spacing: -1px;
+        font-family: var(--f-display);
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        color: var(--ink-forest-deep);
+        font-variation-settings: "opsz" 48, "SOFT" 50;
       }
       .section-sub {
-        font-size: 18px;
-        color: var(--muted);
-        max-width: 600px;
-        margin: 0 auto;
-        line-height: 1.7;
+        margin-left: auto;
+        font-family: var(--f-display);
+        font-style: italic;
+        font-size: 16px;
+        color: var(--ink-muted);
+        font-variation-settings: "opsz" 18, "SOFT" 50;
       }
 
-      /* Feature tabs layout */
-      .feature-tabs-layout {
+      /* ── Features ────────────────────────────── */
+      .features {
+        padding: 96px 32px;
+      }
+      .feature-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 48px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+        margin-top: 24px;
+      }
+      .feature-card {
+        background: var(--paper-cream);
+        border: 1px solid var(--rule-hair);
+        border-left: 2px solid var(--brass);
+        border-radius: 4px;
+        padding: 32px 28px;
+        transition: all 200ms var(--ease);
+      }
+      .feature-card:hover {
+        transform: translateX(3px);
+        border-left-color: var(--brass-deep);
+        box-shadow: 0 2px 8px rgba(31, 59, 45, 0.08);
+      }
+      .feature-no {
+        font-family: var(--f-mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--brass-deep);
+        text-transform: uppercase;
+        font-weight: 500;
+        margin-bottom: 16px;
+      }
+      .feature-title {
+        font-family: var(--f-display);
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        margin-bottom: 14px;
+        letter-spacing: -0.015em;
+        font-variation-settings: "opsz" 32, "SOFT" 50;
+        line-height: 1.2;
+      }
+      .feature-desc {
+        font-size: 15px;
+        line-height: 1.65;
+        color: var(--ink-muted);
+      }
+
+      /* ── Pipeline ────────────────────────────── */
+      .pipeline {
+        padding: 96px 32px;
+        background: linear-gradient(180deg, transparent, var(--paper-sunk) 50%, transparent);
+      }
+      .pipe-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        position: relative;
+      }
+      .pipe-step {
+        padding: 24px;
+        background: var(--paper-cream);
+        border: 1px solid var(--rule-hair);
+        border-radius: 4px;
+        position: relative;
+      }
+      .pipe-step-no {
+        font-family: var(--f-mono);
+        font-size: 32px;
+        color: var(--brass);
+        line-height: 1;
+        margin-bottom: 12px;
+      }
+      .pipe-step-title {
+        font-family: var(--f-display);
+        font-size: 17px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        margin-bottom: 8px;
+        font-variation-settings: "opsz" 24, "SOFT" 50;
+      }
+      .pipe-step-desc {
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--ink-muted);
+      }
+      .pipe-arrow {
+        display: none;
+      }
+      @media (min-width: 901px) {
+        .pipe-step:not(:last-child)::after {
+          content: "→";
+          position: absolute;
+          right: -24px;
+          top: 40px;
+          font-family: var(--f-mono);
+          color: var(--brass);
+          font-size: 22px;
+          font-weight: 500;
+        }
+      }
+
+      /* ── Sample HS lookup ────────────────────── */
+      .hs-demo {
+        padding: 96px 32px;
+      }
+      .hs-demo-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.3fr;
+        gap: 64px;
         align-items: center;
       }
-      .feature-tab-list {
+      .hs-demo-copy h3 {
+        font-family: var(--f-display);
+        font-size: 44px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        letter-spacing: -0.02em;
+        font-variation-settings: "opsz" 72, "SOFT" 50;
+        line-height: 1.05;
+        margin-top: 16px;
+      }
+      .hs-demo-copy p {
+        margin-top: 20px;
+        font-size: 17px;
+        line-height: 1.6;
+        color: var(--ink-muted);
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 20, "SOFT" 50;
+      }
+      .hs-panel {
+        background: var(--paper-cream);
+        border: 1px solid var(--rule-hair);
+        border-bottom: 1px solid var(--rule-strong);
+        border-top: 3px solid var(--brass);
+        border-radius: 4px;
+        box-shadow: 0 2px 0 var(--paper-edge), 0 8px 24px rgba(31, 59, 45, 0.1);
+        padding: 28px;
+      }
+      .hs-query {
+        padding: 14px 16px;
+        background: var(--paper-sunk);
+        border: 1px solid var(--rule-hair);
+        border-bottom: 1px solid var(--rule-strong);
+        border-radius: 2px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .hs-query-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--brass-deep);
+        font-family: var(--f-mono);
+        font-weight: 500;
+      }
+      .hs-query-text {
+        font-size: 15px;
+        color: var(--ink-forest-deep);
+        font-family: var(--f-display);
+        font-style: italic;
+        font-variation-settings: "opsz" 18, "SOFT" 50;
+      }
+      .hs-steps {
+        margin-top: 20px;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 12px;
       }
-      .feature-tab-btn {
-        width: 100%;
-        text-align: left;
-        padding: 16px 18px;
-        border-radius: 14px;
-        border: 1px solid transparent;
-        background: transparent;
-        cursor: pointer;
-        transition:
-          background 0.22s,
-          box-shadow 0.22s,
-          border-color 0.22s,
-          transform 0.18s;
+      .hs-step {
         display: flex;
         align-items: flex-start;
         gap: 14px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--rule-soft);
       }
-      .feature-tab-btn:hover {
-        transform: translateY(-2px);
-      }
-      .feature-tab-btn.f-active {
-        transform: none;
-      }
-      .feature-tab-icon {
-        font-size: 20px;
-        flex-shrink: 0;
-        margin-top: 1px;
-        opacity: 0.45;
-        transition: opacity 0.22s;
-      }
-      .feature-tab-btn.f-active .feature-tab-icon {
-        opacity: 1;
-      }
-      .feature-tab-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text);
-        line-height: 1.3;
-      }
-      .feature-tab-desc {
-        font-size: 13.5px;
-        color: var(--muted);
-        line-height: 1.6;
-        margin-top: 5px;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        transition:
-          max-height 0.35s ease,
-          opacity 0.28s ease;
-      }
-      .feature-tab-btn.f-active .feature-tab-desc {
-        max-height: 72px;
-        opacity: 1;
-      }
-
-      /* Features section background */
-      #features {
-        position: relative;
-        overflow: hidden;
-      }
-      .features-blobs {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        z-index: 0;
-      }
-      .features-blob {
-        position: absolute;
+      .hs-step:last-child { border-bottom: 0; }
+      .hs-step-check {
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
-        filter: blur(72px);
-        opacity: 0.55;
-      }
-      .feature-tabs-layout {
-        position: relative;
-        z-index: 1;
-      }
-      #features .section-header {
-        position: relative;
-        z-index: 1;
-      }
-
-      /* Active tab: frosted */
-      .feature-tab-btn.f-active {
-        background: rgba(255, 255, 255, 0.65) !important;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border-color: rgba(167, 243, 208, 0.7) !important;
-        box-shadow:
-          0 4px 20px rgba(0, 0, 0, 0.07),
-          inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-      }
-      .feature-tab-btn:hover:not(.f-active) {
-        background: rgba(255, 255, 255, 0.45);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-
-      /* Preview panel */
-      .feature-preview-panel {
-        background: rgba(255, 255, 255, 0.42);
-        backdrop-filter: blur(22px) saturate(180%);
-        -webkit-backdrop-filter: blur(22px) saturate(180%);
-        border-radius: 24px;
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.08),
-          inset 0 1px 0 rgba(255, 255, 255, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        min-height: 380px;
-        position: relative;
-        overflow: hidden;
-      }
-      .fp {
-        position: absolute;
-        inset: 0;
-        padding: 28px 28px 24px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition:
-          opacity 0.38s ease,
-          transform 0.38s ease;
-        pointer-events: none;
-      }
-      .fp.f-active {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-      .fp-label {
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 2.5px;
-        text-transform: uppercase;
-        color: #10b981;
-        margin-bottom: 16px;
-      }
-      .fp-card {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 0;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-      }
-      .fp-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 14px;
-        font-size: 13px;
-        color: var(--muted);
-        border-bottom: 1px solid #f1f5f9;
-      }
-      .fp-row:last-child {
-        border-bottom: none;
-      }
-      .fp-val {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 13px;
-      }
-      .fp-total {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-        padding: 11px 14px;
-        background: #ecfdf5;
-        border-radius: 10px;
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #059669;
-      }
-      .fp-badge {
-        display: inline-flex;
-        align-items: center;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 20px;
-        letter-spacing: 0.2px;
-      }
-      .fp-badge-g {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        color: #065f46;
-      }
-      .fp-badge-gr {
-        background: #f1f5f9;
-        color: #6b7280;
-      }
-      .fp-badge-b {
-        background: #dbeafe;
-        color: #1d4ed8;
-      }
-      .fp-badge-r {
-        background: #fee2e2;
-        color: #b91c1c;
-      }
-      .fp-hs-code {
-        font-family: "Courier New", monospace;
-        font-size: 30px;
-        letter-spacing: 5px;
-        color: #10b981;
-        font-weight: 700;
-        line-height: 1;
-        margin-bottom: 5px;
-      }
-
-      /* Steps */
-      .steps-container {
-        background: white;
-        border-radius: 24px;
-        padding: 60px;
-        position: relative;
-      }
-      /* Steps: animated progress rail */
-      .steps-rail {
-        position: absolute;
-        top: 88px; /* 60px padding-top + 28px = center of step-num circles */
-        left: 15%; right: 15%;
-        height: 3px;
-        pointer-events: none;
-        z-index: 0;
-      }
-      .steps-rail-track {
-        position: absolute; inset: 0;
-        background: #e5e7eb; border-radius: 2px;
-      }
-      .steps-rail-fill {
-        position: absolute; top: 0; left: 0; bottom: 0;
-        width: 0%;
-        background: linear-gradient(90deg, #059669, #10b981, #34d399);
-        border-radius: 2px;
-        box-shadow: 0 0 10px rgba(16,185,129,0.55);
-      }
-      .steps-rail-head {
-        position: absolute;
-        top: 50%; left: 0%;
-        width: 16px; height: 16px; border-radius: 50%;
-        background: #10b981;
-        box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7);
-        transform: translate(-50%, -50%);
-        opacity: 1;
-      }
-      @keyframes headPulse {
-        0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7); }
-        50%       { box-shadow: 0 0 0 10px rgba(16,185,129,0), 0 0 28px rgba(16,185,129,0.9); }
-      }
-      .steps-rail-head.pulsing { animation: headPulse 0.7s ease-in-out 2; }
-@keyframes stepPing {
-        0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.7), 0 2px 8px rgba(0,0,0,0.12); }
-        50%  { box-shadow: 0 0 0 10px rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
-        100% { box-shadow: 0 0 0 0   rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
-      }
-      .step-num.ping { animation: stepPing 0.65s ease-out; }
-      .steps-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 40px;
-        position: relative;
-        z-index: 1;
-      }
-      .step-card {
-        text-align: center;
-      }
-      .step-num {
-        width: 56px;
-        height: 56px;
-        background: var(--bg);
-        color: var(--text);
-        border-radius: 50%;
+        background: var(--ink-forest);
+        color: var(--brass-soft);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
-        font-weight: 700;
-        margin: 0 auto 24px;
+        font-size: 11px;
+        flex-shrink: 0;
+        margin-top: 3px;
       }
-      .step-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 12px;
+      .hs-step-text {
+        flex: 1;
       }
-      .step-body {
+      .hs-step-text strong {
+        display: block;
+        font-family: var(--f-display);
         font-size: 15px;
-        color: var(--muted);
-        line-height: 1.6;
+        color: var(--ink-forest-deep);
+        font-variation-settings: "opsz" 18, "SOFT" 50;
+        margin-bottom: 2px;
+      }
+      .hs-step-text span {
+        font-size: 13px;
+        color: var(--ink-muted);
+      }
+      .hs-result {
+        margin-top: 20px;
+        padding: 20px;
+        background: var(--brass-wash);
+        border: 1px solid var(--brass);
+        border-left: 4px solid var(--brass);
+        border-radius: 2px;
+        position: relative;
+      }
+      .hs-result::after {
+        content: "VERIFIED";
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        font-family: var(--f-mono);
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        color: var(--brass-deep);
+        border: 1.5px solid var(--brass);
+        padding: 3px 7px;
+        background: var(--paper-cream);
+        transform: rotate(-2deg);
+        font-weight: 600;
+      }
+      .hs-result-code {
+        font-family: var(--f-mono);
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        letter-spacing: 0.06em;
+        margin-bottom: 6px;
+      }
+      .hs-result-desc {
+        font-family: var(--f-display);
+        font-size: 16px;
+        color: var(--ink-muted);
+        font-variation-settings: "opsz" 18, "SOFT" 50;
+        margin-bottom: 10px;
+      }
+      .hs-result-meta {
+        font-family: var(--f-mono);
+        font-size: 12px;
+        color: var(--brass-deep);
+        font-variant-numeric: tabular-nums;
       }
 
-      /* CTA */
-      #cta {
-        padding: 120px 0;
+      /* ── Authority / strip ───────────────────── */
+      .authority {
+        padding: 80px 32px;
+        background: var(--ink-forest-deep);
+        color: var(--paper-cream);
+        position: relative;
+        overflow: hidden;
       }
-      .cta-card {
-        background: #111827;
-        border-radius: 32px;
-        padding: 80px;
+      .authority::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--brass);
+      }
+      .authority::after {
+        content: "";
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--brass);
+      }
+      .authority-inner {
+        max-width: 960px;
+        margin: 0 auto;
         text-align: center;
       }
-      .cta-title {
-        font-size: clamp(36px, 4vw, 52px);
-        font-weight: 700;
-        color: white;
-        margin-bottom: 20px;
-        line-height: 1.15;
-        letter-spacing: -1px;
+      .authority-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--f-mono);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--brass-soft);
+        margin-bottom: 16px;
       }
-      .cta-sub {
-        font-size: 18px;
-        color: #9ca3af;
-        margin-bottom: 40px;
-        max-width: 500px;
+      .authority-eyebrow::before,
+      .authority-eyebrow::after {
+        content: "§";
+        color: var(--brass);
+      }
+      .authority h3 {
+        font-family: var(--f-display);
+        font-size: clamp(32px, 5vw, 48px);
+        font-weight: 500;
+        letter-spacing: -0.015em;
+        color: var(--paper-cream);
+        font-variation-settings: "opsz" 72, "SOFT" 50;
+        line-height: 1.1;
+      }
+      .authority h3 em {
+        color: var(--brass-soft);
+        font-style: italic;
+      }
+      .authority p {
+        margin-top: 20px;
+        font-size: 17px;
+        line-height: 1.6;
+        color: rgba(245, 241, 232, 0.75);
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 20, "SOFT" 50;
+        max-width: 60ch;
         margin-left: auto;
         margin-right: auto;
       }
-      .cta-actions {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-      }
-      .btn-cta {
-        background: white;
-        color: var(--text);
-      }
-      .btn-cta:hover {
-        background: #f5f5f5;
-      }
-      .btn-cta-ghost {
-        background: transparent;
-        color: #9ca3af;
-        border: 1px solid #374151;
-      }
-      .btn-cta-ghost:hover {
-        color: white;
-        border-color: #6b7280;
-      }
 
-      /* Footer */
-      footer {
-        padding: 48px 0;
-        border-top: 1px solid var(--border);
+      /* ── Stats ───────────────────────────────── */
+      .stats {
+        padding: 96px 32px;
       }
-      .footer-inner {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .footer-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 600;
-        font-size: 18px;
-        color: var(--text);
-      }
-      .footer-note {
-        font-size: 13px;
-        color: var(--muted);
-        margin-top: 8px;
-      }
-      .footer-links {
-        display: flex;
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
         gap: 32px;
       }
-      .footer-links a {
-        font-size: 14px;
-        color: var(--muted);
-        text-decoration: none;
-        transition: color 0.2s;
+      .stat {
+        border-left: 1px solid var(--rule-hair);
+        padding-left: 24px;
       }
-      .footer-links a:hover {
-        color: var(--text);
+      .stat-val {
+        font-family: var(--f-display);
+        font-size: 64px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        letter-spacing: -0.03em;
+        font-variation-settings: "opsz" 144, "SOFT" 50;
+        line-height: 1;
       }
-
-      /* Scroll hint arrow */
-      .scroll-hint {
-        display: flex;
-        justify-content: center;
-        padding: 20px 0 32px;
-        color: var(--muted);
-        opacity: 0.6;
-        animation: scrollBounce 2s ease-in-out infinite;
-        transition: opacity 0.4s ease;
-      }
-      .scroll-hint.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-      @keyframes scrollBounce {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(8px);
-        }
-      }
-
-      /* Mobile */
-      @media (max-width: 1200px) {
-        .feature-tabs-layout {
-          gap: 32px;
-        }
-      }
-      @media (max-width: 1000px) {
-        .hero-grid {
-          grid-template-columns: 1fr;
-          gap: 48px;
-        }
-        .carousel-wrapper {
-          max-width: 540px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        .carousel-slides {
-          width: 100%;
-        }
-        .steps-grid {
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
-        }
-        .nav-links {
-          display: none;
-        }
-        .section {
-          padding: 80px 0;
-        }
-      }
-      @media (max-width: 640px) {
-        .container {
-          padding: 0 20px;
-        }
-        .hero-body {
-          padding: 36px 0 48px;
-        }
-        .hero-title {
-          letter-spacing: -0.5px;
-        }
-        .hero-sub {
-          font-size: 16px;
-        }
-        .hero-actions {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 12px;
-          margin-bottom: 36px;
-        }
-        .hero-actions .btn {
-          text-align: center;
-          justify-content: center;
-        }
-        .hero-stats {
-          gap: 24px;
-          flex-wrap: wrap;
-        }
-        .hero-stat-num {
-          font-size: 26px;
-        }
-        .feature-tabs-layout {
-          grid-template-columns: 1fr;
-          gap: 32px;
-        }
-        .feature-preview-panel {
-          min-height: 320px;
-        }
-        .steps-grid {
-          grid-template-columns: 1fr;
-          gap: 24px;
-        }
-        .steps-container {
-          padding: 32px 20px;
-        }
-        .section {
-          padding: 60px 0;
-        }
-        .section-title {
-          font-size: clamp(26px, 7vw, 36px);
-          letter-spacing: -0.5px;
-        }
-        .section-sub {
-          font-size: 15px;
-        }
-        .cta-card {
-          padding: 40px 20px;
-        }
-        .cta-title {
-          font-size: clamp(28px, 7vw, 40px);
-        }
-        .cta-actions {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .cta-actions .btn {
-          text-align: center;
-          justify-content: center;
-        }
-        .trust-inner {
-          gap: 20px;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        .footer-inner {
-          flex-direction: column;
-          gap: 24px;
-          text-align: center;
-        }
-        .footer-links {
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-        .nav-actions .btn {
-          padding: 10px 16px;
-          font-size: 14px;
-        }
-        .calc-preview {
-          font-size: 13px;
-        }
-      }
-      #dotwave {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        pointer-events: none;
-        opacity: 0.16;
-      }
-      .blob-bg {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        overflow: hidden;
-        pointer-events: none;
-      }
-      .blob {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(70px);
-        opacity: 0.65;
-        will-change: transform;
-      }
-      .blob-1 {
-        width: 600px;
-        height: 600px;
-        background: rgba(16, 185, 129, 0.45);
-        top: -15%;
-        left: -10%;
-      }
-      .blob-2 {
-        width: 500px;
-        height: 500px;
-        background: rgba(52, 211, 153, 0.38);
-        top: 45%;
-        right: -8%;
-      }
-      .blob-3 {
-        width: 450px;
-        height: 450px;
-        background: rgba(167, 243, 208, 0.45);
-        bottom: -8%;
-        left: 25%;
-      }
-      .blob-4 {
-        width: 350px;
-        height: 350px;
-        background: rgba(16, 185, 129, 0.3);
-        top: 20%;
-        left: 55%;
-      }
-      .blob-5 {
-        width: 280px;
-        height: 280px;
-        background: rgba(5, 150, 105, 0.35);
-        top: 70%;
-        left: 10%;
-      }
-      .blob-6 {
-        width: 320px;
-        height: 320px;
-        background: rgba(110, 231, 183, 0.3);
-        top: 5%;
-        right: 20%;
-      }
-
-      /* Carousel */
-      .carousel-wrapper {
-        width: 100%;
-      }
-      .carousel-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-      }
-      .carousel-feature-name {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: var(--muted);
-      }
-      .carousel-counter {
-        font-size: 11px;
-        letter-spacing: 2px;
-        color: var(--subtle);
-      }
-      .carousel-slides {
-        display: grid;
-      }
-      .c-slide {
-        grid-area: 1/1;
-        opacity: 0;
-        transform: translateY(10px);
-        transition:
-          opacity 0.52s ease,
-          transform 0.52s ease;
-        pointer-events: none;
-        display: flex;
-        flex-direction: column;
-      }
-      .c-slide.active {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-      .carousel-nav {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        margin-top: 18px;
-        width: 100%;
-      }
-      .carousel-dots {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-      }
-      .c-dot {
-        height: 3px;
-        width: 16px;
-        border-radius: 2px;
-        background: rgba(0, 0, 0, 0.14);
-        cursor: pointer;
-        transition: all 0.35s ease;
-        border: none;
-        padding: 0;
-        outline: none;
-      }
-      .c-dot.active {
-        background: var(--accent);
-        width: 32px;
-      }
-      .carousel-progress {
-        height: 2px;
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: 1px;
-        overflow: hidden;
-        width: 80%;
-        max-width: 200px;
-      }
-      .carousel-progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, var(--accent-dark), var(--accent));
-        width: 0%;
-      }
-      /* Calc cards */
-      .calc-preview {
-        background: rgba(245, 248, 246, 0.98);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow:
-          0 12px 48px rgba(0, 0, 0, 0.18),
-          0 2px 8px rgba(0, 0, 0, 0.1),
-          inset 0 1px 0 rgba(255, 255, 255, 0.7);
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        z-index: 1;
-      }
-      .c-slide:nth-child(1) .calc-header {
-        background: rgba(16, 185, 129, 0.15);
-      }
-      .c-slide:nth-child(2) .calc-header {
-        background: rgba(99, 102, 241, 0.15);
-      }
-      .c-slide:nth-child(3) .calc-header {
-        background: rgba(245, 158, 11, 0.15);
-      }
-      .c-slide:nth-child(4) .calc-header {
-        background: rgba(236, 72, 153, 0.15);
-      }
-      .c-slide:nth-child(5) .calc-header {
-        background: rgba(59, 130, 246, 0.15);
-      }
-      .calc-header {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        padding: 14px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid rgba(16, 185, 129, 0.15);
-      }
-      .calc-header-title {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: rgba(16, 185, 129, 0.9);
-      }
-      .calc-badge {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 4px;
-        background: rgba(16, 185, 129, 0.15);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: var(--accent);
-      }
-      .calc-body {
-        padding: 20px;
-        flex: 1;
-      }
-      .calc-field {
-        margin-bottom: 14px;
-      }
-      .calc-field label {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--muted);
-        display: block;
-        margin-bottom: 5px;
-      }
-      .calc-input {
-        background: var(--bg);
-        border: 1px solid rgba(0, 0, 0, 0.07);
-        border-radius: 8px;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: var(--text);
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .calc-input span {
-        color: var(--muted);
-        font-size: 11px;
-      }
-      .calc-divider {
-        height: 1px;
-        background: rgba(0, 0, 0, 0.07);
-        margin: 16px 0;
-      }
-      .calc-result-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        font-size: 13px;
-      }
-      .calc-result-row:last-child {
-        border-bottom: none;
-      }
-      .calc-result-label {
-        color: var(--muted);
-      }
-      .calc-result-val {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text);
-      }
-      .calc-result-val.accent {
-        color: var(--accent);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-      }
-      .tag-g {
-        display: inline-block;
-        padding: 2px 7px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        background: var(--accent-light);
-        color: var(--accent-dark);
-      }
-      .calc-footer {
-        padding: 12px 20px;
-        background: var(--bg);
-        border-top: 1px solid rgba(0, 0, 0, 0.06);
-        font-size: 11px;
-        color: var(--muted);
+      .stat-val em {
+        color: var(--brass);
         font-style: italic;
+        font-size: 48px;
+      }
+      .stat-lbl {
+        margin-top: 12px;
+        font-family: var(--f-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--brass-deep);
+        text-transform: uppercase;
+        font-weight: 500;
+      }
+      .stat-note {
+        margin-top: 6px;
+        font-size: 13px;
+        color: var(--ink-muted);
+        font-style: italic;
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 14, "SOFT" 50;
+      }
+
+      /* ── CTA ─────────────────────────────────── */
+      .cta {
+        padding: 120px 32px;
         text-align: center;
       }
-      /* Slide helpers */
-      .hs-result {
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 6px;
+      .cta-title {
+        font-family: var(--f-display);
+        font-size: clamp(44px, 7vw, 84px);
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        color: var(--ink-forest-deep);
+        font-variation-settings: "opsz" 144, "SOFT" 50;
+        line-height: 1;
+        max-width: 22ch;
+        margin: 0 auto;
       }
-      .hs-result.best {
-        background: var(--accent-light);
-        border-color: rgba(16, 185, 129, 0.3);
+      .cta-title em {
+        color: var(--brass-deep);
+        font-style: italic;
       }
-      .hs-result-row {
+      .cta-sub {
+        margin: 28px auto 0;
+        max-width: 56ch;
+        font-size: 18px;
+        line-height: 1.5;
+        color: var(--ink-muted);
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 22, "SOFT" 50;
+      }
+      .cta-actions {
+        margin-top: 44px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 3px;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
       }
-      .hs-code-mono {
-        font-family: monospace;
+
+      /* ── Footer ──────────────────────────────── */
+      .footer {
+        background: var(--paper-cream);
+        border-top: 1px solid var(--rule-strong);
+        box-shadow: 0 -1px 0 var(--paper-edge), 0 -2px 0 var(--rule-hair);
+        padding: 56px 32px 40px;
+      }
+      .footer-inner {
+        max-width: 1240px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 48px;
+      }
+      .footer-brand {
+        font-family: var(--f-display);
+        font-size: 24px;
+        font-weight: 500;
+        color: var(--ink-forest-deep);
+        letter-spacing: -0.015em;
+        font-variation-settings: "opsz" 48, "SOFT" 50;
+      }
+      .footer-brand span { color: var(--brass); }
+      .footer-tag {
+        margin-top: 12px;
         font-size: 14px;
-        color: var(--text);
+        color: var(--ink-muted);
+        font-style: italic;
+        font-family: var(--f-display);
+        font-variation-settings: "opsz" 16, "SOFT" 50;
       }
-      .hs-rate-lbl {
+      .footer-col h4 {
+        font-family: var(--f-mono);
         font-size: 11px;
-        font-weight: 600;
-        color: var(--text2);
+        letter-spacing: 0.18em;
+        color: var(--brass-deep);
+        text-transform: uppercase;
+        font-weight: 500;
+        margin-bottom: 14px;
       }
-      .hs-rate-lbl.zero {
-        color: var(--accent-dark);
+      .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+      .footer-col a { color: var(--ink-forest); text-decoration: none; font-size: 14px; transition: color 150ms var(--ease); }
+      .footer-col a:hover { color: var(--brass-deep); }
+      .footer-rule {
+        margin: 40px 0 24px;
+        max-width: 1240px;
+        margin-left: auto;
+        margin-right: auto;
+        border: 0;
+        border-top: 1px solid var(--rule-hair);
       }
-      .hs-desc-text {
-        font-size: 11px;
-        color: var(--muted);
-      }
-      .fx-row {
+      .footer-foot {
+        max-width: 1240px;
+        margin: 0 auto;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 7px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-      }
-      .fx-row:last-child {
-        border-bottom: none;
-      }
-      .fx-curr {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        color: var(--text2);
-      }
-      .fx-mid {
+        font-family: var(--f-mono);
         font-size: 11px;
-        color: var(--subtle);
+        letter-spacing: 0.14em;
+        color: var(--ink-muted);
+        text-transform: uppercase;
       }
-      .fx-val {
-        font-family: monospace;
-        font-size: 13px;
-        color: var(--text);
+
+      /* ── Motion ──────────────────────────────── */
+      @keyframes paper-rise {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
-      .fav-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+      .rise { animation: paper-rise 600ms var(--ease) both; }
+      .rise-1 { animation: paper-rise 600ms var(--ease) 120ms both; }
+      .rise-2 { animation: paper-rise 600ms var(--ease) 240ms both; }
+      .rise-3 { animation: paper-rise 600ms var(--ease) 360ms both; }
+
+      /* ── Responsive ──────────────────────────── */
+      @media (max-width: 900px) {
+        .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+        .feature-grid { grid-template-columns: 1fr; }
+        .pipe-grid { grid-template-columns: 1fr; }
+        .hs-demo-grid { grid-template-columns: 1fr; gap: 40px; }
+        .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+        .footer-inner { grid-template-columns: 1fr; gap: 32px; }
+        .masthead-nav { display: none; }
+        .masthead-nav .masthead-cta { display: inline-flex; }
       }
-      .fav-row:last-child {
-        border-bottom: none;
-      }
-      .fav-star {
-        color: var(--accent);
-        font-size: 12px;
-        flex-shrink: 0;
-      }
-      .fav-code {
-        font-family: monospace;
-        font-size: 13px;
-        color: var(--text);
-        flex-shrink: 0;
-        min-width: 54px;
-      }
-      .fav-desc {
-        font-size: 11px;
-        color: var(--muted);
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .fav-pct {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text2);
-        flex-shrink: 0;
-      }
-      .excise-toggle {
-        width: 28px;
-        height: 16px;
-        background: var(--accent);
-        border-radius: 8px;
-        position: relative;
-        flex-shrink: 0;
-      }
-      .excise-toggle::after {
-        content: "";
-        position: absolute;
-        right: 2px;
-        top: 2px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: white;
+      @media (max-width: 640px) {
+        .container, .container-narrow { padding: 0 20px; }
+        .section-header { flex-wrap: wrap; }
+        .section-sub { margin-left: 0; }
+        .stat-grid { grid-template-columns: 1fr; }
+        .footer-foot { flex-direction: column; gap: 8px; text-align: left; }
       }
     </style>
   </head>
   <body>
-    <canvas id="dotwave"></canvas>
-    <div class="blob-bg">
-      <div class="blob blob-1"></div>
-      <div class="blob blob-2"></div>
-      <div class="blob blob-3"></div>
-      <div class="blob blob-4"></div>
-      <div class="blob blob-5"></div>
-      <div class="blob blob-6"></div>
-    </div>
-
-    <nav>
-      <div class="nav-inner">
-        <a href="#" class="nav-logo">
-          <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="14" fill="#10b981" />
-            <rect x="25" y="10" width="6" height="16" rx="3" fill="white" />
-            <path
-              d="M14 22L28 38L42 22"
-              stroke="white"
-              stroke-width="5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <rect x="12" y="42" width="32" height="4" rx="2" fill="white" />
-          </svg>
-          Dutify
+    <!-- Masthead -->
+    <header class="masthead">
+      <div class="masthead-inner">
+        <a class="masthead-brand" href="/">
+          Dutify<span class="masthead-sub">Customs&nbsp;Dossier</span>
         </a>
-        <div class="nav-links"></div>
-        <div class="nav-actions">
-          <a href="/login" class="btn btn-secondary">Log in</a>
-          <a href="/register" class="btn btn-primary">Get started →</a>
-        </div>
+        <nav class="masthead-nav">
+          <a href="#features">Features</a>
+          <a href="#pipeline">How it works</a>
+          <a href="#hs-demo">HS lookup</a>
+          <a href="/login" class="masthead-cta">Sign in</a>
+        </nav>
       </div>
-    </nav>
+    </header>
 
-    <section id="hero">
-      <div class="hero-body">
-        <div class="container">
-          <div class="hero-grid">
-            <div class="hero-content">
-              <h1 class="hero-title">Calculate your import costs before they land</h1>
-              <p class="hero-sub">
-                Know exactly what you'll pay in customs duties, VAT, and total landed costs. Powered by TARIC data and
-                live ECB exchange rates.
-              </p>
-              <div class="hero-actions">
-                <a href="/register" class="btn btn-primary">Start here →</a>
-                <a href="#how" class="btn btn-secondary">See how it works</a>
-              </div>
-              <div class="hero-stats">
-                <div class="hero-stat">
-                  <div class="hero-stat-num">27+</div>
-                  <div class="hero-stat-label">FTA Agreements</div>
-                </div>
-                <div class="hero-stat">
-                  <div class="hero-stat-num">30+</div>
-                  <div class="hero-stat-label">Currencies</div>
-                </div>
-                <div class="hero-stat">
-                  <div class="hero-stat-num">17%</div>
-                  <div class="hero-stat-label">LU VAT Rate</div>
-                </div>
-              </div>
-            </div>
-            <div class="carousel-wrapper">
-              <div class="carousel-slides">
-                <!-- ① Duty Calculator -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Live calculation</span>
-                      <span class="calc-badge">✓ FTA Rate Applied</span>
-                    </div>
-                    <div class="calc-body">
-                      <div class="calc-field">
-                        <label>Origin Country</label>
-                        <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>HS Code</label>
-                          <div class="calc-input">8471.30</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Duty Rate</label>
-                          <div class="calc-input">
-                            0% <span class="tag-g" style="font-size: 9px; padding: 1px 6px">FTA</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>Goods Value</label>
-                          <div class="calc-input">€ 12,400.00</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Incoterm</label>
-                          <div class="calc-input">CIF</div>
-                        </div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">CIF Value (customs base)</span>
-                        <span class="calc-result-val">€ 12,400.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
-                        <span class="calc-result-val">€ 0.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Import VAT (LU 17%)</span>
-                        <span class="calc-result-val">€ 2,108.00</span>
-                      </div>
-                      <div class="calc-result-row" style="padding-top: 12px">
-                        <span
-                          style="
-                            font-size: 14px;
-                            font-weight: 700;
-                            letter-spacing: 0.5px;
-                            text-transform: uppercase;
-                            color: var(--text);
-                          "
-                          >Total landed cost</span
-                        >
-                        <span class="calc-result-val accent">€ 14,508.00</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
-                  </div>
-                </div>
-
-                <!-- ② AI HS Lookup -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">AI HS Classification</span>
-                      <span class="calc-badge" style="background: #16162a; border-color: #30307a; color: #9999ee"
-                        >✦ Claude AI</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div class="calc-field">
-                        <label>Product Description</label>
-                        <div class="calc-input" style="font-size: 12px; color: var(--text2)">
-                          Wireless noise-cancelling over-ear headphones
-                        </div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="hs-result best">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8518.30</span>
-                          <span class="hs-rate-lbl zero">0% DUTY</span>
-                        </div>
-                        <div class="hs-desc-text">
-                          Headphones &amp; earphones &nbsp;<span style="color: var(--accent-dark)">★ Best match</span>
-                        </div>
-                      </div>
-                      <div class="hs-result">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8518.40</span>
-                          <span class="hs-rate-lbl">3.7%</span>
-                        </div>
-                        <div class="hs-desc-text">Audio frequency electric amplifiers</div>
-                      </div>
-                      <div class="hs-result" style="margin-bottom: 0">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8527.91</span>
-                          <span class="hs-rate-lbl">2.8%</span>
-                        </div>
-                        <div class="hs-desc-text">Radio receivers incorporating sound recording</div>
-                      </div>
-                      <div style="margin-top: 14px; text-align: right">
-                        <a
-                          href="#"
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 1px;
-                            text-transform: uppercase;
-                            color: var(--accent-dark);
-                            text-decoration: none;
-                          "
-                          >Verify in TARIC ↗</a
-                        >
-                      </div>
-                    </div>
-                    <div class="calc-footer">AI-assisted · Always verify classifications · Not legal advice</div>
-                  </div>
-                </div>
-
-                <!-- ③ FX Converter -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">ECB Exchange Rates</span>
-                      <span class="calc-badge">↻ Live Today</span>
-                    </div>
-                    <div class="calc-body">
-                      <div
-                        style="
-                          display: grid;
-                          grid-template-columns: 1fr auto 1fr;
-                          gap: 10px;
-                          align-items: flex-end;
-                          margin-bottom: 20px;
-                        "
-                      >
-                        <div class="calc-field" style="margin-bottom: 0">
-                          <label>Amount (USD)</label>
-                          <div class="calc-input">$ 15,000.00</div>
-                        </div>
-                        <div style="padding-bottom: 9px; color: var(--muted); font-size: 16px">→</div>
-                        <div class="calc-field" style="margin-bottom: 0">
-                          <label>EUR</label>
-                          <div class="calc-input" style="color: var(--accent-dark)">€ 13,821.00</div>
-                        </div>
-                      </div>
-                      <div class="calc-divider" style="margin-top: 0"></div>
-                      <div class="fx-row">
-                        <span class="fx-curr">USD</span><span class="fx-mid">1 USD =</span
-                        ><span class="fx-val">0.9214 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">GBP</span><span class="fx-mid">1 GBP =</span
-                        ><span class="fx-val">1.1732 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">CNY</span><span class="fx-mid">1 CNY =</span
-                        ><span class="fx-val">0.1270 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">JPY</span><span class="fx-mid">1 JPY =</span
-                        ><span class="fx-val">0.0061 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">CHF</span><span class="fx-mid">1 CHF =</span
-                        ><span class="fx-val">1.0432 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">KRW</span><span class="fx-mid">1 KRW =</span
-                        ><span class="fx-val">0.0006 EUR</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Source: ECB · Updated every business day · 30+ currencies</div>
-                  </div>
-                </div>
-
-                <!-- ④ Excise Duties -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Excise Duties</span>
-                      <span class="calc-badge" style="background: #1e1200; border-color: #3d2600; color: #c8900a"
-                        >LU 2026 Rates</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px"
-                      >
-                        <span
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 2px;
-                            text-transform: uppercase;
-                            color: var(--muted);
-                          "
-                          >Include excise duties</span
-                        >
-                        <div class="excise-toggle"></div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>Category</label>
-                          <div class="calc-input">Spirits</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Volume (L)</label>
-                          <div class="calc-input">1,000 L</div>
-                        </div>
-                      </div>
-                      <div class="calc-field">
-                        <label>ABV</label>
-                        <div class="calc-input">40 %</div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Excise duty (spirits)</span>
-                        <span class="calc-result-val">€ 6,453.20</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Customs duty (FTA)</span>
-                        <span class="calc-result-val">€ 0.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Import VAT (17%)</span>
-                        <span class="calc-result-val">€ 3,497.04</span>
-                      </div>
-                      <div class="calc-result-row" style="padding-top: 12px">
-                        <span
-                          style="
-                            font-size: 14px;
-                            font-weight: 700;
-                            letter-spacing: 0.5px;
-                            text-transform: uppercase;
-                            color: var(--text);
-                          "
-                          >Total landed cost</span
-                        >
-                        <span class="calc-result-val accent">€ 27,550.24</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Alcohol · Tobacco · Energy · Luxembourg Administration des Douanes</div>
-                  </div>
-                </div>
-
-                <!-- ⑤ HS Favourites -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Saved HS Codes</span>
-                      <span class="calc-badge" style="background: #181818; border-color: #2a2a2a; color: #666"
-                        >Your Library</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">8471.30</span>
-                        <span class="fav-desc">Laptops &amp; portable computers</span>
-                        <span class="fav-pct">0.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">6110.20</span>
-                        <span class="fav-desc">Cotton jerseys &amp; pullovers</span>
-                        <span class="fav-pct">12.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">8517.12</span>
-                        <span class="fav-desc">Mobile phones &amp; smartphones</span>
-                        <span class="fav-pct">0.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">9403.20</span>
-                        <span class="fav-desc">Metal furniture for offices</span>
-                        <span class="fav-pct">2.7%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">2204.21</span>
-                        <span class="fav-desc">Wine of fresh grapes (≤ 2 L)</span>
-                        <span class="fav-pct">32.0%</span>
-                      </div>
-                      <div style="margin-top: 16px; text-align: center">
-                        <span
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 2px;
-                            text-transform: uppercase;
-                            color: var(--accent-dark);
-                          "
-                          >+ Add from HS Lookup</span
-                        >
-                      </div>
-                    </div>
-                    <div class="calc-footer">One-click reuse · Build your product library · Verify in TARIC</div>
-                  </div>
-                </div>
-              </div>
-              <!-- /carousel-slides -->
-              <div class="carousel-nav">
-                <div class="carousel-dots">
-                  <button class="c-dot" aria-label="Slide 1"></button>
-                  <button class="c-dot" aria-label="Slide 2"></button>
-                  <button class="c-dot" aria-label="Slide 3"></button>
-                  <button class="c-dot" aria-label="Slide 4"></button>
-                  <button class="c-dot" aria-label="Slide 5"></button>
-                </div>
-                <div class="carousel-progress"><div class="carousel-progress-bar" id="c-progress"></div></div>
-              </div>
-            </div>
-            <!-- /carousel-wrapper -->
-          </div>
-        </div>
-      </div>
-      <div class="scroll-hint">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 5v14M5 12l7 7 7-7" />
-        </svg>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         WHY SECTION — 3 pain-point cards + aircraft scroll reveal
-    ═══════════════════════════════════════════════════════════════ -->
-    <style>
-      #why {
-        padding: 120px 0;
-        position: relative;
-        overflow: visible;
-      }
-      .why-cards {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 28px;
-        position: relative;
-      }
-      .why-card {
-        background: #ffffff;
-        border-radius: 20px;
-        padding: 28px 28px 24px;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05);
-        opacity: 0;
-        transform: translateY(24px);
-        transition: opacity 0.52s ease, transform 0.52s ease, box-shadow 0.25s;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      .why-card.why-revealed {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      .why-card:hover {
-        box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
-      }
-      /* coloured top accent stripe */
-      .why-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-        border-radius: 20px 20px 0 0;
-      }
-      .why-card-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-      .why-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-      .why-card-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-
-      .why-icon-wrap {
-        width: 44px; height: 44px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 22px;
-        margin-bottom: 18px;
-        flex-shrink: 0;
-      }
-      .why-icon-amber  { background: rgba(245,158,11,0.12); }
-      .why-icon-blue   { background: rgba(59,130,246,0.12); }
-      .why-icon-purple { background: rgba(139,92,246,0.12); }
-
-      .why-card-title {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 10px;
-        line-height: 1.3;
-      }
-      .why-card-desc {
-        font-size: 14px;
-        color: var(--muted);
-        line-height: 1.65;
-        margin-bottom: 22px;
-        flex: 1;
-      }
-      /* Mini UI mockups */
-      .why-mockup {
-        background: var(--bg);
-        border-radius: 12px;
-        padding: 12px 14px;
-        border: 1px solid rgba(0,0,0,0.07);
-        font-size: 12px;
-      }
-      .why-mockup-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 0;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        color: var(--muted);
-      }
-      .why-mockup-row:last-child { border-bottom: none; }
-      .why-mockup-val {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 12px;
-      }
-      .why-mockup-val.green  { color: #059669; }
-      .why-mockup-val.red    { color: #dc2626; }
-      .why-mockup-val.total  { color: #059669; font-size: 13px; }
-      .why-mockup-tag {
-        font-size: 10px; font-weight: 600;
-        padding: 2px 7px; border-radius: 4px;
-        background: #d1fae5; color: #065f46;
-      }
-      .why-mockup-label {
-        font-size: 9px; font-weight: 600;
-        letter-spacing: 1.5px; text-transform: uppercase;
-        color: var(--subtle);
-        margin-bottom: 7px;
-      }
-
-
-      /* SVG plane overlay */
-      #why-plane-svg {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        pointer-events: none;
-        overflow: visible;
-        z-index: 10;
-      }
-      .why-trail {
-        fill: none;
-        stroke: #10b981;
-        stroke-width: 1.5;
-        stroke-dasharray: 6 5;
-        opacity: 0;
-        transition: opacity 0.4s;
-      }
-
-      /* FX mockup */
-      .why-fx-main {
-        display: flex; align-items: center; gap: 8px;
-        margin-bottom: 8px;
-      }
-      .why-fx-amount {
-        font-size: 16px; font-weight: 700; color: var(--text);
-      }
-      .why-fx-arrow { color: var(--muted); font-size: 14px; }
-      .why-fx-eur {
-        font-size: 16px; font-weight: 700; color: #059669;
-      }
-      .why-fx-note {
-        font-size: 10px; color: var(--subtle);
-        letter-spacing: 0.5px;
-      }
-
-      @media (max-width: 1000px) {
-        .why-cards { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
-      }
-      @media (max-width: 640px) {
-        #why { padding: 60px 0; }
-      }
-    </style>
-
-    <section id="why">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-badge">The problem</div>
-          <h2 class="section-title">Why import costs catch<br/>businesses off guard</h2>
-          <p class="section-sub">Three reasons companies end up surprised at the border — and how Dutify solves each one.</p>
-        </div>
-
-        <div class="why-cards" id="why-cards">
-
-          <!-- Card 1 -->
-          <div class="why-card why-card-amber" id="why-c1">
-            <div class="why-icon-wrap why-icon-amber">📋</div>
-            <div class="why-card-title">Duty rates aren't obvious</div>
-            <div class="why-card-desc">Every product has an 8-digit CN code with its own rate. Miss it and you either overpay or get hit with penalties at clearance.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">HS lookup result</div>
-              <div class="why-mockup-row">
-                <span>HS code</span>
-                <span class="why-mockup-val" style="font-family:monospace">8471.30</span>
-              </div>
-              <div class="why-mockup-row">
-                <span>MFN rate</span>
-                <span class="why-mockup-val red">3.5 %</span>
-              </div>
-              <div class="why-mockup-row">
-                <span>FTA rate (EU-KR)</span>
-                <span class="why-mockup-val green">0 % <span class="why-mockup-tag">FTA</span></span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="why-card why-card-blue" id="why-c2">
-            <div class="why-icon-wrap why-icon-blue">💱</div>
-            <div class="why-card-title">Currency moves change everything</div>
-            <div class="why-card-desc">Customs value must be declared in EUR at the ECB reference rate on the declaration date. A 5 % swing can materially shift your landed cost.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">ECB conversion today</div>
-              <div class="why-fx-main">
-                <span class="why-fx-amount">$15,000</span>
-                <span class="why-fx-arrow">→</span>
-                <span class="why-fx-eur">€ 13,821</span>
-              </div>
-              <div class="why-fx-note">Rate: 0.9214 · European Central Bank</div>
-            </div>
-          </div>
-
-          <!-- Card 3 -->
-          <div class="why-card why-card-purple" id="why-c3">
-            <div class="why-icon-wrap why-icon-purple">⚡</div>
-            <div class="why-card-title">VAT, excise &amp; CBAM stack up fast</div>
-            <div class="why-card-desc">Beyond customs duty, Luxembourg adds 17 % VAT, excise on alcohol and tobacco, and from 2026 CBAM carbon costs on heavy industry goods.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">Cost breakdown</div>
-              <div class="why-mockup-row"><span>Customs duty</span><span class="why-mockup-val">€ 464</span></div>
-              <div class="why-mockup-row"><span>Import VAT 17 %</span><span class="why-mockup-val">€ 2,340</span></div>
-              <div class="why-mockup-row"><span>Excise</span><span class="why-mockup-val">€ 180</span></div>
-              <div class="why-mockup-row"><span>CBAM (2026)</span><span class="why-mockup-val">€ 12</span></div>
-              <div class="why-mockup-row"><span style="font-weight:600;color:var(--text)">Total extra costs</span><span class="why-mockup-val total">€ 2,996</span></div>
-            </div>
-          </div>
-
-          <!-- SVG plane layer -->
-          <svg id="why-plane-svg" aria-hidden="true">
-            <path id="why-trail" class="why-trail" d="" />
-            <g id="why-plane" transform="translate(-999,-999)">
-              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
-              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
-              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
-              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
-              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
-            </g>
-          </svg>
-        </div>
-      </div>
-    </section>
-
-    <script>
-    /* ── Why section: plane + card reveal on scroll ── */
-    (function () {
-      if (window.innerWidth < 640) {
-        document.querySelectorAll('#why-cards .why-card').forEach(function(c){ c.classList.add('why-revealed'); });
-        return;
-      }
-
-      var cards  = [
-        document.getElementById('why-c1'),
-        document.getElementById('why-c2'),
-        document.getElementById('why-c3'),
-      ];
-      var svg    = document.getElementById('why-plane-svg');
-      var trail  = document.getElementById('why-trail');
-      var plane  = document.getElementById('why-plane');
-      var wrap   = document.getElementById('why-cards');
-      if (!cards[0] || !svg || !trail || !plane || !wrap) return;
-
-      var played = false;
-
-      /* Get icon-wrap centre in wrap-relative coords.
-         Cards start with translateY(24px) before reveal, so subtract that offset
-         so the plane targets where icons will actually end up. */
-      function iconCentre(card) {
-        var wr = wrap.getBoundingClientRect();
-        var ir = card.querySelector('.why-icon-wrap').getBoundingClientRect();
-        var revealed = card.classList.contains('why-revealed');
-        return {
-          x: ir.left + ir.width  * 0.5 - wr.left,
-          y: ir.top  + ir.height * 0.5 - wr.top - (revealed ? 0 : 24),
-        };
-      }
-
-      function qbez(p0,p1,p2,t){
-        var u=1-t;
-        return { x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y };
-      }
-      function qbezSplit(p0,p1,p2,t){
-        var q1={ x:p0.x+t*(p1.x-p0.x), y:p0.y+t*(p1.y-p0.y) };
-        return [p0, q1, qbez(p0,p1,p2,t)];
-      }
-
-      function animateFlight(from, to, cp, dur, onProgress, onDone) {
-        var start = null;
-        function tick(now) {
-          if (!start) start = now;
-          var t = Math.min((now - start) / dur, 1);
-          var ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-          onProgress(ease);
-          if (t < 1) requestAnimationFrame(tick);
-          else if (onDone) onDone();
-        }
-        requestAnimationFrame(tick);
-      }
-
-      function buildPath(segs) {
-        if (!segs.length) return '';
-        var d = 'M ' + segs[0].from.x.toFixed(1) + ' ' + segs[0].from.y.toFixed(1);
-        segs.forEach(function(s){
-          d += ' Q ' + s.cp.x.toFixed(1)+' '+s.cp.y.toFixed(1)+
-               ' '+s.to.x.toFixed(1)+' '+s.to.y.toFixed(1);
-        });
-        return d;
-      }
-
-      function setPlane(x, y, angle) {
-        plane.setAttribute('transform',
-          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+angle.toFixed(1)+')');
-      }
-
-      function playAnimation() {
-        if (played) return;
-        played = true;
-
-        var pts = cards.map(iconCentre);
-        var entry = { x: pts[0].x - 110, y: pts[0].y + 18 };
-
-        function cp(a, b) {
-          return { x: (a.x+b.x)*0.5, y: Math.min(a.y,b.y) - 48 };
-        }
-
-        var segs = [
-          { from: entry,  cp: { x:(entry.x+pts[0].x)*0.5, y:entry.y-30 }, to: pts[0] },
-          { from: pts[0], cp: cp(pts[0], pts[1]), to: pts[1] },
-          { from: pts[1], cp: cp(pts[1], pts[2]), to: pts[2] },
-        ];
-
-        trail.style.opacity = '0.55';
-        trail.setAttribute('d', '');
-        var completedSegs = [];
-
-        function revealCard(i) {
-          if (cards[i]) cards[i].classList.add('why-revealed');
-        }
-
-        function flySeg(segIdx) {
-          if (segIdx >= segs.length) {
-            var fade = 1;
-            (function fadeTick(){
-              fade -= 0.05;
-              plane.style.opacity = Math.max(0,fade);
-              trail.style.opacity = Math.max(0, 0.55*fade);
-              if (fade > 0) requestAnimationFrame(fadeTick);
-            })();
-            return;
-          }
-
-          var seg = segs[segIdx];
-          var dur = segIdx === 0 ? 560 : 820;
-
-          animateFlight(seg.from, seg.to, seg.cp, dur, function(t) {
-            var pos = qbez(seg.from, seg.cp, seg.to, t);
-            var dt = Math.min(t + 0.01, 1);
-            var pos2 = qbez(seg.from, seg.cp, seg.to, dt);
-            var angle = Math.atan2(pos2.y - pos.y, pos2.x - pos.x) * 180 / Math.PI;
-            setPlane(pos.x, pos.y, angle);
-
-            var partCp = qbezSplit(seg.from,seg.cp,seg.to,t)[1];
-            var partTo = qbezSplit(seg.from,seg.cp,seg.to,t)[2];
-            var d = buildPath(completedSegs) +
-              (completedSegs.length ? '' : 'M '+seg.from.x.toFixed(1)+' '+seg.from.y.toFixed(1)) +
-              ' Q '+partCp.x.toFixed(1)+' '+partCp.y.toFixed(1)+
-              ' '+partTo.x.toFixed(1)+' '+partTo.y.toFixed(1);
-            trail.setAttribute('d', d);
-
-          }, function() {
-            completedSegs.push({ from: seg.from, cp: seg.cp, to: seg.to });
-            if (segIdx === 0) revealCard(0);
-            else revealCard(segIdx);
-            setTimeout(function(){ flySeg(segIdx + 1); }, 180);
-          });
-        }
-
-        setPlane(entry.x, entry.y, 0);
-        plane.style.opacity = '1';
-        setTimeout(function(){ flySeg(0); }, 80);
-      }
-
-      var section = document.getElementById('why');
-      if ('IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(function(entries) {
-          entries.forEach(function(e){
-            if (e.isIntersecting) { playAnimation(); obs.disconnect(); }
-          });
-        }, { threshold: 0.3 });
-        obs.observe(section);
-      } else {
-        cards.forEach(function(c){ c.classList.add('why-revealed'); });
-      }
-    })();
-    </script>
-
-    <section id="features" class="section">
-      <!-- Background blobs for glass effect -->
-      <div class="features-blobs">
-        <div
-          class="features-blob"
-          style="width: 480px; height: 480px; background: rgba(16, 185, 129, 0.22); top: -120px; right: -80px"
-        ></div>
-        <div
-          class="features-blob"
-          style="width: 340px; height: 340px; background: rgba(52, 211, 153, 0.18); bottom: -60px; left: 5%"
-        ></div>
-        <div
-          class="features-blob"
-          style="width: 260px; height: 260px; background: rgba(167, 243, 208, 0.28); top: 40%; right: 38%"
-        ></div>
-      </div>
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">Everything you need for<br />confident importing</h2>
-          <p class="section-sub">
-            Built specifically for companies importing into Luxembourg. No more spreadsheet guesswork.
+    <!-- Hero -->
+    <section class="hero rise">
+      <div class="hero-inner">
+        <div>
+          <span class="eyebrow">Grand-Duché de Luxembourg · EU Customs</span>
+          <h1 class="display hero-title">
+            The customs dossier
+            <em>for modern importers.</em>
+          </h1>
+          <p class="hero-sub">
+            A working ledger for EU import duties, HS classification, excise, and CBAM — verified against TARIC in real time, calibrated for Luxembourg. Built for brokers, freight forwarders, and in-house customs teams who need their numbers to be right the first time.
           </p>
-        </div>
-        <div class="feature-tabs-layout">
-          <!-- Left: feature list -->
-          <div class="feature-tab-list">
-            <button class="feature-tab-btn" data-fi="0">
-              <span class="feature-tab-icon">⚡</span>
-              <div>
-                <div class="feature-tab-title">Instant calculations</div>
-                <div class="feature-tab-desc">
-                  Enter shipment details and get a complete duty, VAT, and landed-cost breakdown in seconds.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="1">
-              <span class="feature-tab-icon">🤖</span>
-              <div>
-                <div class="feature-tab-title">AI HS code lookup</div>
-                <div class="feature-tab-desc">
-                  Describe your product in plain language and get suggested HS codes with current duty rates.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="2">
-              <span class="feature-tab-icon">💶</span>
-              <div>
-                <div class="feature-tab-title">Live ECB rates</div>
-                <div class="feature-tab-desc">
-                  Real-time ECB currency conversion ensures accurate customs valuation across 30+ currencies.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="3">
-              <span class="feature-tab-icon">🌍</span>
-              <div>
-                <div class="feature-tab-title">FTA detection</div>
-                <div class="feature-tab-desc">
-                  Automatically apply preferential or zero-duty rates from 27+ EU free trade agreements.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="4">
-              <span class="feature-tab-icon">📄</span>
-              <div>
-                <div class="feature-tab-title">PDF reports</div>
-                <div class="feature-tab-desc">
-                  Generate professional calculation summaries ready to share with customs brokers and finance.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="5">
-              <span class="feature-tab-icon">🌱</span>
-              <div>
-                <div class="feature-tab-title">CBAM calculator</div>
-                <div class="feature-tab-desc">
-                  Estimate EU Carbon Border Adjustment costs including phase-in factors through 2034.
-                </div>
-              </div>
-            </button>
+          <div class="hero-cta-row">
+            <a href="/register" class="btn btn-cta">Register your dossier  →</a>
+            <a href="/login" class="btn btn-ghost">Sign in</a>
           </div>
-          <!-- /feature-tab-list -->
+        </div>
 
-          <!-- Right: preview panel -->
-          <div class="feature-preview-panel">
-            <!-- 0: Instant calculations -->
-            <div class="fp" data-fp="0">
-              <div class="fp-label">Import calculation</div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px">
-                <span style="font-size: 13px; color: var(--muted)">Shipment value</span>
-                <span style="font-size: 14px; font-weight: 700; color: var(--text)">USD 14,400</span>
-              </div>
-              <div class="fp-card">
-                <div class="fp-row"><span>CIF Value</span><span class="fp-val">€ 13,283.00</span></div>
-                <div class="fp-row"><span>Customs Duty (3.5%)</span><span class="fp-val">€ 464.91</span></div>
-                <div class="fp-row"><span>Import VAT (17%)</span><span class="fp-val">€ 2,339.72</span></div>
-              </div>
-              <div class="fp-total"><span>Total Landed Cost</span><span>€ 16,087.63</span></div>
+        <!-- Specimen card -->
+        <aside class="specimen rise-1" aria-hidden="true">
+          <div class="specimen-title">
+            Specimen Declaration
+            <span class="specimen-stamp">Cleared</span>
+          </div>
+          <div class="eyebrow" style="margin-top:8px;">Folio · 02-2026-XLII</div>
+          <div style="margin-top: 20px;">
+            <div class="specimen-row">
+              <span class="specimen-label">HS Code</span>
+              <span class="specimen-val">6204.62.50</span>
             </div>
-
-            <!-- 1: AI HS lookup -->
-            <div class="fp" data-fp="1">
-              <div class="fp-label">AI classification</div>
-              <div
-                style="
-                  background: #f8fafc;
-                  border-radius: 10px;
-                  padding: 12px 14px;
-                  font-size: 13px;
-                  color: var(--muted);
-                  border: 1px solid #e2e8f0;
-                  margin-bottom: 14px;
-                  line-height: 1.5;
-                "
-              >
-                💬 &ldquo;Wireless noise-cancelling headphones, over-ear, Bluetooth&rdquo;
-              </div>
-              <div style="background: #fff; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px 18px">
-                <div class="fp-hs-code">8518.30</div>
-                <div style="font-size: 13px; color: var(--muted); margin-bottom: 12px">Headphones and earphones</div>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap">
-                  <span class="fp-badge fp-badge-g">✓ High confidence</span>
-                  <span class="fp-badge fp-badge-gr">Duty: 0%</span>
-                  <span class="fp-badge fp-badge-b">No excise</span>
-                </div>
-              </div>
-              <div style="margin-top: 10px; font-size: 12px; color: #9ca3af">3 alternative codes available</div>
+            <div class="specimen-row">
+              <span class="specimen-label">Origin</span>
+              <span class="specimen-val">Viet Nam · EVFTA</span>
             </div>
-
-            <!-- 2: Live ECB rates -->
-            <div class="fp" data-fp="2">
-              <div class="fp-label">ECB exchange rates</div>
-              <div class="fp-card">
-                <div class="fp-row">
-                  <span>🇺🇸 USD <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.92148</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇬🇧 GBP <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">1.19724</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇨🇳 CNY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.12896</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇯🇵 JPY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.00621</span>
-                </div>
-              </div>
-              <div style="margin-top: 10px; font-size: 11px; color: #9ca3af">
-                Updated 03.03.2026 · European Central Bank reference rates
-              </div>
+            <div class="specimen-row">
+              <span class="specimen-label">CIF Value</span>
+              <span class="specimen-val">€&nbsp;12,480.00</span>
             </div>
-
-            <!-- 3: FTA detection -->
-            <div class="fp" data-fp="3">
-              <div class="fp-label">Free trade agreement</div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px">
-                <span style="font-size: 22px">🇯🇵</span>
-                <span style="font-size: 13px; color: var(--muted)">Japan → Luxembourg</span>
-                <span class="fp-badge fp-badge-g" style="margin-left: auto">✓ EU-Japan EPA</span>
-              </div>
-              <div class="fp-card">
-                <div class="fp-row"><span>HS code</span><span class="fp-val">7304.31</span></div>
-                <div class="fp-row"><span>MFN rate</span><span class="fp-val" style="color: #dc2626">2.7 %</span></div>
-                <div class="fp-row">
-                  <span>FTA rate (EPA)</span><span class="fp-val" style="color: #10b981">0 %</span>
-                </div>
-              </div>
-              <div
-                style="
-                  margin-top: 10px;
-                  background: #d1fae5;
-                  border-radius: 10px;
-                  padding: 10px 14px;
-                  font-size: 13px;
-                  font-weight: 600;
-                  color: #065f46;
-                "
-              >
-                Saving: € 842.40 on this shipment
-              </div>
+            <div class="specimen-row">
+              <span class="specimen-label">Duty · pref.</span>
+              <span class="specimen-val">0.0 %</span>
             </div>
-
-            <!-- 4: PDF reports -->
-            <div class="fp" data-fp="4">
-              <div class="fp-label">PDF export</div>
-              <div style="background: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0">
-                <div style="height: 3px; background: linear-gradient(90deg, #10b981, #34d399)"></div>
-                <div
-                  style="
-                    padding: 12px 14px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid #e2e8f0;
-                  "
-                >
-                  <div>
-                    <div
-                      style="
-                        font-size: 9px;
-                        letter-spacing: 2px;
-                        color: #10b981;
-                        text-transform: uppercase;
-                        margin-bottom: 2px;
-                      "
-                    >
-                      Luxembourg · EU Customs
-                    </div>
-                    <div style="font-size: 13px; font-weight: 700; color: var(--text)">Import Duty Calculation</div>
-                  </div>
-                  <div style="font-size: 9px; color: #9ca3af; text-align: right">Laptop shipment<br />03.03.2026</div>
-                </div>
-                <div style="padding: 0 14px">
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      border-bottom: 1px solid #f1f5f9;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>CIF Value</span><span style="font-weight: 600; color: var(--text)">€ 12,400.00</span>
-                  </div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      border-bottom: 1px solid #f1f5f9;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>Customs Duty</span><span style="font-weight: 600; color: var(--text)">€ 0.00</span>
-                  </div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>Import VAT (17%)</span><span style="font-weight: 600; color: var(--text)">€ 2,108.00</span>
-                  </div>
-                </div>
-                <div
-                  style="
-                    padding: 10px 14px;
-                    background: #ecfdf5;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: #059669;
-                  "
-                >
-                  <span>Total Landed Cost</span><span>€ 14,508.00</span>
-                </div>
-              </div>
-              <div style="margin-top: 12px">
-                <div
-                  style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    background: #10b981;
-                    color: white;
-                    border-radius: 8px;
-                    padding: 8px 16px;
-                    font-size: 13px;
-                    font-weight: 600;
-                  "
-                >
-                  ⬇ Download PDF
-                </div>
-              </div>
+            <div class="specimen-row">
+              <span class="specimen-label">VAT · LU</span>
+              <span class="specimen-val">€&nbsp;2,121.60</span>
             </div>
-
-            <!-- 5: CBAM -->
-            <div class="fp" data-fp="5">
-              <div class="fp-label">Carbon border adjustment</div>
-              <div class="fp-card">
-                <div class="fp-row"><span>Sector</span><span class="fp-val">Steel (BF/BOF)</span></div>
-                <div class="fp-row"><span>Origin</span><span class="fp-val">🇨🇳 China</span></div>
-                <div class="fp-row"><span>Embedded CO₂</span><span class="fp-val">1.54 tCO₂e/t</span></div>
-                <div class="fp-row"><span>ETS carbon price</span><span class="fp-val">€ 68.40 / t</span></div>
-                <div class="fp-row"><span>2026 phase-in factor</span><span class="fp-val">2.5 %</span></div>
-              </div>
-              <div class="fp-total"><span>CBAM cost (2026)</span><span>€ 2.63</span></div>
+            <div class="specimen-row specimen-total">
+              <span class="specimen-label">Total landed</span>
+              <span class="specimen-val">€&nbsp;14,601.60</span>
             </div>
           </div>
-          <!-- /feature-preview-panel -->
-        </div>
-        <!-- /feature-tabs-layout -->
+          <div class="specimen-foot">
+            <div class="seal">D</div>
+            <div class="specimen-sig">Issued by the Dutify registrar — Vol. XVII</div>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <section
-      id="how"
-      class="section"
-      style="background: transparent; margin: 0 -100vw; padding-left: 100vw; padding-right: 100vw"
-    >
+    <!-- Features -->
+    <section class="features" id="features">
       <div class="container">
         <div class="section-header">
-          <h2 class="section-title">From product to cost<br />in four simple steps</h2>
+          <span class="section-num">§ 01</span>
+          <h2 class="section-title">What is in the dossier</h2>
+          <span class="section-sub">Every tool a customs broker reaches for, on one surface</span>
         </div>
-        <div class="steps-container">
-          <div class="steps-grid">
-            <div class="step-card">
-              <div class="step-num">1</div>
-              <h3 class="step-title">Describe product</h3>
-              <p class="step-body">Use AI to find the right HS code from a plain description.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">2</div>
-              <h3 class="step-title">Enter details</h3>
-              <p class="step-body">Add origin, incoterm, value, and select your currency.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">3</div>
-              <h3 class="step-title">Get breakdown</h3>
-              <p class="step-body">See full cost with FTA logic and Luxembourg 17% VAT.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">4</div>
-              <h3 class="step-title">Export & share</h3>
-              <p class="step-body">Download PDF report and share with your team.</p>
-            </div>
-          </div>
 
-          <!-- Progress rail (replaces buggy plane) -->
-          <div class="steps-rail" aria-hidden="true">
-            <div class="steps-rail-track"></div>
-            <div class="steps-rail-fill" id="steps-rail-fill"></div>
-            <div class="steps-rail-head" id="steps-rail-head"></div>
-          </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <div class="feature-no">N° 01 · Tariff</div>
+            <h3 class="feature-title">MFN &amp; preferential rates, TARIC-verified</h3>
+            <p class="feature-desc">Every rate is queried live against the EU TARIC SOAP service. Anti-dumping, countervailing, safeguards, and suspensions all surface, with expired measures filtered.</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-no">N° 02 · HS Lookup</div>
+            <h3 class="feature-title">AI classification with CN10 probing</h3>
+            <p class="feature-desc">Claude proposes the HS6 heading, then the system probes down three levels — subheading → CN8 → CN10 — verifying each is declarable, and returning siblings for disambiguation.</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-no">N° 03 · Excise</div>
+            <h3 class="feature-title">Luxembourg excise — schema-driven</h3>
+            <p class="feature-desc">Alcohol, tobacco, and energy products calculated from ADA-published rates. Each category carries its own schema — inputs, formula, VAT tier — updated automatically every 14 days.</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-no">N° 04 · CBAM</div>
+            <h3 class="feature-title">Carbon Border Adjustment, priced</h3>
+            <p class="feature-desc">Chapters under the EU CBAM regulation are flagged automatically, with embedded emissions converted to indicative certificate cost at the prevailing EU ETS price.</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-no">N° 05 · T1 Transit</div>
+            <h3 class="feature-title">Draft T1 declarations in a dossier PDF</h3>
+            <p class="feature-desc">Principal, consignor, consignee, transport, guarantee, and goods — drafted to the EU DVA format and exported as a dossier-styled PDF ready for review.</p>
+          </article>
+          <article class="feature-card">
+            <div class="feature-no">N° 06 · Sanity</div>
+            <h3 class="feature-title">FX &amp; sanctions, checked at entry</h3>
+            <p class="feature-desc">ECB reference rates refresh daily; sanctioned origins and restricted goods are flagged before you complete the calculation.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <section id="cta">
-      <div class="container">
-        <div class="cta-card">
-          <h2 class="cta-title">Ready to know your<br />landed costs?</h2>
-          <p class="cta-sub">Join companies in Luxembourg using Dutify to import smarter.</p>
-          <div class="cta-actions">
-            <a href="/register" class="btn btn-cta">Start here →</a>
-            <a href="mailto:hello@dutify.eu" class="btn btn-cta-ghost">Contact us</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <div id="trust">
-      <div class="container">
-        <div class="trust-inner">
-          <div class="trust-item"><span class="trust-icon">📊</span> TARIC Database</div>
-          <div class="trust-item"><span class="trust-icon">💱</span> ECB Rates</div>
-          <div class="trust-item"><span class="trust-icon">🇱🇺</span> Luxembourg Ready</div>
-          <div class="trust-item"><span class="trust-icon">🤖</span> AI-Powered</div>
-        </div>
-      </div>
+    <!-- Ornament -->
+    <div class="container-narrow">
+      <div class="ornament"><span class="ornament-mark">§ § §</span></div>
     </div>
 
-    <footer>
+    <!-- Pipeline -->
+    <section class="pipeline" id="pipeline">
       <div class="container">
-        <div class="footer-inner">
-          <div>
-            <div class="footer-logo">
-              <svg width="24" height="24" viewBox="0 0 56 56" fill="none">
-                <rect width="56" height="56" rx="14" fill="#10b981" />
-                <rect x="25" y="10" width="6" height="16" rx="3" fill="#10b981" />
-                <path
-                  d="M14 22L28 38L42 22"
-                  stroke="#10b981"
-                  stroke-width="5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <rect x="12" y="42" width="32" height="4" rx="2" fill="#10b981" />
-              </svg>
-              Dutify
-            </div>
-            <p class="footer-note">Luxembourg customs duty calculator</p>
+        <div class="section-header">
+          <span class="section-num">§ 02</span>
+          <h2 class="section-title">How a classification travels</h2>
+          <span class="section-sub">From a product description to a verified CN10 in four stages</span>
+        </div>
+
+        <div class="pipe-grid">
+          <div class="pipe-step">
+            <div class="pipe-step-no">01</div>
+            <div class="pipe-step-title">Describe</div>
+            <div class="pipe-step-desc">Enter the goods in plain English or French. No need to know HS.</div>
           </div>
-          <div class="footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">GDPR</a>
-            <a href="mailto:hello@dutify.eu">Contact</a>
+          <div class="pipe-step">
+            <div class="pipe-step-no">02</div>
+            <div class="pipe-step-title">Classify</div>
+            <div class="pipe-step-desc">Claude returns candidate headings with a confidence score and rationale.</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-step-no">03</div>
+            <div class="pipe-step-title">Verify</div>
+            <div class="pipe-step-desc">TARIC SOAP confirms the heading is declarable; CN10 subdivisions surface.</div>
+          </div>
+          <div class="pipe-step">
+            <div class="pipe-step-no">04</div>
+            <div class="pipe-step-title">Apply</div>
+            <div class="pipe-step-desc">MFN, preferential, ADD, excise and VAT compute against CIF. One total.</div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- HS Demo -->
+    <section class="hs-demo" id="hs-demo">
+      <div class="container">
+        <div class="hs-demo-grid">
+          <div class="hs-demo-copy">
+            <span class="eyebrow">Live · TARIC verified</span>
+            <h3>No more dead-end HS codes.</h3>
+            <p>Classifying a product often produces a heading that isn't actually declarable — it needs a CN8 or CN10 subdivision. Dutify probes automatically and refuses to return a code that customs would reject. When it's ambiguous, it tells you why and shows you the siblings.</p>
+            <div style="margin-top: 32px;">
+              <a href="/register" class="btn btn-cta">Try it with your dossier  →</a>
+            </div>
+          </div>
+
+          <aside class="hs-panel" aria-hidden="true">
+            <div class="hs-query">
+              <span class="hs-query-label">Query</span>
+              <span class="hs-query-text">"men's cotton trousers, woven, for work"</span>
+            </div>
+
+            <div class="hs-steps">
+              <div class="hs-step">
+                <div class="hs-step-check">✓</div>
+                <div class="hs-step-text">
+                  <strong>Claude proposes 6204.62</strong>
+                  <span>Trousers, of cotton, women's — confidence 34%</span>
+                </div>
+              </div>
+              <div class="hs-step">
+                <div class="hs-step-check">✓</div>
+                <div class="hs-step-text">
+                  <strong>Re-evaluates to 6203.42</strong>
+                  <span>Trousers of cotton, men's or boys' — confidence 91%</span>
+                </div>
+              </div>
+              <div class="hs-step">
+                <div class="hs-step-check">✓</div>
+                <div class="hs-step-text">
+                  <strong>TARIC SOAP verifies heading is non-declarable</strong>
+                  <span>Must resolve at CN10 — 3 candidates found</span>
+                </div>
+              </div>
+              <div class="hs-step">
+                <div class="hs-step-check">✓</div>
+                <div class="hs-step-text">
+                  <strong>Resolves to 6203.42.31</strong>
+                  <span>Work trousers and breeches · declarable</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hs-result">
+              <div class="hs-result-code">6203.42.31.00</div>
+              <div class="hs-result-desc">Men's or boys' trousers — work type, of cotton, woven</div>
+              <div class="hs-result-meta">
+                MFN&nbsp;12.0 %  ·  VAT&nbsp;LU&nbsp;17 %  ·  No ADD
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- Authority -->
+    <section class="authority">
+      <div class="authority-inner">
+        <div class="authority-eyebrow">Authority</div>
+        <h3>Built on <em>the sources that matter.</em></h3>
+        <p>
+          EU TARIC for tariff measures, ECB for exchange rates, Administration des Douanes et Accises for Luxembourg excise, the EU Commission CBAM registry for embedded emissions. No rates typed by hand; no margins of error layered in silently.
+        </p>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-num">§ 03</span>
+          <h2 class="section-title">In numbers</h2>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-val">15 <em>900+</em></div>
+            <div class="stat-lbl">CN10 codes</div>
+            <div class="stat-note">Verified against TARIC live</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val">180</div>
+            <div class="stat-lbl">Day cache</div>
+            <div class="stat-note">Classification reuse across users</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val">30</div>
+            <div class="stat-lbl">CBAM headings</div>
+            <div class="stat-note">EU Reg. 2023/956 · flagged at entry</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val"><em>∞</em></div>
+            <div class="stat-lbl">Margin of error</div>
+            <div class="stat-note">We compute what customs will</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+      <div class="container-narrow">
+        <h2 class="cta-title">Open a dossier. <em>Start classifying.</em></h2>
+        <p class="cta-sub">
+          Dutify is invite-only while in private beta — one dossier per broker or trading house. If your organisation clears goods through Luxembourg, register below and we'll respond within a working day.
+        </p>
+        <div class="cta-actions">
+          <a href="/register" class="btn btn-cta">Register with an invite  →</a>
+          <a href="mailto:invite@customs.bluebrick.cloud" class="btn btn-ghost">Request an invite</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div>
+          <div class="footer-brand">Dutify<span>.</span></div>
+          <p class="footer-tag">The customs dossier for Luxembourg — EU duties, classification, excise &amp; CBAM.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#pipeline">How it works</a></li>
+            <li><a href="#hs-demo">HS lookup</a></li>
+            <li><a href="/login">Sign in</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Sources</h4>
+          <ul>
+            <li><a href="https://ec.europa.eu/taxation_customs/dds2/taric/" target="_blank" rel="noopener">EU TARIC</a></li>
+            <li><a href="https://douanes.public.lu" target="_blank" rel="noopener">ADA Luxembourg</a></li>
+            <li><a href="https://www.ecb.europa.eu" target="_blank" rel="noopener">ECB reference rates</a></li>
+            <li><a href="https://cbam.ec.europa.eu/" target="_blank" rel="noopener">EU CBAM Registry</a></li>
+          </ul>
+        </div>
+      </div>
+      <hr class="footer-rule" />
+      <div class="footer-foot">
+        <span>© 2026 · Dutify · Luxembourg</span>
+        <span>Vol. XVII · Folio 04 · MMXXVI</span>
       </div>
     </footer>
-    <script>
-      (function () {
-                var cv = document.getElementById("dotwave");
-        var ctx = cv.getContext("2d");
-        var W,
-          H,
-          t = 0;
-
-        // Three wide sweeping wave bands — matching the image reference
-        var WAVES = [
-          { y: 0.18, amp: 0.22, freq: 1.4, speed: 0.3, phase: 0.0 },
-          { y: 0.55, amp: 0.2, freq: 1.7, speed: -0.25, phase: 2.2 },
-          { y: 0.86, amp: 0.15, freq: 1.2, speed: 0.2, phase: 4.5 },
-        ];
-        var GAP = 7; // dot grid spacing (px)
-        var R = 0.9; // dot radius (px)
-
-        function resize() {
-          W = cv.width = window.innerWidth;
-          H = cv.height = window.innerHeight;
-        }
-
-        function frame() {
-          ctx.clearRect(0, 0, W, H);
-          ctx.fillStyle = "#0d2b1e"; // dark forest-green dots
-
-          var cols = Math.ceil(W / GAP) + 1;
-          var rows = Math.ceil(H / GAP) + 1;
-          var band = H * 0.13; // soft band half-width
-
-          // Single beginPath per frame — one fill() call for all dots.
-          // Dot radius varies with density so we still get the gradient look.
-          ctx.beginPath();
-          for (var ri = 0; ri < rows; ri++) {
-            var y = ri * GAP;
-            for (var ci = 0; ci < cols; ci++) {
-              var x = ci * GAP;
-              var nx = x / W;
-              var a = 0;
-
-              for (var wi = 0; wi < WAVES.length; wi++) {
-                var wv = WAVES[wi];
-                var wy = (wv.y + Math.sin(nx * Math.PI * wv.freq + wv.phase + t * wv.speed) * wv.amp) * H;
-                var d = Math.abs(y - wy) / band;
-                if (d < 1) {
-                  // smooth-step falloff
-                  var s = 1 - d;
-                  s = s * s * (3 - 2 * s);
-                  if (s > a) a = s;
-                }
-              }
-
-              if (a > 0.05) {
-                var r = R * (0.3 + 0.7 * a); // smaller dots fade at edges
-                ctx.moveTo(x + r, y);
-                ctx.arc(x, y, r, 0, 6.2832);
-              }
-            }
-          }
-          ctx.fill();
-
-          t += 0.006;
-          requestAnimationFrame(frame);
-        }
-
-        window.addEventListener("resize", resize);
-        resize();
-        frame();
-      })();
-    </script>
-    <script>
-      /* ── Parallax ── */
-      (function () {
-        if (window.innerWidth < 768) return; /* skip on mobile */
-        var scrollY = 0;
-
-        /* Blob definitions: parallax rate, float freq, float amps, phase offset */
-        var blobDefs = [
-          { sel: ".blob-1", px: 0.22, fs: 0.38, fa: [55, 35], fp: 0.0 },
-          { sel: ".blob-2", px: -0.14, fs: 0.31, fa: [-48, 50], fp: 1.1 },
-          { sel: ".blob-3", px: 0.1, fs: 0.35, fa: [50, -46], fp: 2.3 },
-          { sel: ".blob-4", px: -0.18, fs: 0.27, fa: [-38, 32], fp: 3.5 },
-          { sel: ".blob-5", px: 0.15, fs: 0.42, fa: [60, -44], fp: 4.7 },
-          { sel: ".blob-6", px: -0.08, fs: 0.23, fa: [-30, 52], fp: 5.9 },
-        ];
-        var blobs = blobDefs.map(function (d) {
-          return { el: document.querySelector(d.sel), px: d.px, fs: d.fs, fa: d.fa, fp: d.fp };
-        });
-
-        /* Blob animation loop: float (sin/cos) + scroll parallax */
-        function tickBlobs(now) {
-          var t = now * 0.001;
-          blobs.forEach(function (b) {
-            if (!b.el) return;
-            var fx = Math.sin(t * b.fs + b.fp) * b.fa[0];
-            var fy = Math.cos(t * b.fs * 0.75 + b.fp) * b.fa[1];
-            var py = scrollY * b.px;
-            b.el.style.transform = "translate(" + fx.toFixed(1) + "px," + (fy + py).toFixed(1) + "px)";
-          });
-          requestAnimationFrame(tickBlobs);
-        }
-        requestAnimationFrame(tickBlobs);
-
-        /* Section parallax on scroll */
-        var heroContent = document.querySelector(".hero-content");
-        var carouselWrap = document.querySelector(".carousel-wrapper");
-        var scrollHint = document.querySelector(".scroll-hint");
-        var sectionHeaders = document.querySelectorAll(".section-header");
-        var stepCards = document.querySelectorAll(".step-card");
-        var ctaCard = document.querySelector(".cta-card");
-
-        function updateParallax() {
-          var vy = window.innerHeight;
-
-          /* Hide scroll hint once user scrolls */
-          if (scrollHint) scrollHint.classList.toggle("hidden", scrollY > 40);
-
-          /* Hero: both sides drift at the same rate */
-          if (heroContent) heroContent.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
-          if (carouselWrap) carouselWrap.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
-
-          /* Section elements: subtle offset relative to viewport centre */
-          function vpParallax(el, factor) {
-            if (!el) return;
-            var r = el.getBoundingClientRect();
-            var off = (r.top + r.height * 0.5 - vy * 0.5) * factor;
-            el.style.transform = "translateY(" + off.toFixed(1) + "px)";
-          }
-
-          sectionHeaders.forEach(function (h) {
-            vpParallax(h, 0.07);
-          });
-          stepCards.forEach(function (s, i) {
-            vpParallax(s, 0.05 + i * 0.015);
-          });
-          vpParallax(ctaCard, 0.06);
-        }
-
-        var ticking = false;
-        window.addEventListener(
-          "scroll",
-          function () {
-            scrollY = window.scrollY;
-            if (!ticking) {
-              requestAnimationFrame(function () {
-                updateParallax();
-                ticking = false;
-              });
-              ticking = true;
-            }
-          },
-          { passive: true },
-        );
-
-        updateParallax();
-      })();
-    </script>
-    <script>
-      (function () {
-        var DURATION = 4200;
-        var slides = document.querySelectorAll(".c-slide");
-        var dots = document.querySelectorAll(".c-dot");
-        var progressBar = document.getElementById("c-progress");
-        var current = 0;
-        var autoTimer = null;
-        var progressRaf = null;
-        var progressStart = null;
-
-        function showSlide(n) {
-          slides[current].classList.remove("active");
-          dots[current].classList.remove("active");
-          current = ((n % slides.length) + slides.length) % slides.length;
-          slides[current].classList.add("active");
-          dots[current].classList.add("active");
-          startProgress();
-        }
-
-        function startProgress() {
-          cancelAnimationFrame(progressRaf);
-          if (progressBar) progressBar.style.width = "0%";
-          progressStart = performance.now();
-          function tick(now) {
-            var pct = Math.min(((now - progressStart) / DURATION) * 100, 100);
-            if (progressBar) progressBar.style.width = pct + "%";
-            if (pct < 100) progressRaf = requestAnimationFrame(tick);
-          }
-          progressRaf = requestAnimationFrame(tick);
-        }
-
-        function startAuto() {
-          clearInterval(autoTimer);
-          autoTimer = setInterval(function () {
-            showSlide(current + 1);
-          }, DURATION);
-        }
-
-        if (slides.length) {
-          slides[0].classList.add("active");
-          dots[0].classList.add("active");
-          startProgress();
-          startAuto();
-        }
-
-        dots.forEach(function (dot, i) {
-          dot.addEventListener("click", function () {
-            clearInterval(autoTimer);
-            showSlide(i);
-            startAuto();
-          });
-        });
-      })();
-    </script>
-    <script>
-      /* ── Feature tabs ── */
-      (function () {
-        var tabs = Array.from(document.querySelectorAll(".feature-tab-btn"));
-        var previews = Array.from(document.querySelectorAll(".fp"));
-        var cur = 0;
-
-        function activate(idx) {
-          if (idx === cur) return;
-          previews[cur].classList.remove("f-active");
-          tabs[cur].classList.remove("f-active");
-          cur = idx;
-          previews[cur].classList.add("f-active");
-          tabs[cur].classList.add("f-active");
-        }
-
-        tabs.forEach(function (btn, i) {
-          btn.addEventListener("click", function () {
-            activate(i);
-          });
-        });
-
-        if (tabs.length) {
-          tabs[0].classList.add("f-active");
-          previews[0].classList.add("f-active");
-        }
-      })();
-
-      /* ── Step-cards progress rail: hover-triggered, step by step ── */
-      (function () {
-        if (window.innerWidth < 640) return;
-        var container = document.querySelector(".steps-container");
-        var fill = document.getElementById("steps-rail-fill");
-        var head = document.getElementById("steps-rail-head");
-        var stepNums = document.querySelectorAll(".step-num");
-        if (!container || !fill || !head) return;
-
-        var MOVE_MS  = 520;
-        var PULSE_MS = 750;
-        var playing  = false;
-
-        /* Compute actual circle-center positions as % of rail width using real layout */
-        function getPositions() {
-          var railEl   = container.querySelector('.steps-rail');
-          var railRect = railEl.getBoundingClientRect();
-          return Array.from(stepNums).map(function (n) {
-            var r = n.getBoundingClientRect();
-            return (r.left + r.width / 2 - railRect.left) / railRect.width * 100;
-          });
-        }
-
-        function setInstant(pos) {
-          head.style.transition = 'none';
-          fill.style.transition = 'none';
-          head.style.left  = pos + '%';
-          fill.style.width = pos + '%';
-        }
-
-        function animateTo(pos, ms, callback) {
-          head.style.transition = 'left '  + ms + 'ms cubic-bezier(.4,0,.2,1)';
-          fill.style.transition = 'width ' + ms + 'ms cubic-bezier(.4,0,.2,1)';
-          head.style.left  = pos + '%';
-          fill.style.width = pos + '%';
-          setTimeout(callback, ms);
-        }
-
-        function pulseStep(i, callback) {
-          head.classList.remove('pulsing');
-          void head.offsetWidth;
-          head.classList.add('pulsing');
-          var n = stepNums[i];
-          if (n) {
-            n.classList.add('ping');
-            setTimeout(function () { n.classList.remove('ping'); }, 700);
-          }
-          setTimeout(callback, PULSE_MS);
-        }
-
-        /* Init: head at step 1 */
-        requestAnimationFrame(function () {
-          var pos = getPositions();
-          setInstant(pos[0]);
-        });
-
-        function play() {
-          if (playing) return;
-          playing = true;
-          var pos = getPositions();
-          setInstant(pos[0]);
-
-          setTimeout(function () {
-            animateTo(pos[1], MOVE_MS, function () {
-              pulseStep(1, function () {
-                animateTo(pos[2], MOVE_MS, function () {
-                  pulseStep(2, function () {
-                    animateTo(pos[3], MOVE_MS, function () {
-                      pulseStep(3, function () {
-                        head.classList.remove('pulsing');
-                        playing = false;
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          }, 80);
-        }
-
-        container.addEventListener('mouseenter', play);
-      })();
-    </script>
   </body>
 </html>

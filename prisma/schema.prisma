@@ -19,6 +19,24 @@ model User {
   accounts      Account[]
   sessions      Session[]
   hsHistory     HsSearchHistory[]
+  apiTokens     ApiToken[]
+}
+
+// Long-lived bearer tokens for the mobile app. Plaintext is shown once at
+// creation and stored only as bcrypt hash. Revoke by setting revokedAt.
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String                       // e.g. "Tim's iPhone", "Warehouse iPad"
+  tokenHash   String    @unique            // bcrypt hash — plaintext never stored
+  prefix      String                       // first 8 chars of plaintext for display
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+
+  @@index([userId])
 }
 
 // Global cache — keyed by normalised description so any user benefits from a prior lookup
@@ -92,14 +110,17 @@ model Shipment {
 }
 
 model HSFavourite {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  hsCode      String
-  description String
-  dutyRate    Float
-  notes       String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hsCode         String
+  description    String
+  dutyRate       Float
+  notes          String?
+  reasoning      String?
+  confidencePct  Int?
+  sensitiveGoods String?  // JSON payload: { category, warning, licenceAuthority?, regulations?, consequences? }
+  createdAt      DateTime @default(now())
   @@unique([userId, hsCode])
 }
 
@@ -112,4 +133,21 @@ model InviteCode {
   createdBy String
   expiresAt DateTime?
   sentTo    String?
+}
+
+// Short-lived email verification codes for passwordless sign-in.
+// Plaintext code is never stored — only the bcrypt hash. Row is consumed
+// on successful verify (consumedAt set) and can no longer be used.
+model OtpCode {
+  id         String    @id @default(cuid())
+  email      String                        // normalised: trimmed + lowercased
+  codeHash   String                        // bcrypt hash of the 6-digit code
+  attempts   Int       @default(0)         // failed verify attempts; cap at 5
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime                      // typically createdAt + 10 minutes
+  consumedAt DateTime?                     // set on successful verify
+  ip         String?                       // requester IP for rate-limit forensics
+
+  @@index([email, createdAt])
+  @@index([createdAt])
 }

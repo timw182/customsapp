@@ -122,73 +122,118 @@ function getVisible({interacted, originCountry, cif, preferential, antiDumpingRa
   return v;
 }
 
-/* ── Node styles ──────────────────────────────────────────── */
+/* ── Node styles — dossier palette ───────────────────────── */
 const ENTER = "nodeEnter 0.28s cubic-bezier(0.34,1.56,0.64,1) both";
 
+// Dossier palette: bone paper, forest ink, brass accents, oxblood for danger.
 const PAL = {
-  decision:{bg:"#ede9fe",border:"#7c3aed",text:"#4c1d95",abg:"#7c3aed",at:"#fff"},
-  good:    {bg:"#d1fae5",border:"#10b981",text:"#065f46",abg:"#10b981",at:"#fff"},
-  bad:     {bg:"#fee2e2",border:"#ef4444",text:"#7f1d1d",abg:"#ef4444",at:"#fff"},
-  neutral: {bg:"#f0f9ff",border:"#0ea5e9",text:"#0c4a6e",abg:"#0ea5e9",at:"#fff"},
-  amber:   {bg:"#fefce8",border:"#f59e0b",text:"#78350f",abg:"#f59e0b",at:"#fff"},
+  decision: { bg: "#FBF8F0", border: "#B8914A", text: "#1F3B2D", abg: "#1F3B2D", at: "#F5F1E8" },
+  good:     { bg: "#FBF8F0", border: "#1F3B2D", text: "#14281E", abg: "#1F3B2D", at: "#F5F1E8" },
+  bad:      { bg: "#FBF8F0", border: "#6B2C2C", text: "#6B2C2C", abg: "#6B2C2C", at: "#FBF8F0" },
+  neutral:  { bg: "#FBF8F0", border: "#9A8B5E", text: "#1F3B2D", abg: "#5A6B5F", at: "#F5F1E8" },
+  amber:    { bg: "#FBF8F0", border: "#8A6A33", text: "#8A6A33", abg: "#B8914A", at: "#14281E" },
 };
+
+const FONT_DISPLAY_STACK = `var(--font-display), "Fraunces", Georgia, serif`;
+const FONT_MONO_STACK = `var(--font-mono), "JetBrains Mono", monospace`;
 
 function StartNode({ data }) {
   return (
-    <div style={{background:"#1f2937",border:"2px solid #374151",borderRadius:999,
-                 color:"#f9fafb",padding:"10px 28px",fontWeight:700,fontSize:14}}>
+    <div style={{
+      background: "#14281E", border: "1.5px solid #B8914A", borderRadius: 2,
+      color: "#D9BE83", padding: "12px 28px",
+      fontFamily: FONT_DISPLAY_STACK, fontSize: 15, fontWeight: 500,
+      letterSpacing: "-0.01em", fontVariationSettings: '"opsz" 32, "SOFT" 50',
+      boxShadow: "inset 0 0 0 2px #14281E, 0 0 0 3px #B8914A, 0 4px 12px rgba(20,40,30,.2)",
+    }}>
       {data.label}
-      <Handle type="source" position={Position.Bottom} style={{background:"#374151"}}/>
+      <Handle type="source" position={Position.Bottom} style={{ background: "#B8914A", border: "1px solid #8A6A33" }}/>
     </div>
   );
 }
+
 function DecisionNode({ data }) {
   const p = PAL.decision;
   const a = data.active;
   return (
     <div style={{
-      background:a?p.abg:p.bg, border:`2px solid ${p.border}`, borderRadius:12,
-      color:a?p.at:p.text, padding:"14px 18px", minWidth:185, maxWidth:230,
-      textAlign:"center", fontSize:13, fontWeight:600,
-      boxShadow:a?`0 0 0 5px ${p.border}33`:"0 2px 8px #0001",
-      animation:ENTER, transition:"background 0.2s,box-shadow 0.2s",
+      background: a ? p.abg : p.bg,
+      border: `1.5px solid ${a ? p.abg : p.border}`,
+      borderRadius: 4,
+      color: a ? p.at : p.text,
+      padding: "14px 18px",
+      minWidth: 185, maxWidth: 230,
+      textAlign: "center",
+      fontSize: 13,
+      fontFamily: FONT_DISPLAY_STACK,
+      fontVariationSettings: '"opsz" 18, "SOFT" 50',
+      fontWeight: 500,
+      boxShadow: a ? `0 0 0 3px rgba(184,145,74,0.35), 0 4px 12px rgba(31,59,45,0.15)` : "0 1px 0 #E8DFC4, 0 2px 8px rgba(31,59,45,.08)",
+      animation: ENTER,
+      transition: "background 0.2s, box-shadow 0.2s, color 0.2s",
     }}>
-      <Handle type="target" position={Position.Top} style={{background:p.border}}/>
-      <div style={{fontSize:18,marginBottom:5}}>{data.icon}</div>
+      <Handle type="target" position={Position.Top} style={{ background: p.border }}/>
+      <div style={{ fontSize: 18, marginBottom: 5 }}>{data.icon}</div>
       <div>{data.label}</div>
       {data.val && (
-        <div style={{marginTop:6,padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:700,
-                     background:a?"rgba(255,255,255,0.2)":"rgba(124,58,237,0.12)"}}>
+        <div style={{
+          marginTop: 6, padding: "3px 10px", borderRadius: 2, fontSize: 11, fontWeight: 500,
+          fontFamily: FONT_MONO_STACK, letterSpacing: "0.04em",
+          background: a ? "rgba(245,241,232,0.15)" : "rgba(184,145,74,0.12)",
+          border: a ? "1px solid rgba(245,241,232,0.25)" : "1px solid rgba(184,145,74,0.3)",
+        }}>
           {data.val}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} id="yes" style={{left:"30%",background:"#10b981"}}/>
-      <Handle type="source" position={Position.Bottom} id="no"  style={{left:"70%",background:"#ef4444"}}/>
+      <Handle type="source" position={Position.Bottom} id="yes" style={{ left: "30%", background: "#1F3B2D" }}/>
+      <Handle type="source" position={Position.Bottom} id="no" style={{ left: "70%", background: "#6B2C2C" }}/>
     </div>
   );
 }
+
 function ResultNode({ data }) {
-  const p = PAL[data.pal]||PAL.neutral;
+  const p = PAL[data.pal] || PAL.neutral;
   const a = data.active;
   return (
     <div style={{
-      background:a?p.abg:p.bg, border:`2px solid ${p.border}`, borderRadius:12,
-      color:a?p.at:p.text, padding:"12px 16px", minWidth:165, maxWidth:215,
-      textAlign:"center", fontSize:13, fontWeight:600,
-      boxShadow:a?`0 0 0 5px ${p.border}33`:"0 2px 8px #0001",
-      animation:ENTER, transition:"background 0.2s,box-shadow 0.2s",
+      background: a ? p.abg : p.bg,
+      border: `1.5px solid ${a ? p.abg : p.border}`,
+      borderRadius: 4,
+      color: a ? p.at : p.text,
+      padding: "12px 16px",
+      minWidth: 165, maxWidth: 215,
+      textAlign: "center",
+      fontSize: 13,
+      fontFamily: FONT_DISPLAY_STACK,
+      fontVariationSettings: '"opsz" 18, "SOFT" 50',
+      fontWeight: 500,
+      boxShadow: a ? `0 0 0 3px rgba(184,145,74,0.35), 0 4px 12px rgba(31,59,45,0.15)` : "0 1px 0 #E8DFC4, 0 2px 8px rgba(31,59,45,.08)",
+      animation: ENTER,
+      transition: "background 0.2s, box-shadow 0.2s, color 0.2s",
     }}>
-      <Handle type="target" position={Position.Top} style={{background:p.border}}/>
-      <div style={{fontSize:20,marginBottom:4}}>{data.icon}</div>
+      <Handle type="target" position={Position.Top} style={{ background: p.border }}/>
+      <div style={{ fontSize: 20, marginBottom: 4 }}>{data.icon}</div>
       <div>{data.label}</div>
       {data.val && (
-        <div style={{marginTop:5,padding:"3px 10px",borderRadius:6,fontSize:12,fontWeight:700,
-                     background:a?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.06)"}}>
+        <div style={{
+          marginTop: 5, padding: "3px 10px", borderRadius: 2, fontSize: 11, fontWeight: 500,
+          fontFamily: FONT_MONO_STACK, letterSpacing: "0.04em",
+          background: a ? "rgba(245,241,232,0.15)" : "rgba(31,59,45,0.06)",
+          border: a ? "1px solid rgba(245,241,232,0.25)" : "1px solid rgba(31,59,45,0.15)",
+        }}>
           {data.val}
         </div>
       )}
-      {data.sub && <div style={{fontSize:11,marginTop:3,opacity:0.7,fontWeight:400}}>{data.sub}</div>}
-      {data.hasSource && <Handle type="source" position={Position.Bottom} style={{background:p.border}}/>}
+      {data.sub && (
+        <div style={{
+          fontSize: 10, marginTop: 4, opacity: 0.75, fontWeight: 400,
+          fontStyle: "italic", fontFamily: FONT_DISPLAY_STACK,
+          fontVariationSettings: '"opsz" 12, "SOFT" 50',
+        }}>
+          {data.sub}
+        </div>
+      )}
+      {data.hasSource && <Handle type="source" position={Position.Bottom} style={{ background: p.border }}/>}
     </div>
   );
 }
@@ -234,22 +279,23 @@ function buildGraph({ visible, activeNodes, cif, hasPref, addPct, vatRate, vat, 
   const nodes = allNodes.filter(n => visible.has(n.id));
   const visSet = visible;
 
+  // Edge colour semantics: forest = yes/continue, oxblood = no/danger, brass = informational
   const edgeDefs = [
-    {id:"e0", s:"start", t:"q1",    sh:null,  col:"#6b7280", lbl:null},
-    {id:"e1y",s:"q1",   t:"r_eu",  sh:"yes", col:"#10b981", lbl:"Yes"},
-    {id:"e1n",s:"q1",   t:"q2",    sh:"no",  col:"#ef4444", lbl:"No"},
-    {id:"e2n",s:"q2",   t:"r_lv",  sh:"yes", col:"#0ea5e9", lbl:"≤ €150"},
-    {id:"e2y",s:"q2",   t:"q3",    sh:"no",  col:"#ef4444", lbl:"> €150"},
-    {id:"e3y",s:"q3",   t:"r_pref",sh:"yes", col:"#10b981", lbl:"Yes"},
-    {id:"e3n",s:"q3",   t:"q4",    sh:"no",  col:"#ef4444", lbl:"No / MFN"},
-    {id:"ep", s:"r_pref",t:"q4",   sh:null,  col:"#9ca3af", lbl:null},
-    {id:"e4y",s:"q4",   t:"r_add", sh:"yes", col:"#ef4444", lbl:"Yes"},
-    {id:"e4n",s:"q4",   t:"q5",    sh:"no",  col:"#10b981", lbl:"No"},
-    {id:"ea", s:"r_add",t:"q5",    sh:null,  col:"#9ca3af", lbl:null},
-    {id:"e5y",s:"q5",   t:"r_exc", sh:"yes", col:"#ef4444", lbl:"Yes"},
-    {id:"e5n",s:"q5",   t:"vat",   sh:"no",  col:"#10b981", lbl:"No"},
-    {id:"ee", s:"r_exc",t:"vat",   sh:null,  col:"#9ca3af", lbl:null},
-    {id:"e6", s:"vat",  t:"total", sh:null,  col:"#f59e0b", lbl:null},
+    {id:"e0", s:"start", t:"q1",    sh:null,  col:"#5A6B5F", lbl:null},
+    {id:"e1y",s:"q1",   t:"r_eu",  sh:"yes", col:"#1F3B2D", lbl:"Yes"},
+    {id:"e1n",s:"q1",   t:"q2",    sh:"no",  col:"#6B2C2C", lbl:"No"},
+    {id:"e2n",s:"q2",   t:"r_lv",  sh:"yes", col:"#9A8B5E", lbl:"≤ €150"},
+    {id:"e2y",s:"q2",   t:"q3",    sh:"no",  col:"#6B2C2C", lbl:"> €150"},
+    {id:"e3y",s:"q3",   t:"r_pref",sh:"yes", col:"#1F3B2D", lbl:"Yes"},
+    {id:"e3n",s:"q3",   t:"q4",    sh:"no",  col:"#6B2C2C", lbl:"No / MFN"},
+    {id:"ep", s:"r_pref",t:"q4",   sh:null,  col:"#9A8B5E", lbl:null},
+    {id:"e4y",s:"q4",   t:"r_add", sh:"yes", col:"#6B2C2C", lbl:"Yes"},
+    {id:"e4n",s:"q4",   t:"q5",    sh:"no",  col:"#1F3B2D", lbl:"No"},
+    {id:"ea", s:"r_add",t:"q5",    sh:null,  col:"#9A8B5E", lbl:null},
+    {id:"e5y",s:"q5",   t:"r_exc", sh:"yes", col:"#6B2C2C", lbl:"Yes"},
+    {id:"e5n",s:"q5",   t:"vat",   sh:"no",  col:"#1F3B2D", lbl:"No"},
+    {id:"ee", s:"r_exc",t:"vat",   sh:null,  col:"#9A8B5E", lbl:null},
+    {id:"e6", s:"vat",  t:"total", sh:null,  col:"#B8914A", lbl:null},
   ];
 
   const edges = edgeDefs
@@ -276,11 +322,27 @@ function InputPanel({inputs, onChange, onFetchDuty, dutyLoading}) {
   const hasPrefAvail = ORIGIN_AGREEMENTS[originCountry]?.pref && !EU.has(originCountry);
   const inc = INCOTERMS[incoterm]||INCOTERMS.FOB;
 
-  const s = {input:{padding:"7px 10px",borderRadius:8,border:"1.5px solid #e5e7eb",
-                     fontSize:13,color:"#111827",background:"#fff",width:"100%",boxSizing:"border-box"}};
+  const s = { input: {
+    padding: "8px 12px",
+    borderRadius: 2,
+    border: "1px solid var(--rule-hair)",
+    borderBottom: "1px solid var(--rule-strong)",
+    fontSize: 13,
+    color: "var(--ink-forest-deep)",
+    background: "var(--paper-cream)",
+    fontFamily: "var(--font-mono)",
+    fontVariantNumeric: "tabular-nums",
+    width: "100%",
+    boxSizing: "border-box",
+    outline: "none",
+  }};
   const fld = (lbl, node) => (
-    <div style={{display:"flex",flexDirection:"column",gap:3}}>
-      <label style={{fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>{lbl}</label>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={{
+        fontSize: 11, fontWeight: 500, color: "var(--ink-muted)",
+        textTransform: "uppercase", letterSpacing: "0.14em",
+        fontFamily: "var(--font-body)",
+      }}>{lbl}</label>
       {node}
     </div>
   );
@@ -295,9 +357,21 @@ function InputPanel({inputs, onChange, onFetchDuty, dutyLoading}) {
   );
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:12,padding:"16px 18px",
-                 overflowY:"auto",borderRight:"1px solid #e5e7eb",width:265,flexShrink:0}}>
-      <div style={{fontWeight:700,fontSize:14,color:"#111827"}}>📋 Inputs</div>
+    <div style={{
+      display: "flex", flexDirection: "column", gap: 14,
+      padding: "20px 22px",
+      overflowY: "auto",
+      borderRight: "1px solid var(--rule-hair)",
+      width: 280,
+      flexShrink: 0,
+      background: "var(--paper-bone)",
+    }}>
+      <div style={{
+        fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 500,
+        color: "var(--ink-forest-deep)", letterSpacing: "-0.01em",
+        fontVariationSettings: '"opsz" 28, "SOFT" 50',
+        paddingBottom: 8, borderBottom: "1px solid var(--rule-hair)",
+      }}>§ Inputs</div>
 
       {fld("Origin country",
         <select value={originCountry} onChange={e=>onChange("originCountry",e.target.value)} style={s.input}>
@@ -327,15 +401,21 @@ function InputPanel({inputs, onChange, onFetchDuty, dutyLoading}) {
       <hr style={{border:"none",borderTop:"1px solid #e5e7eb",margin:"2px 0"}}/>
 
       {fld("HS code",
-        <div style={{display:"flex",gap:6}}>
+        <div style={{ display: "flex", gap: 6 }}>
           <input value={hsCode} onChange={e=>onChange("hsCode",e.target.value)}
             placeholder="e.g. 8471300000" maxLength={10}
-            style={{...s.input,flex:1,width:"auto"}}/>
+            style={{ ...s.input, flex: 1, width: "auto" }}/>
           <button onClick={onFetchDuty} disabled={!hsCode||dutyLoading}
-            style={{padding:"7px 10px",borderRadius:8,background:"#10b981",color:"#fff",
-                    border:"none",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",
-                    opacity:(!hsCode||dutyLoading)?0.5:1}}>
-            {dutyLoading?"…":"Fetch"}
+            style={{
+              padding: "8px 12px", borderRadius: 2,
+              background: "var(--ink-forest)", color: "var(--paper-cream)",
+              border: "1px solid var(--ink-forest-deep)",
+              fontFamily: "var(--font-body)",
+              fontWeight: 500, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap",
+              letterSpacing: "0.04em",
+              opacity: (!hsCode||dutyLoading) ? 0.4 : 1,
+            }}>
+            {dutyLoading ? "…" : "Fetch"}
           </button>
         </div>
       )}
@@ -343,16 +423,24 @@ function InputPanel({inputs, onChange, onFetchDuty, dutyLoading}) {
       {fld("ADD rate (%)", num("antiDumpingRate","0 if none"))}
 
       {hasPrefAvail && (
-        <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,
-                        color:"#111827",cursor:"pointer"}}>
+        <label style={{
+          display: "flex", alignItems: "center", gap: 8, fontSize: 13,
+          color: "var(--ink-forest-deep)", cursor: "pointer",
+          fontFamily: "var(--font-body)",
+        }}>
           <input type="checkbox" checked={preferential}
             onChange={e=>onChange("preferential",e.target.checked)}
-            style={{width:16,height:16,accentColor:"#10b981"}}/>
+            style={{ width: 16, height: 16, accentColor: "var(--brass-deep)" }}/>
           <span>Pref. rate ({ORIGIN_AGREEMENTS[originCountry]?.type})</span>
         </label>
       )}
 
-      <div style={{fontSize:11,color:"#9ca3af",lineHeight:1.6,borderTop:"1px solid #f3f4f6",paddingTop:8}}>
+      <div style={{
+        fontSize: 11, color: "var(--ink-muted)", lineHeight: 1.6,
+        borderTop: "1px solid var(--rule-hair)", paddingTop: 10,
+        fontStyle: "italic", fontFamily: "var(--font-display)",
+        fontVariationSettings: '"opsz" 14, "SOFT" 50',
+      }}>
         VAT auto-derived from HS chapter.<br/>
         Excise (ch. 22/24/27) — see Excise tab for detailed calc.
       </div>
@@ -456,23 +544,24 @@ export default function CustomsFlow() {
   return (
     <>
       <style>{`@keyframes nodeEnter{from{opacity:0;transform:scale(0.82) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-      <div className="v2-card" style={{display:"flex",flexDirection:"column"}}>
+      <div className="v2-card dossier-flow" style={{ display: "flex", flexDirection: "column" }}>
         <div className="v2-card-hdr">
-          <h2 style={{margin:0,fontSize:16,fontWeight:700,color:"#111827"}}>🗺️ Import Flow Calculator</h2>
-          <p style={{margin:"4px 0 0",fontSize:13,color:"#6b7280"}}>
-            {interacted ? "Showing your import path live" : "Select origin and enter values to trace your import path"}
-          </p>
+          <div className="v2-card-icon">§</div>
+          <span className="v2-card-title">Import Flow</span>
+          <span className="v2-card-sub">
+            {interacted ? "Tracing your import path live" : "Enter origin &amp; values to trace the path"}
+          </span>
         </div>
-        <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           <InputPanel inputs={inputs} onChange={onChange} onFetchDuty={onFetchDuty} dutyLoading={dutyLoading}/>
-          <div style={{flex:1,height:720}}>
+          <div style={{ flex: 1, height: 720, background: "var(--paper-sunk)" }}>
             <ReactFlow
               nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-              fitView fitViewOptions={{padding:0.15}}
-              proOptions={{hideAttribution:true}}
+              fitView fitViewOptions={{ padding: 0.15 }}
+              proOptions={{ hideAttribution: true }}
               nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
             >
-              <Background color="#e5e7eb" gap={24} size={1}/>
+              <Background color="#D4C9A8" gap={32} size={1}/>
               <Controls showInteractive={false}/>
             </ReactFlow>
           </div>

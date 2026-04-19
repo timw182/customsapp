@@ -411,7 +411,7 @@ export default function HsLookupTabV2({
 
               {/* Expandable: Required Documents */}
               {hsResult.requiredDocuments?.length > 0 && (
-                <details className={styles.expander}>
+                <details className={styles.expander} open>
                   <summary>
                     <span>📄 Required Documents</span>
                     <span className={styles.expBadge}>{hsResult.requiredDocuments.length}</span>
@@ -431,7 +431,7 @@ export default function HsLookupTabV2({
 
               {/* Expandable: Preferential Rates */}
               {hsResult.preferentialRates?.length > 0 && (
-                <details className={styles.expander}>
+                <details className={styles.expander} open>
                   <summary>
                     <span>🌍 Preferential Rates</span>
                     <span className={styles.expBadge}>{hsResult.preferentialRates.length} FTAs</span>
@@ -449,7 +449,7 @@ export default function HsLookupTabV2({
 
               {/* Expandable: Regulations */}
               {hsResult.regulatoryNotes?.length > 0 && (
-                <details className={styles.expander}>
+                <details className={styles.expander} open>
                   <summary>
                     <span>📋 Regulations</span>
                     <span className={styles.expBadge}>{hsResult.regulatoryNotes.length}</span>

@@ -2,27 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const inputStyle = {
-  width: "100%",
-  background: "#f0f7f4",
-  border: "1px solid rgba(0,0,0,0.1)",
-  borderRadius: 10,
-  padding: "12px 14px",
-  fontSize: 15,
-  color: "#111827",
-  outline: "none",
-  transition: "border-color 0.2s, box-shadow 0.2s",
-};
-
-const labelStyle = {
-  display: "block",
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: "1.5px",
-  textTransform: "uppercase",
-  color: "#6b7280",
-  marginBottom: 6,
-};
+const FIELDS = [
+  { key: "name",       label: "Full Name",    type: "text",     auto: "name" },
+  { key: "email",      label: "Email",        type: "email",    auto: "email" },
+  { key: "password",   label: "Password",     type: "password", auto: "new-password" },
+  { key: "inviteCode", label: "Invite Code",  type: "text",     auto: "off", mono: true },
+];
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: "", name: "", password: "", inviteCode: "" });
@@ -51,59 +36,115 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f7f4", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, system-ui, sans-serif", position: "relative", overflow: "hidden" }}>
-      {/* Blobs */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-        <div className="auth-blob auth-blob-1" />
-        <div className="auth-blob auth-blob-2" />
-        <div className="auth-blob auth-blob-3" />
-      </div>
+    <main className="auth-page">
+      <div className="reg-shell">
+        <header className="reg-head">
+          <span className="eyebrow">Form R-01 · Admittance by invite</span>
+          <h1 className="display display-md">Register a new dossier</h1>
+          <p className="serif italic-serif muted">
+            Complete every field below. Your invite code is verified against the registrar before issuance.
+          </p>
+        </header>
 
-      {/* Card */}
-      <div style={{ position: "relative", zIndex: 1, width: 420, maxWidth: "calc(100vw - 40px)", padding: "44px 44px 40px", background: "#fff", borderRadius: 20, boxShadow: "0 0 0 1px rgba(0,0,0,0.06), 0 20px 60px rgba(0,0,0,0.1)", margin: "24px 0" }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
-          <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="14" fill="#10b981"/>
-            <rect x="25" y="10" width="6" height="16" rx="3" fill="white"/>
-            <path d="M14 22L28 38L42 22" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
-            <rect x="12" y="42" width="32" height="4" rx="2" fill="white"/>
-          </svg>
-          <span style={{ fontWeight: 600, fontSize: 20, color: "#111827", letterSpacing: "-0.3px" }}>Dutify</span>
-        </div>
+        <hr className="hairline-double" />
 
-        <p style={{ fontSize: 12, fontWeight: 600, letterSpacing: "2px", textTransform: "uppercase", color: "#6b7280", marginBottom: 8 }}>
-          Luxembourg · Import Duties
-        </p>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#111827", marginBottom: 32, letterSpacing: "-0.5px" }}>
-          Create account
-        </h1>
+        {error && (
+          <div className="alert alert-danger mb-4">
+            <div>
+              <div className="alert-title">Refused</div>
+              {error}
+            </div>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
-          {[
-            { key: "name",       label: "Full Name",    type: "text"     },
-            { key: "email",      label: "Email",        type: "email"    },
-            { key: "password",   label: "Password",     type: "password" },
-            { key: "inviteCode", label: "Invite Code",  type: "text"     },
-          ].map(({ key, label, type }) => (
-            <div key={key} style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>{label}</label>
-              <input type={type} value={form[key]} onChange={update(key)} required className="auth-input" style={inputStyle} />
+        <form onSubmit={handleSubmit} className="stack-4">
+          {FIELDS.map(({ key, label, type, auto, mono }, i) => (
+            <div className="field-row--stack" key={key}>
+              <label className="field-label" htmlFor={`reg-${key}`}>
+                <span className="reg-field-num">{String(i + 1).padStart(2, "0")}</span>
+                {label}
+                <span className="req">*</span>
+              </label>
+              <input
+                id={`reg-${key}`}
+                type={type}
+                name={key}
+                value={form[key]}
+                onChange={update(key)}
+                autoComplete={auto}
+                required
+                style={mono ? { fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" } : undefined}
+              />
             </div>
           ))}
 
-          {error && <p style={{ color: "#dc2626", fontSize: 13, marginBottom: 16 }}>{error}</p>}
-
-          <button type="submit" disabled={loading} className="auth-btn" style={{ width: "100%", padding: "14px 0", background: "#10b981", border: "none", borderRadius: 12, color: "white", fontSize: 15, fontWeight: 600, cursor: loading ? "default" : "pointer", marginTop: 8, transition: "background 0.2s, transform 0.1s, box-shadow 0.2s" }}>
-            {loading ? "Creating account…" : "Create account →"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-cta btn-lg w-full mt-3"
+          >
+            {loading ? "Issuing credentials…" : "Issue the dossier"}
+            <span aria-hidden>→</span>
           </button>
         </form>
 
-        <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.07)", textAlign: "center", fontSize: 14, color: "#6b7280" }}>
-          Already have an account?{" "}
-          <a href="/login" style={{ color: "#10b981", fontWeight: 600, textDecoration: "none" }}>Sign in</a>
-        </div>
+        <footer className="reg-foot">
+          Already admitted? <a href="/login" className="forest strong">Sign in →</a>
+        </footer>
       </div>
-    </div>
+
+      <style jsx>{`
+        .auth-page {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: var(--sp-7) var(--gutter);
+          background:
+            radial-gradient(900px 500px at 50% 10%, rgba(184,145,74,0.08), transparent 60%),
+            var(--paper-bone);
+        }
+        .reg-shell {
+          width: 100%;
+          max-width: 560px;
+          background: var(--paper-cream);
+          border: 1px solid var(--rule-hair);
+          border-top: 3px solid var(--brass);
+          border-radius: var(--radius-md);
+          box-shadow: var(--shadow-lift);
+          padding: var(--sp-8) var(--sp-7);
+          position: relative;
+        }
+        .reg-shell::before {
+          content: "";
+          position: absolute;
+          inset: var(--sp-3);
+          border: 1px solid var(--rule-hair);
+          border-radius: var(--radius-sm);
+          pointer-events: none;
+        }
+        .reg-head { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-5); }
+        .reg-head h1 { color: var(--ink-forest-deep); }
+        .reg-head p { max-width: 48ch; line-height: 1.5; }
+        .reg-field-num {
+          font-family: var(--font-mono);
+          color: var(--brass-deep);
+          font-size: 10px;
+          margin-right: 6px;
+          letter-spacing: 0.12em;
+        }
+        .reg-foot {
+          margin-top: var(--sp-5);
+          padding-top: var(--sp-4);
+          border-top: 1px solid var(--rule-soft);
+          font-size: var(--fs-sm);
+          text-align: center;
+        }
+        @media (max-width: 640px) {
+          .reg-shell { padding: var(--sp-7) var(--sp-5); }
+          .reg-shell::before { inset: var(--sp-2); }
+        }
+      `}</style>
+    </main>
   );
 }

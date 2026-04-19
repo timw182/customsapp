@@ -7,8 +7,14 @@ export default auth((req) => {
                       req.nextUrl.pathname.startsWith('/register')
   const isPublicApi = req.nextUrl.pathname.startsWith('/api/register') ||
                       req.nextUrl.pathname.startsWith('/api/auth') ||
+                      req.nextUrl.pathname.startsWith('/api/hs-lookup') ||
+                      req.nextUrl.pathname.startsWith('/api/favourites') ||
+                      req.nextUrl.pathname.startsWith('/api/me') ||
+                      req.nextUrl.pathname.startsWith('/api/admin/tokens') ||
+                      req.nextUrl.pathname.startsWith('/api/admin/users') ||
                       req.nextUrl.pathname === '/' ||
-                      req.nextUrl.pathname === '/landing.html'
+                      req.nextUrl.pathname === '/landing.html' ||
+                      req.nextUrl.pathname.startsWith('/preview')
   const isAdminPage = req.nextUrl.pathname.startsWith('/admin')
   const isAdminUser = req.auth?.user?.role === 'ADMIN'
 
@@ -24,5 +30,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|mockup.*\.html|dutify-v.+\.html).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|mockup.*\\.html|dutify-v.+\\.html).*)'],
 }

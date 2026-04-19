@@ -13,6 +13,7 @@
     "@react-pdf/renderer": "^4.3.2",
     "@xyflow/react": "^12.10.1",
     "bcryptjs": "^3.0.3",
+    "expo": "^55.0.15",
     "nanoid": "^5.1.6",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
@@ -21,11 +22,8 @@
     "prisma": "^5.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-native-web": "^0.21.0",
     "resend": "^6.9.3",
     "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
   }
 }

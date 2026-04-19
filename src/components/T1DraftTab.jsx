@@ -22,30 +22,44 @@ const COMMON_OFFICES = [
   { code: "FR003200", name: "Le Havre Port (Sea)" },
 ];
 
-// Shared input/label styles matching Dutify light theme
+// Dossier form primitives — bone paper, forest ink, brass focus.
 const inputStyle = {
-  padding: "8px 10px",
-  borderRadius: 6,
-  border: "1px solid #d1d5db",
-  background: "#fff",
-  color: "#111827",
+  padding: "9px 12px",
+  borderRadius: 2,
+  border: "1px solid var(--rule-hair)",
+  borderBottom: "1px solid var(--rule-strong)",
+  background: "var(--paper-cream)",
+  color: "var(--ink-forest-deep)",
   fontSize: 13,
+  fontFamily: "var(--font-mono)",
+  fontVariantNumeric: "tabular-nums",
   outline: "none",
   width: "100%",
   boxSizing: "border-box",
+  transition: "all .12s cubic-bezier(.33,1,.68,1)",
 };
 const selectStyle = {
   ...inputStyle,
-  background: "#fff",
+  background: "var(--paper-cream)",
   cursor: "pointer",
+  fontFamily: "var(--font-body)",
 };
-const labelStyle = { fontSize: 11, color: "#6b7280", letterSpacing: 1, display: "block", marginBottom: 3 };
-const fieldWrap = (flex) => ({ display: "flex", flexDirection: "column", gap: 3, flex: flex || 1 });
+const labelStyle = {
+  fontSize: 11,
+  color: "var(--ink-muted)",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  fontFamily: "var(--font-body)",
+  display: "block",
+  marginBottom: 4,
+};
+const fieldWrap = (flex) => ({ display: "flex", flexDirection: "column", gap: 4, flex: flex || 1 });
 
 function Field({ label, name, value, onChange, type, placeholder, flex, required }) {
   return (
     <div style={fieldWrap(flex)}>
-      <label style={labelStyle}>{label}{required && <span style={{ color: "#ef4444" }}> *</span>}</label>
+      <label style={labelStyle}>{label}{required && <span style={{ color: "var(--oxblood)" }}> *</span>}</label>
       <input
         type={type || "text"}
         placeholder={placeholder || ""}
@@ -60,7 +74,7 @@ function Field({ label, name, value, onChange, type, placeholder, flex, required
 function SelectField({ label, name, value, onChange, options, flex, required }) {
   return (
     <div style={fieldWrap(flex)}>
-      <label style={labelStyle}>{label}{required && <span style={{ color: "#ef4444" }}> *</span>}</label>
+      <label style={labelStyle}>{label}{required && <span style={{ color: "var(--oxblood)" }}> *</span>}</label>
       <select value={value || ""} onChange={onChange} style={selectStyle}>
         <option value="">Select…</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -81,13 +95,19 @@ function PartyBlock({ title, prefix, data, onChange }) {
     />
   );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: 1 }}>{title}</div>
-      <div style={{ display: "flex", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {title && (
+        <div style={{
+          fontSize: 11, fontWeight: 500, color: "var(--brass-deep)",
+          textTransform: "uppercase", letterSpacing: "0.18em",
+          fontFamily: "var(--font-mono)",
+        }}>{title}</div>
+      )}
+      <div style={{ display: "flex", gap: 12 }}>
         {f("Name", "Name", { flex: 2, required: true })}
         {f("EORI Number", "EORI", { flex: 1, placeholder: "e.g. LU123456789" })}
       </div>
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: 12 }}>
         {f("Street & Number", "Street", { flex: 2 })}
         {f("City", "City", {})}
         {f("Postcode", "Postcode", { flex: 0.7 })}
@@ -116,7 +136,13 @@ function OfficeField({ label, codeKey, nameKey, codeVal, nameVal, onCodeChange, 
             <option value="">Select or enter custom…</option>
             {COMMON_OFFICES.map(o => <option key={o.code} value={o.code}>{o.code} — {o.name}</option>)}
           </select>
-          <button onClick={() => setCustom(true)} style={{ fontSize: 10, color: "#6b7280", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "2px 0", marginTop: 2 }}>
+          <button onClick={() => setCustom(true)} style={{
+            fontSize: 11, color: "var(--brass-deep)", background: "none", border: "none",
+            cursor: "pointer", textAlign: "left", padding: "2px 0", marginTop: 3,
+            fontFamily: "var(--font-body)", letterSpacing: "0.04em",
+            textDecoration: "underline", textDecorationColor: "var(--brass-soft)",
+            textUnderlineOffset: "2px",
+          }}>
             Enter custom code ↗
           </button>
         </>
@@ -134,8 +160,31 @@ function OfficeField({ label, codeKey, nameKey, codeVal, nameVal, onCodeChange, 
 
 function Section({ title, children }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#10b981", letterSpacing: 2, textTransform: "uppercase", marginBottom: 2 }}>{title}</div>
+    <div style={{
+      background: "var(--paper-cream)",
+      border: "1px solid var(--rule-hair)",
+      borderBottom: "1px solid var(--rule-strong)",
+      borderLeft: "2px solid var(--brass)",
+      borderRadius: 4,
+      padding: "18px 22px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      boxShadow: "var(--shadow-paper)",
+    }}>
+      <div style={{
+        fontSize: 11, fontWeight: 500,
+        color: "var(--brass-deep)",
+        letterSpacing: "0.18em",
+        textTransform: "uppercase",
+        fontFamily: "var(--font-mono)",
+        paddingBottom: 4,
+        borderBottom: "1px solid var(--rule-soft)",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{ width: 12, height: 1, background: "var(--brass)", display: "inline-block" }} />
+        {title}
+      </div>
       {children}
     </div>
   );
@@ -205,10 +254,19 @@ export default function T1DraftTab() {
           <span className="v2-card-title">T1 Transit Declaration</span>
           <span className="v2-card-sub">Common External Transit · Draft</span>
         </div>
-        <div className="v2-card-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="v2-card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          <div style={{ padding: "8px 12px", background: "#fef9c3", border: "1px solid #fde047", borderRadius: 6, fontSize: 12, color: "#713f12" }}>
-            ⚠ Draft only — not legally valid until submitted via the EU DVA customs transit system
+          <div style={{
+            padding: "12px 16px",
+            background: "var(--brass-wash)",
+            borderLeft: "3px solid var(--brass)",
+            borderRadius: "0 4px 4px 0",
+            fontSize: 13,
+            color: "var(--brass-deep)",
+            fontFamily: "var(--font-body)",
+          }}>
+            <strong style={{ fontFamily: "var(--font-display)", fontVariationSettings: '"opsz" 18, "SOFT" 50' }}>Draft only.</strong>
+            {" "}Not legally valid until submitted via the EU DVA customs transit system.
           </div>
 
           {/* Declaration */}
@@ -276,12 +334,34 @@ export default function T1DraftTab() {
           {/* Goods */}
           <Section title={`Goods Items (${items.length})`}>
             {items.map((item, i) => (
-              <div key={i} style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "14px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Item {i + 1}</span>
+              <div key={i} style={{
+                background: "var(--paper-sunk)",
+                border: "1px solid var(--rule-hair)",
+                borderRadius: 4,
+                padding: "16px 18px",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "var(--ink-forest-deep)",
+                    fontFamily: "var(--font-mono)",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                  }}>Item №{String(i + 1).padStart(2, "0")}</span>
                   {items.length > 1 && (
                     <button onClick={() => setItems(p => p.filter((_, idx) => idx !== i))}
-                      style={{ fontSize: 11, color: "#ef4444", background: "rgba(239,68,68,.08)", border: "1px solid rgba(239,68,68,.2)", borderRadius: 4, padding: "3px 8px", cursor: "pointer" }}>
+                      style={{
+                        fontSize: 11,
+                        color: "var(--oxblood)",
+                        background: "transparent",
+                        border: "1px solid var(--oxblood)",
+                        borderRadius: 2,
+                        padding: "4px 10px",
+                        cursor: "pointer",
+                        fontFamily: "var(--font-body)",
+                        letterSpacing: "0.04em",
+                      }}>
                       Remove
                     </button>
                   )}
@@ -313,23 +393,79 @@ export default function T1DraftTab() {
               </div>
             ))}
             <button onClick={() => setItems(p => [...p, { ...EMPTY_ITEM }])}
-              style={{ fontSize: 12, color: "#10b981", background: "rgba(16,185,129,.08)", border: "1px solid rgba(16,185,129,.3)", borderRadius: 6, padding: "7px 16px", cursor: "pointer", fontWeight: 600 }}>
+              style={{
+                fontSize: 12,
+                color: "var(--ink-forest)",
+                background: "transparent",
+                border: "1px solid var(--ink-forest)",
+                borderRadius: 2,
+                padding: "9px 18px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontFamily: "var(--font-body)",
+                letterSpacing: "0.04em",
+                alignSelf: "flex-start",
+              }}>
               + Add Goods Item
             </button>
           </Section>
 
           {/* Summary */}
-          <div style={{ background: "#f0f7f4", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#374151", border: "1px solid #d1fae5" }}>
-            <strong>Summary:</strong> {items.length} item(s) · {totalPkgs} packages · {totalWeight} kg gross
+          <div style={{
+            background: "var(--brass-wash)",
+            borderLeft: "3px solid var(--brass)",
+            borderRadius: "0 4px 4px 0",
+            padding: "12px 16px",
+            fontSize: 13,
+            color: "var(--ink-forest-deep)",
+            fontFamily: "var(--font-body)",
+          }}>
+            <strong style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: 11, color: "var(--brass-deep)" }}>Summary</strong>
+            <span style={{ marginLeft: 8 }}>
+              {items.length} item(s) · <span className="mono">{totalPkgs}</span> packages · <span className="mono">{totalWeight}</span> kg gross
+            </span>
           </div>
 
-          {error && <div style={{ color: "#ef4444", fontSize: 12 }}>Error: {error}</div>}
+          {error && (
+            <div style={{
+              color: "var(--oxblood)",
+              fontSize: 13,
+              padding: "8px 12px",
+              background: "var(--oxblood-wash)",
+              borderLeft: "3px solid var(--oxblood)",
+              borderRadius: "0 4px 4px 0",
+              fontFamily: "var(--font-body)",
+            }}>
+              Error: {error}
+            </div>
+          )}
 
           <button onClick={generatePDF} disabled={loading}
-            style={{ padding: "12px 24px", background: loading ? "#9ca3af" : "#1d4ed8", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer" }}>
-            {loading ? "Generating…" : "⬇ Generate Draft T1 PDF"}
+            style={{
+              padding: "14px 28px",
+              background: loading ? "var(--paper-edge)" : "var(--ink-forest)",
+              color: loading ? "var(--ink-faint)" : "var(--paper-cream)",
+              border: "1px solid " + (loading ? "var(--rule-hair)" : "var(--ink-forest-deep)"),
+              borderRadius: 2,
+              fontSize: 14,
+              fontWeight: 500,
+              fontFamily: "var(--font-body)",
+              letterSpacing: "0.04em",
+              cursor: loading ? "not-allowed" : "pointer",
+              alignSelf: "flex-start",
+              boxShadow: loading ? "none" : "inset 0 -1px 0 rgba(0,0,0,0.15), 0 1px 0 rgba(31,59,45,0.1)",
+              transition: "all .12s cubic-bezier(.33,1,.68,1)",
+            }}>
+            {loading ? "Generating…" : "Generate Draft T1 PDF  ↓"}
           </button>
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: -6 }}>
+          <div style={{
+            fontSize: 12,
+            color: "var(--ink-muted)",
+            marginTop: -8,
+            fontStyle: "italic",
+            fontFamily: "var(--font-display)",
+            fontVariationSettings: '"opsz" 14, "SOFT" 50',
+          }}>
             PDF includes all fields in a structured format ready for review by your customs broker.
           </div>
 
