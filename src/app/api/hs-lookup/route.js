@@ -163,27 +163,106 @@ function buildSensitiveGoods(hs6, bestMatch) {
  * Returns "exists" | "missing" | "unknown" — treat `unknown` as neutral so
  * USITC downtime never blocks a lookup.
  */
+/**
+ * When TARIC returns multiple CN8 siblings under the same 6-digit heading,
+ * Claude's 6-digit answer can't tell them apart — the old code picked the
+ * first-listed sibling, which is wrong for products that hit a semantic
+ * split (e.g. Vaccinium myrtillus (bilberries, 08104030) vs
+ * Vaccinium vitis-idaea (cowberries, 08104010)).
+ *
+ * This tiny Haiku call re-reads the product description alongside each
+ * sibling's TARIC description and returns the best-fit CN8. Costs ~50 input
+ * tokens; buys real accuracy at the sub-heading level.
+ */
+// Returns the best-fit CN10 code (or null on failure).
+// Groups by CN8 within CN6 so the model sees both the subheading category
+// (CN6) and the specific CN8 subdivision, then picks the right CN10.
+async function pickCn8FromSiblings(description, siblings, priorReasoning = "", model = "claude-haiku-4-5-20251001") {
+  if (!Array.isArray(siblings) || siblings.length === 0) return null;
+  if (siblings.length === 1) return siblings[0].cn10;
+  // Group siblings by CN6 prefix so the model can see the 6-digit subheading
+  // 3-level grouping: CN6 → CN8 → CN10. The model sees the CN8 node as a
+  // named subgroup so it can use its HS knowledge to identify e.g. that
+  // 1902.30.10 = dried pasta vs 1902.30.90 = fresh/frozen/other pasta,
+  // even when both have just "Other" at the CN10 level.
+  const cn6Map = new Map();
+  for (const s of siblings) {
+    const cn6 = s.cn8.slice(0, 6);
+    if (!cn6Map.has(cn6)) cn6Map.set(cn6, new Map());
+    const cn8Map = cn6Map.get(cn6);
+    if (!cn8Map.has(s.cn8)) cn8Map.set(s.cn8, []);
+    cn8Map.get(s.cn8).push(s);
+  }
+  const list = Array.from(cn6Map.entries())
+    .map(([cn6, cn8Map]) => {
+      const subgroups = Array.from(cn8Map.entries())
+        .map(([cn8, items]) => {
+          const rows = items
+            .map((s) => `      - ${s.cn10}: ${s.description || "(no description)"}`)
+            .join("\n");
+          return `    ${cn8}:\n${rows}`;
+        })
+        .join("\n");
+      return `  ${cn6}:\n${subgroups}`;
+    })
+    .join("\n");
+
+  const sys =
+    "You are a customs classification expert. You will receive a product description, " +
+    "prior reasoning, and CN10 codes grouped CN6 → CN8 → CN10.\n\n" +
+    "PROCESS (in order):\n" +
+    "1. Identify what CATEGORY each 6-digit (CN6) subheading group represents using your " +
+    "HS/CN knowledge — e.g. 190240 = couscous, 190230 = other pasta, 190219 = uncooked pasta.\n" +
+    "2. Within the correct CN6 group, identify what each 8-digit (CN8) subgroup represents — " +
+    "e.g. 19023010 = dried pasta, 19023090 = other (fresh/frozen/cooked) pasta.\n" +
+    "3. Pick the CN10 entry whose CN8 subgroup AND description best fit the product.\n\n" +
+    "The CN10 descriptions (e.g. 'Other', 'Containing rice') describe distinctions WITHIN a " +
+    "CN8 subgroup — always resolve CN6 then CN8 meaning first (steps 1-2).\n\n" +
+    'Output raw JSON only: {"cn10":"ten-digit string"}. The answer MUST be one of the candidates listed.';
+
+  const reasoningBlock = priorReasoning
+    ? `\nPrior analysis: ${priorReasoning}\n`
+    : "";
+  const user =
+    `Product: ${description}${reasoningBlock}\n\n` +
+    `Candidate CN10 codes (grouped CN6 → CN8 → CN10):\n${list}\n\n` +
+    `Return only the JSON object.`;
+
+  try {
+    const result = await callClaude(sys, user, model, 60);
+    const picked = String(result?.cn10 ?? "").replace(/\D/g, "");
+    if (picked && siblings.some((s) => s.cn10 === picked)) return picked;
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
 async function usitcHs6Exists(hs6) {
   const digits = String(hs6 || "").replace(/\D/g, "").slice(0, 6);
   if (digits.length < 6) return "unknown";
-  const formatted = `${digits.slice(0, 4)}.${digits.slice(4, 6)}`; // "6105.10"
+  // Match at 4-digit heading level — WCO HS is globally harmonised only at
+  // 4-digit level. EU and US often diverge at 6-digit (e.g. EU 1902.10 vs
+  // US 1902.11/1902.19), so a 6-digit match would produce false "abolished"
+  // for valid EU subheadings. Checking the heading (4 digits) is sufficient
+  // to catch truly abolished codes like 8803 (→ 8807 in HS 2017).
+  const heading4 = digits.slice(0, 4); // "1902"
+  const formatted = `${heading4.slice(0, 2)}${heading4.slice(2, 4)}`; // "1902"
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 4000);
     const r = await fetch(
-      `https://hts.usitc.gov/reststop/search?keyword=${encodeURIComponent(formatted)}`,
+      `https://hts.usitc.gov/reststop/search?keyword=${encodeURIComponent(heading4)}`,
       { signal: ctrl.signal, headers: { Accept: "application/json" } }
     );
     clearTimeout(t);
     if (!r.ok) return "unknown";
     const arr = await r.json();
     if (!Array.isArray(arr) || arr.length === 0) return "missing";
-    // USITC sometimes returns unrelated hits (e.g. 9903 chapter-99 overlays)
-    // for abolished codes. Only accept results whose `htsno` actually starts
-    // with the 6-digit prefix we asked about.
+    // Only accept results whose `htsno` digits start with the 4-digit heading.
     const hit = arr.some((item) => {
       const n = String(item?.htsno || "").replace(/\D/g, "");
-      return n.startsWith(digits);
+      return n.startsWith(heading4);
     });
     return hit ? "exists" : "missing";
   } catch {
@@ -318,7 +397,7 @@ async function taricBrowseHeadingFromTree(heading) {
  * Returns only TARIC-confirmed declarable codes with descriptions and MFN duty rates.
  * Falls back to nomenclature tree files when the SOAP service is unavailable.
  */
-async function taricBrowseHeading(heading, extraCodes = []) {
+async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
   const h = heading.replace(/\D/g, "").slice(0, 4);
   if (h.length !== 4) return [];
 
@@ -387,9 +466,24 @@ async function taricBrowseHeading(heading, extraCodes = []) {
   }
 
   try {
-    // Step 1: probe HS6 subheadings (heading + 10..90)
-    const hs6Probes = [];
-    for (let i = 1; i <= 9; i++) hs6Probes.push(h + String(i * 10).padStart(2, "0"));
+    // Step 1: probe HS6 subheadings.
+    // Standard sweep: heading + 10/20/.../90 (round multiples of 10).
+    // Neighbour sweep: 10 codes starting at Claude's suggested hs6 (if provided).
+    // This catches non-round endings like 1902.11, 1902.19 that HS 2017/2022
+    // introduced alongside the classic 1902.20, 1902.30, 1902.40 codes.
+    const hs6Set = new Set();
+    for (let i = 1; i <= 9; i++) hs6Set.add(h + String(i * 10).padStart(2, "0"));
+    if (nearHs6) {
+      // Scan a window around Claude's suggestion: -5 backward, +10 forward.
+      // Captures HS 2017/2022 "odd ending" codes (e.g. 1902.11, 1902.19)
+      // when Claude picks 1902.10 or 1902.20 — typically ≤2 steps away.
+      const base = parseInt(String(nearHs6).replace(/\D/g, "").slice(0, 6), 10);
+      for (let d = -5; d <= 10; d++) {
+        const candidate = String(base + d).padStart(6, "0");
+        if (candidate.startsWith(h)) hs6Set.add(candidate);
+      }
+    }
+    const hs6Probes = [...hs6Set];
 
     const hs6Results = await Promise.all(hs6Probes.map(hs6 => verifyExact(hs6 + "0000")));
     const validHs6 = hs6Probes.filter((_, i) => hs6Results[i]);
@@ -919,7 +1013,7 @@ async function runClassification(data, userId, isPro, emit) {
     emit({ type: "thinking", text: `Probing TARIC · heading ${heading}…` });
     let siblings = [];
     try {
-      siblings = await taricBrowseHeading(heading);
+      siblings = await taricBrowseHeading(heading, [], hs6);
     } catch (e) {
       // Both SOAP + tree path already failed — siblings stays empty
     }
@@ -944,7 +1038,43 @@ async function runClassification(data, userId, isPro, emit) {
     } else {
       const treeNote = taricFromTree ? " (TARIC SOAP unavailable — rates via Saturn link)" : "";
       emit({ type: "thinking", text: `TARIC: found ${siblings.length} declarable CN code${siblings.length !== 1 ? "s" : ""} under ${heading}${treeNote}` });
-      const exactMatch = siblings.find(s => s.cn8.startsWith(hs6));
+      // Narrow disambiguation: only pick between siblings that share Claude's
+      // 6-digit prefix. We trust Claude's CN6 choice — widening to the whole
+      // heading causes regressions because TARIC's CN8 descriptions lose the
+      // CN6-level meaning (e.g. 19024010 "Unprepared" is couscous unprepared
+      // not "unprepared pasta", but the description alone reads like a match).
+      const matching = siblings.filter((s) => s.cn8.startsWith(hs6));
+      let exactMatch;
+      const pickModel = modelUsed === "sonnet" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
+      if (matching.length > 1) {
+        // Multiple CN10s under Claude's preferred subheading — disambiguate.
+        const pickedCn10 = await pickCn8FromSiblings(
+          data.description, matching, claudeResult.reasoning || "", pickModel,
+        );
+        const picked = pickedCn10 ? matching.find((s) => s.cn10 === pickedCn10) : null;
+        if (picked) {
+          exactMatch = picked;
+          emit({ type: "thinking", text: `Narrowed to ${picked.cn8} from ${matching.length} candidates via description match` });
+        } else {
+          exactMatch = matching[0];
+          emit({ type: "thinking", text: `Disambiguation inconclusive — defaulting to ${exactMatch.cn8}` });
+        }
+      } else if (matching.length === 1) {
+        exactMatch = matching[0];
+      } else {
+        // Claude's 6-digit subheading has no EU TARIC entry (e.g. EU uses
+        // 1902.11/1902.19 where US/WCO has 1902.10). Disambiguate across ALL
+        // declarable siblings so the model picks correctly instead of falling
+        // back to siblings[0] which may be a completely different product.
+        emit({ type: "thinking", text: `hs6 ${hs6} not found in TARIC — running full-heading disambiguation across ${siblings.length} siblings` });
+        const pickedCn10 = await pickCn8FromSiblings(
+          data.description, siblings, claudeResult.reasoning || "", pickModel,
+        );
+        exactMatch = pickedCn10 ? siblings.find((s) => s.cn10 === pickedCn10) : null;
+        if (exactMatch) {
+          emit({ type: "thinking", text: `Full-heading pick: ${exactMatch.cn8} (${exactMatch.description})` });
+        }
+      }
       const bestMatch = exactMatch || siblings[0];
 
       finalResult.cn8 = bestMatch.cn8;
