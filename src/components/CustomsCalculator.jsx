@@ -765,8 +765,8 @@ function Spinner() {
         display: "inline-block",
         width: 16,
         height: 16,
-        border: "2px solid rgba(16,185,129,0.25)",
-        borderTopColor: "#10b981",
+        border: "2px solid rgba(156,168,138,0.25)",
+        borderTopColor: "var(--sage)",
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
       }}
@@ -1434,50 +1434,95 @@ export default function CustomsCalculator({ user }) {
 
         .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 
-        /* ── Masthead (dossier bar) ── */
-        .v2-nav { display: flex; align-items: center; height: 64px; background: var(--paper-cream); padding: 0 24px; position: sticky; top: 0; z-index: 200; border-bottom: 1px solid var(--rule-strong); box-shadow: 0 1px 0 var(--paper-edge), 0 2px 0 var(--rule-hair); }
-        .v2-nav-logo { display: flex; align-items: baseline; gap: 10px; margin-right: 32px; text-decoration: none; }
-        .v2-nav-logo-icon { display: none; }
-        .v2-nav-logo-text { font-family: var(--font-display); font-size: 24px; font-weight: 500; letter-spacing: -0.015em; color: var(--ink-forest-deep); font-variation-settings: "opsz" 48, "SOFT" 50; }
-        .v2-nav-logo-text::after { content: ""; display: inline-block; width: 4px; height: 4px; background: var(--brass); border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+        /* ── App shell (sidebar + main) ── */
+        .app-shell { display: flex; min-height: 100vh; }
 
-        .v2-nav-tabs { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; align-items: flex-end; height: 100%; }
-        .v2-nav-tabs::-webkit-scrollbar { display: none; }
+        .app-sidebar {
+          width: 220px; flex-shrink: 0;
+          background: var(--bg-card);
+          border-right: 1px solid var(--border-subtle);
+          display: flex; flex-direction: column;
+          padding: 22px 14px 18px;
+          position: sticky; top: 0; height: 100vh; z-index: 40;
+        }
+        .app-logo { display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; text-decoration: none; }
+        .app-logo-mark { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(145deg, var(--sage) 0%, var(--sage-dim) 100%); display: flex; align-items: center; justify-content: center; color: #0b0e13; font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: -0.02em; box-shadow: 0 0 0 1px rgba(156,168,138,0.3); }
+        .app-logo-text { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--text-primary); }
+        .app-logo-text::after { content: ""; display: inline-block; width: 4px; height: 4px; background: var(--sage); border-radius: 50%; margin-left: 3px; vertical-align: top; margin-top: 3px; }
 
-        .v2-tab-btn { padding: 8px 16px 10px; border-radius: var(--radius-sm) var(--radius-sm) 0 0; font-family: var(--font-body); font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: var(--ink-muted); cursor: pointer; border: 1px solid transparent; border-bottom: 0; background: transparent; white-space: nowrap; transition: all .12s ease; position: relative; margin-bottom: -1px; }
-        .v2-tab-btn:hover { color: var(--ink-forest-deep); background: var(--brass-wash); }
-        .v2-tab-btn.active { color: var(--ink-forest-deep); background: var(--paper-cream); font-weight: 600; border-color: var(--rule-strong); }
-        .v2-tab-btn.active::before { content: ""; position: absolute; top: -1px; left: -1px; right: -1px; height: 3px; background: var(--brass); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-        .v2-tab-btn.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--paper-cream); }
+        .nav-section { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; }
+        .nav-section-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); padding: 12px 10px 6px; font-weight: 500; }
 
-        .v2-nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-        .v2-nav-user { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-muted); font-family: var(--font-mono); letter-spacing: 0.04em; }
-        .v2-nav-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--ink-forest); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--brass-soft); font-family: var(--font-display); border: 1.5px solid var(--brass); }
-        .v2-nav-btn { font-size: 11px; font-family: var(--font-body); letter-spacing: 0.04em; color: var(--ink-forest); background: none; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); padding: 6px 12px; cursor: pointer; transition: .12s; text-decoration: none; display: inline-flex; align-items: center; font-weight: 500; }
-        .v2-nav-btn:hover { color: var(--ink-forest-deep); border-color: var(--brass); background: var(--brass-wash); }
+        .nav-item {
+          display: flex; align-items: center; gap: 12px;
+          padding: 9px 12px;
+          border-radius: var(--radius-md);
+          font-family: var(--font-body); font-size: 13.5px; font-weight: 500;
+          color: var(--text-secondary);
+          background: transparent; border: none; cursor: pointer; text-align: left;
+          width: 100%;
+          transition: color .12s ease, background .12s ease;
+          text-decoration: none;
+        }
+        .nav-item:hover { color: var(--text-primary); background: rgba(156,168,138,0.06); }
+        .nav-item.active { color: var(--text-primary); background: var(--sage-bg); }
+        .nav-item.active .nav-icon { color: var(--sage); }
+        .nav-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
+        .nav-item:hover .nav-icon { color: var(--sage-light); }
 
-        .page-content { padding: 28px 24px; max-width: 1380px; margin: 0 auto; }
+        .sidebar-spacer { flex: 1; }
+
+        .sidebar-user { display: flex; align-items: center; gap: 10px; padding: 10px 10px 8px; border-top: 1px solid var(--border-subtle); margin-top: 8px; }
+        .sidebar-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-raised); color: var(--sage); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: 13px; border: 1px solid var(--border-subtle); flex-shrink: 0; }
+        .sidebar-user-meta { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+        .sidebar-user-name { font-size: 12.5px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sidebar-user-role { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }
+
+        .sidebar-footer { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+
+        /* Hamburger top bar (mobile only) */
+        .mobile-topbar { display: none; }
+        .hamburger {
+          width: 40px; height: 40px; border-radius: var(--radius-md);
+          background: var(--bg-card); border: 1px solid var(--border-subtle);
+          color: var(--text-primary); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .hamburger:hover { border-color: var(--sage); color: var(--sage); }
+        .sidebar-backdrop { display: none; }
+
+        .app-main { flex: 1; min-width: 0; }
+        .page-content { padding: 32px 40px; max-width: 1380px; margin: 0 auto; }
         .header-right { text-align: right; flex-shrink: 0; }
         .fx-grid { display: grid; grid-template-columns: 52px 1fr 1fr 1fr; gap: 0; }
         .ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
         .ref-link { transition: all .15s ease; }
-        .ref-link:hover { border-color: var(--brass) !important; transform: translateX(2px); }
+        .ref-link:hover { border-color: var(--sage) !important; transform: translateX(2px); }
 
-        @media (max-width: 1350px) {
-          .v2-tab-btn { padding: 6px 10px 8px; font-size: 12px; }
-          .v2-nav-logo-text { font-size: 20px; }
-          .v2-nav-logo { margin-right: 16px; }
-        }
-        @media (max-width: 1100px) {
-          .v2-tab-btn { padding: 6px 8px 8px; font-size: 11px; }
-          .v2-nav-user span { display: none; }
-        }
-        @media (max-width: 700px) {
+        @media (max-width: 900px) {
+          .app-shell { flex-direction: column; }
+          .mobile-topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky; top: 0; z-index: 30;
+          }
+          .app-sidebar {
+            position: fixed; left: 0; top: 0; height: 100vh; width: 260px;
+            transform: translateX(-100%); transition: transform .24s ease;
+            box-shadow: 10px 0 40px rgba(0,0,0,0.5);
+          }
+          .app-sidebar.open { transform: translateX(0); }
+          .sidebar-backdrop {
+            display: block; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 35;
+            opacity: 0; pointer-events: none; transition: opacity .2s ease;
+          }
+          .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+          .page-content { padding: 20px 16px; }
           .two-col { grid-template-columns: 1fr; gap: 24px; }
           .ref-grid { grid-template-columns: 1fr; gap: 24px; }
-          .v2-nav-tabs { padding: 0 4px; }
-          .v2-tab-btn { padding: 6px 10px; font-size: 11px; }
-          .page-content { padding: 20px 16px; }
           .header-right { display: none; }
           .fx-two-col { grid-template-columns: 1fr !important; }
           .fx-grid { grid-template-columns: 44px 1fr 80px; }
@@ -1485,44 +1530,71 @@ export default function CustomsCalculator({ user }) {
         }
       `}</style>
 
-            {/* Dossier masthead */}
-      <nav className="v2-nav">
-        <a href="/calculator" className="v2-nav-logo">
-          <span className="v2-nav-logo-text">Dutify</span>
-          <span className="mono" style={{ fontSize: 10, letterSpacing: "0.24em", color: "var(--brass-deep)", textTransform: "uppercase", fontWeight: 500 }}>Customs Dossier</span>
-        </a>
-        <div className="v2-nav-tabs">
-          {["calculator","excise","cbam","t1","hs-lookup","fx","rulings","reference"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={"v2-tab-btn" + (tab === t ? " active" : "")}
-            >
-              {t === "calculator" ? "Calculator"
-                : t === "excise" ? "Excise"
-                : t === "cbam" ? "CBAM"
-                : t === "t1" ? "T1 Transit"
-                : t === "hs-lookup" ? "HS Lookup"
-                : t === "fx" ? "FX Rates"
-                : t === "rulings" ? "Rulings"
-                : "Reference"}
-            </button>
-          ))}
-        </div>
-        <div className="v2-nav-right">
-          <div className="v2-nav-user">
-            <div className="v2-nav-avatar">{user?.name?.[0]?.toUpperCase() || "U"}</div>
-            <span>{user?.name || user?.email}</span>
+      <div className="app-shell">
+        <div className={"sidebar-backdrop" + (sidebarOpen ? " open" : "")} onClick={() => setSidebarOpen(false)} />
+        <aside className={"app-sidebar" + (sidebarOpen ? " open" : "")}>
+          <a href="/calculator" className="app-logo" onClick={() => setSidebarOpen(false)}>
+            <span className="app-logo-mark">D</span>
+            <span className="app-logo-text">Dutify</span>
+          </a>
+          <div className="nav-section">
+            <div className="nav-section-label">Workspace</div>
+            {[
+              { id: "hs-lookup",  label: "Search",     icon: "search" },
+              { id: "calculator", label: "Calculator", icon: "calc" },
+              { id: "excise",     label: "Excise",     icon: "excise" },
+              { id: "cbam",       label: "CBAM",       icon: "cbam" },
+              { id: "t1",         label: "T1 Transit", icon: "truck" },
+              { id: "fx",         label: "FX Rates",   icon: "fx" },
+              { id: "rulings",    label: "Rulings",    icon: "scroll" },
+              { id: "reference",  label: "Reference",  icon: "book" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => { setTab(item.id); setSidebarOpen(false); }}
+                className={"nav-item" + (tab === item.id ? " active" : "")}
+              >
+                <span className="nav-icon"><NavIcon name={item.icon} /></span>
+                {item.label}
+              </button>
+            ))}
           </div>
-          {user?.role === "ADMIN" && (
-            <a href="/admin" className="v2-nav-btn">Admin</a>
-          )}
-          <button onClick={() => signOut({ callbackUrl: "/login" })} className="v2-nav-btn">
-            Logout
-          </button>
-        </div>
-      </nav>
 
+          <div className="sidebar-spacer" />
+
+          <div className="sidebar-footer">
+            {user?.role === "ADMIN" && (
+              <a href="/admin" className="nav-item">
+                <span className="nav-icon"><NavIcon name="shield" /></span>
+                Admin
+              </a>
+            )}
+            <button onClick={() => signOut({ callbackUrl: "/login" })} className="nav-item">
+              <span className="nav-icon"><NavIcon name="logout" /></span>
+              Sign out
+            </button>
+          </div>
+
+          <div className="sidebar-user">
+            <div className="sidebar-avatar">{user?.name?.[0]?.toUpperCase() || "U"}</div>
+            <div className="sidebar-user-meta">
+              <span className="sidebar-user-name">{user?.name || user?.email}</span>
+              <span className="sidebar-user-role">{user?.role === "ADMIN" ? "Admin" : "Member"}</span>
+            </div>
+          </div>
+        </aside>
+
+        <main className="app-main">
+          <div className="mobile-topbar">
+            <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <a href="/calculator" className="app-logo" style={{padding:0}}>
+              <span className="app-logo-mark">D</span>
+              <span className="app-logo-text">Dutify</span>
+            </a>
+            <div style={{width:40}} />
+          </div>
       <div className="page-content">
         {/* CALCULATOR TAB */}
         {tab === "calculator" &&
@@ -1536,7 +1608,7 @@ export default function CustomsCalculator({ user }) {
             const totalDuties = result
               ? (result.customsDuty || 0) + (result.antiDumpingDuty || 0) + (result.exciseDutyAmt || 0) + (result.importVAT || 0)
               : 0;
-            const stepIcon = {fontFamily:"var(--font-oswald),sans-serif",fontWeight:700,fontSize:11,letterSpacing:1,color:"#10b981",background:"rgba(16,185,129,.09)",border:"1px solid rgba(16,185,129,.28)"};
+            const stepIcon = {fontFamily:"var(--font-oswald),sans-serif",fontWeight:700,fontSize:11,letterSpacing:1,color:"var(--sage)",background:"rgba(156,168,138,.09)",border:"1px solid rgba(156,168,138,.28)"};
 
             return (
               <div className="calc-layout">
@@ -1603,17 +1675,17 @@ export default function CustomsCalculator({ user }) {
                           </div>
                         )}
                         {dutyRateSource?.hasSpecificDuty && (
-                          <div className="v2-hint" style={{color:"#d97706",marginTop:4}}>
+                          <div className="v2-hint" style={{color:"var(--terracotta)",marginTop:4}}>
                             ⚠ Specific/compound duty applies ({dutyRateSource.mfnRateParsed?.raw}) — enter the ad valorem component only; calculate specific duty (€/kg) separately
                           </div>
                         )}
                         {dutyRateSource?.countervailing && (
-                          <div className="v2-hint" style={{color:"#dc2626",marginTop:4}}>
+                          <div className="v2-hint" style={{color:"var(--terracotta)",marginTop:4}}>
                             ⚠ Countervailing Duty (CVD) active — enter CVD rate in the ADD field above (separate from anti-dumping)
                           </div>
                         )}
                         {dutyRateSource?.safeguard && (
-                          <div className="v2-hint" style={{color:"#dc2626",marginTop:4}}>
+                          <div className="v2-hint" style={{color:"var(--terracotta)",marginTop:4}}>
                             ⚠ Safeguard duty active on this product — additional tariff applies, check TARIC for current rate
                           </div>
                         )}
@@ -1670,10 +1742,10 @@ export default function CustomsCalculator({ user }) {
                           ))}
                         </select>
                         {(incoterm === "DAP" || incoterm === "DPU") && (
-                          <div className="v2-hint" style={{color:"#d97706"}}>⚠ DAP/DPU: enter the goods value <strong>excluding</strong> EU internal transport. Deduct freight from EU border to named place from the price.</div>
+                          <div className="v2-hint" style={{color:"var(--terracotta)"}}>⚠ DAP/DPU: enter the goods value <strong>excluding</strong> EU internal transport. Deduct freight from EU border to named place from the price.</div>
                         )}
                         {incoterm === "DDP" && (
-                          <div className="v2-hint" style={{color:"#d97706"}}>⚠ DDP: enter the customs value <strong>excluding</strong> import duties. The DDP price includes duties already paid by seller — subtract them before entering here.</div>
+                          <div className="v2-hint" style={{color:"var(--terracotta)"}}>⚠ DDP: enter the customs value <strong>excluding</strong> import duties. The DDP price includes duties already paid by seller — subtract them before entering here.</div>
                         )}
                       </div>
                       {needsShipping && (
@@ -1815,34 +1887,34 @@ export default function CustomsCalculator({ user }) {
                       <div>
                         <div className="v2-lbl">Preferential Treatment</div>
                         {hasPref ? (
-                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid rgba(16,185,129,.25)',background:'rgba(16,185,129,.04)'}}>
+                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid rgba(156,168,138,.25)',background:'rgba(156,168,138,.04)'}}>
                             <div style={{display:'flex',alignItems:'center',gap:10}}>
                               <button
                                 onClick={() => { setPreferential(!preferential); if (preferential) setHasProofOfOrigin(false); }}
-                                style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: preferential ? '#10b981' : '#d1d5db',flexShrink:0}}
+                                style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: preferential ? 'var(--sage)' : 'var(--border-strong)',flexShrink:0}}
                               >
                                 <span style={{position:'absolute',top:2,left: preferential ? 20 : 2,width:16,height:16,borderRadius:8,background:'#fff',transition:'.2s',boxShadow:'0 1px 2px rgba(0,0,0,.15)'}}/>
                               </button>
-                              <span style={{fontSize:13,fontWeight:600,color: preferential ? '#065f46' : '#6b7280'}}>
+                              <span style={{fontSize:13,fontWeight:600,color: preferential ? 'var(--sage-light)' : 'var(--text-secondary)'}}>
                                 Claim preferential rate
-                                <span style={{fontWeight:700,marginLeft:4,fontSize:11,padding:'1px 6px',borderRadius:3,background: preferential ? '#d1fae5' : '#f3f4f6',color: preferential ? '#059669' : '#9ca3af',letterSpacing:'.5px'}}>{originInfo?.type?.toUpperCase()}</span>
+                                <span style={{fontWeight:700,marginLeft:4,fontSize:11,padding:'1px 6px',borderRadius:3,background: preferential ? 'var(--sage-bg)' : 'var(--bg-card)',color: preferential ? 'var(--sage-dim)' : 'var(--text-muted)',letterSpacing:'.5px'}}>{originInfo?.type?.toUpperCase()}</span>
                               </span>
                             </div>
                             {preferential && (
-                              <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(16,185,129,.15)',display:'flex',alignItems:'center',gap:10}}>
+                              <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid rgba(156,168,138,.15)',display:'flex',alignItems:'center',gap:10}}>
                                 <button
                                   onClick={() => setHasProofOfOrigin(!hasProofOfOrigin)}
-                                  style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: hasProofOfOrigin ? '#10b981' : '#d1d5db',flexShrink:0}}
+                                  style={{width:38,height:20,borderRadius:10,border:'none',cursor:'pointer',position:'relative',transition:'.2s',background: hasProofOfOrigin ? 'var(--sage)' : 'var(--border-strong)',flexShrink:0}}
                                 >
                                   <span style={{position:'absolute',top:2,left: hasProofOfOrigin ? 20 : 2,width:16,height:16,borderRadius:8,background:'#fff',transition:'.2s',boxShadow:'0 1px 2px rgba(0,0,0,.15)'}}/>
                                 </button>
-                                <span style={{fontSize:12.5,color: hasProofOfOrigin ? '#065f46' : '#6b7280'}}>
+                                <span style={{fontSize:12.5,color: hasProofOfOrigin ? 'var(--sage-light)' : 'var(--text-secondary)'}}>
                                   Proof of origin held
-                                  <span style={{color:'#9ca3af',marginLeft:4}}>(EUR.1 / invoice declaration)</span>
+                                  <span style={{color:'var(--text-muted)',marginLeft:4}}>(EUR.1 / invoice declaration)</span>
                                 </span>
                               </div>
                             )}
-                            <div style={{marginTop:8,fontSize:11.5,lineHeight:1.5,color: preferential && hasProofOfOrigin ? '#059669' : '#92400e',fontWeight: preferential && hasProofOfOrigin ? 600 : 400}}>
+                            <div style={{marginTop:8,fontSize:11.5,lineHeight:1.5,color: preferential && hasProofOfOrigin ? 'var(--sage-dim)' : 'var(--terracotta)',fontWeight: preferential && hasProofOfOrigin ? 600 : 400}}>
                               {preferential && hasProofOfOrigin
                                 ? "✓ Preferential rate will be applied to this calculation"
                                 : preferential
@@ -1851,9 +1923,9 @@ export default function CustomsCalculator({ user }) {
                             </div>
                           </div>
                         ) : (
-                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid #e5e7eb',background:'#f9fafb',fontSize:13,color:'#9ca3af'}}>
+                          <div style={{marginTop:6,padding:'10px 14px',borderRadius:8,border:'1px solid var(--border-strong)',background:'var(--bg-input)',fontSize:13,color:'var(--text-muted)'}}>
                             No EU preferential agreement — MFN rate applies
-                            {originInfo?.type === "sanctioned" && <span style={{color:"#dc2626",fontWeight:600}}> ⚠️ Sanctioned country</span>}
+                            {originInfo?.type === "sanctioned" && <span style={{color:"var(--terracotta)",fontWeight:600}}> ⚠️ Sanctioned country</span>}
                           </div>
                         )}
                       </div>
@@ -1864,34 +1936,34 @@ export default function CustomsCalculator({ user }) {
                       Calculate
                     </button>
                     <button className="v2-reset-btn" onClick={() => { setResult(null); setDescription(""); setHsCode(""); setDutyRate(""); setItemValue(""); setFreight(""); setInsurance(""); setAntiDumpingRate(""); setDutyRateSource(null); setPreferential(false); setHasProofOfOrigin(false); }}>Reset</button>
-                    <span style={{fontSize:11,color:"#9ca3af",fontFamily:"var(--font-courier-prime),monospace"}}>Results update live as you type</span>
+                    <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-courier-prime),monospace"}}>Results update live as you type</span>
                   </div>
                 </div>
 
                 {/* Excise / CBAM alerts */}
                 {isExcisable && (
-                  <div style={{background:"rgba(245,158,11,.05)",border:"1px solid rgba(245,158,11,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{background:"rgba(196,99,74,.05)",border:"1px solid rgba(196,99,74,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontSize:18}}>🥃</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#d97706"}}>Excise Duty Required</div>
-                      <div style={{fontSize:10,color:"#9ca3af"}}>This HS chapter is excisable (alcohol / tobacco / fuel).</div>
+                      <div style={{fontSize:11,fontWeight:700,color:"var(--terracotta)"}}>Excise Duty Required</div>
+                      <div style={{fontSize:10,color:"var(--text-muted)"}}>This HS chapter is excisable (alcohol / tobacco / fuel).</div>
                     </div>
-                    <button onClick={() => setTab("excise")} style={{fontSize:10,color:"#d97706",background:"rgba(245,158,11,.1)",border:"1px solid rgba(245,158,11,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>Excise →</button>
+                    <button onClick={() => setTab("excise")} style={{fontSize:10,color:"var(--terracotta)",background:"rgba(196,99,74,.1)",border:"1px solid rgba(196,99,74,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>Excise →</button>
                   </div>
                 )}
                 {isCbam && (
-                  <div style={{background:"rgba(59,130,246,.05)",border:"1px solid rgba(59,130,246,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{background:"rgba(19,41,75,.05)",border:"1px solid rgba(19,41,75,.25)",borderRadius:8,padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontSize:18}}>🌍</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#2563eb"}}>CBAM Applies</div>
-                      <div style={{fontSize:10,color:"#9ca3af"}}>Carbon Border Adjustment Mechanism applies.</div>
+                      <div style={{fontSize:11,fontWeight:700,color:"var(--navy-light)"}}>CBAM Applies</div>
+                      <div style={{fontSize:10,color:"var(--text-muted)"}}>Carbon Border Adjustment Mechanism applies.</div>
                     </div>
-                    <button onClick={() => setTab("cbam")} style={{fontSize:10,color:"#2563eb",background:"rgba(59,130,246,.1)",border:"1px solid rgba(59,130,246,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>CBAM →</button>
+                    <button onClick={() => setTab("cbam")} style={{fontSize:10,color:"var(--navy-light)",background:"rgba(19,41,75,.1)",border:"1px solid rgba(19,41,75,.3)",borderRadius:4,padding:"4px 10px",cursor:"pointer",fontWeight:700}}>CBAM →</button>
                   </div>
                 )}
 
                 {/* Disclaimer */}
-                <div style={{padding:"10px 14px",background:"#f9fafb",border:"1px solid var(--border)",borderRadius:6,fontSize:10,color:"#9ca3af",lineHeight:1.6}}>
+                <div style={{padding:"10px 14px",background:"var(--bg-input)",border:"1px solid var(--border)",borderRadius:6,fontSize:10,color:"var(--text-muted)",lineHeight:1.6}}>
                   ⚠ Estimate only. Verify at{" "}
                   <a href="https://ec.europa.eu/taxation_customs/dds2/taric/taric_consultation.jsp" target="_blank" rel="noopener" style={{color:"var(--gold)"}}>TARIC ↗</a>.
                 </div>
@@ -1900,17 +1972,17 @@ export default function CustomsCalculator({ user }) {
                 {/* ── RIGHT COLUMN: STICKY RESULT ── */}
                 <div className="calc-result-sticky" ref={resultRef}>
                   {!result ? (
-                    <div style={{background:"#fff",border:"1px solid var(--border)",borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
+                    <div style={{background:"var(--bg-card)",border:"1px solid var(--border)",borderRadius:12,padding:"40px 20px",textAlign:"center"}}>
                       <div style={{fontSize:32,marginBottom:12}}>📊</div>
                       <div style={{fontFamily:"var(--font-oswald),sans-serif",fontSize:13,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--foreground)",marginBottom:6}}>Results Panel</div>
-                      <div style={{fontSize:12,color:"#9ca3af",lineHeight:1.6}}>Fill in goods, shipment &amp; origin on the left, then press <strong>Calculate</strong>.</div>
+                      <div style={{fontSize:12,color:"var(--text-muted)",lineHeight:1.6}}>Fill in goods, shipment &amp; origin on the left, then press <strong>Calculate</strong>.</div>
                     </div>
                   ) : (
                     <div className="v2-bk-card">
                       <div className="v2-card-hdr">
-                        <div className="v2-card-icon" style={{background:"rgba(16,185,129,0.1)"}}>📋</div>
+                        <div className="v2-card-icon" style={{background:"rgba(156,168,138,0.1)"}}>📋</div>
                         <span className="v2-card-title">Breakdown</span>
-                        <span className="v2-card-sub" style={{color:"#10b981",fontFamily:"var(--font-courier-prime),monospace",fontWeight:700}}>
+                        <span className="v2-card-sub" style={{color:"var(--sage)",fontFamily:"var(--font-courier-prime),monospace",fontWeight:700}}>
                           €{fmt(result.total)}
                         </span>
                       </div>
@@ -1921,12 +1993,12 @@ export default function CustomsCalculator({ user }) {
                         {result.frEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Freight ({result.airfreightPct ?? 100}%)</span><span className="v2-bk-val">€{fmt(result.frEUR)}</span></div>}
                         {result.insEUR > 0 && <div className="v2-bk-row"><span className="v2-bk-lbl">Insurance</span><span className="v2-bk-val">€{fmt(result.insEUR)}</span></div>}
                         <div className="v2-bk-sep"/>
-                        <div className="v2-bk-total"><span>CIF Value</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(result.cifEUR)}</span></div>
+                        <div className="v2-bk-total"><span>CIF Value</span><span className="v2-bk-val" style={{color:"var(--sage)"}}>€{fmt(result.cifEUR)}</span></div>
 
                         {/* Duties section */}
                         <div className="v2-sec-h" style={{marginTop:16}}>Duties &amp; Taxes</div>
                         {result.deMinimisExpiringSoon && (
-                          <div style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#92400e",marginBottom:8}}>
+                          <div style={{background:"var(--terracotta-bg)",border:"1px solid var(--terracotta)",borderRadius:6,padding:"6px 10px",fontSize:12,color:"var(--terracotta)",marginBottom:8}}>
                             ⚠️ <strong>€150 de minimis abolished 1 July 2026</strong> — customs duty will apply to this shipment after that date
                           </div>
                         )}
@@ -1945,12 +2017,12 @@ export default function CustomsCalculator({ user }) {
                           <span className="v2-bk-val">€{fmt(result.importVAT)}</span>
                         </div>
                         <div className="v2-bk-sep"/>
-                        <div className="v2-bk-total"><span>Total duties</span><span className="v2-bk-val" style={{color:"#10b981"}}>€{fmt(totalDuties)}</span></div>
+                        <div className="v2-bk-total"><span>Total duties</span><span className="v2-bk-val" style={{color:"var(--sage)"}}>€{fmt(totalDuties)}</span></div>
 
                         {/* Grand total */}
                         <div className="v2-bk-grand">
                           <div>
-                            <div style={{fontSize:11,color:"#6b7280",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
+                            <div style={{fontSize:11,color:"var(--text-secondary)",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
                             <div style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:28,fontWeight:700,color:"var(--foreground)",letterSpacing:-1}}>€{fmt(result.total)}</div>
                           </div>
                           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1968,15 +2040,15 @@ export default function CustomsCalculator({ user }) {
                         {/* Proportion bar */}
                         {result.cifEUR > 0 && (
                           <div style={{marginTop:16}}>
-                            <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"#9ca3af",marginBottom:6,fontFamily:"var(--font-oswald),sans-serif"}}>Composition</div>
+                            <div style={{fontSize:9,letterSpacing:2,textTransform:"uppercase",color:"var(--text-muted)",marginBottom:6,fontFamily:"var(--font-oswald),sans-serif"}}>Composition</div>
                             <div style={{height:8,borderRadius:4,overflow:"hidden",display:"flex"}}>
                               {(() => {
                                 const segments = [
-                                  { val: result.valEUR, color: "#e2e8f0" },
-                                  { val: result.customsDuty, color: "#6366f1" },
-                                  { val: result.antiDumpingDuty || 0, color: "#dc2626" },
-                                  { val: result.exciseDutyAmt || 0, color: "#d97706" },
-                                  { val: result.importVAT, color: "#10b981" },
+                                  { val: result.valEUR, color: "var(--border-strong)" },
+                                  { val: result.customsDuty, color: "var(--navy-light)" },
+                                  { val: result.antiDumpingDuty || 0, color: "var(--terracotta)" },
+                                  { val: result.exciseDutyAmt || 0, color: "var(--terracotta)" },
+                                  { val: result.importVAT, color: "var(--sage)" },
                                 ].filter(s => s.val > 0);
                                 const tv = segments.reduce((a, s) => a + s.val, 0);
                                 return segments.map((s, i) => (
@@ -1986,11 +2058,11 @@ export default function CustomsCalculator({ user }) {
                             </div>
                             <div style={{display:"flex",gap:10,marginTop:6,flexWrap:"wrap"}}>
                               {[
-                                {label:"Goods",color:"#e2e8f0",text:"#9ca3af"},
-                                {label:"Duty",color:"#6366f1",text:"#6366f1"},
-                                ...(result.antiDumpingDuty > 0 ? [{label:"ADD",color:"#dc2626",text:"#dc2626"}] : []),
-                                ...(result.exciseDutyAmt > 0 ? [{label:"Excise",color:"#d97706",text:"#d97706"}] : []),
-                                {label:"VAT",color:"#10b981",text:"#10b981"},
+                                {label:"Goods",color:"var(--border-strong)",text:"var(--text-muted)"},
+                                {label:"Duty",color:"var(--navy-light)",text:"var(--navy-light)"},
+                                ...(result.antiDumpingDuty > 0 ? [{label:"ADD",color:"var(--terracotta)",text:"var(--terracotta)"}] : []),
+                                ...(result.exciseDutyAmt > 0 ? [{label:"Excise",color:"var(--terracotta)",text:"var(--terracotta)"}] : []),
+                                {label:"VAT",color:"var(--sage)",text:"var(--sage)"},
                               ].map(({label,color,text}) => (
                                 <div key={label} style={{display:"flex",alignItems:"center",gap:4,fontSize:9}}>
                                   <div style={{width:8,height:8,borderRadius:2,background:color}}/>
@@ -2016,8 +2088,8 @@ export default function CustomsCalculator({ user }) {
               <div className="v2-card-body">
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-strong)",
                   borderRadius: 2,
                   padding: 24,
                   display: "grid",
@@ -2029,7 +2101,7 @@ export default function CustomsCalculator({ user }) {
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "var(--text-secondary)",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -2067,7 +2139,7 @@ export default function CustomsCalculator({ user }) {
                   const inp = schema.inputs;
                   const lbl = {
                     fontSize: 11,
-                    color: "#6b7280",
+                    color: "var(--text-secondary)",
                     letterSpacing: 2,
                     textTransform: "uppercase",
                     display: "block",
@@ -2198,11 +2270,11 @@ export default function CustomsCalculator({ user }) {
                 })()}
 
                 {/* Optional CIF value for VAT calculation */}
-                <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
+                <div style={{ borderTop: "1px solid var(--border-strong)", paddingTop: 16 }}>
                   <label
                     style={{
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "var(--text-secondary)",
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       display: "block",
@@ -2219,7 +2291,7 @@ export default function CustomsCalculator({ user }) {
                     value={exciseCifValue}
                     onChange={(e) => setExciseCifValue(e.target.value)}
                   />
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5 }}>
                     If provided, import VAT ({(EXCISE_SCHEMAS[exciseCategory]?.vatRate ?? 0.17) * 100}%) is calculated on
                     goods value + excise.
                   </div>
@@ -2229,7 +2301,7 @@ export default function CustomsCalculator({ user }) {
                 <div
                   style={{
                     fontSize: 11,
-                    color: "#6b7280",
+                    color: "var(--text-secondary)",
                     fontFamily: "var(--font-courier-prime), monospace",
                     lineHeight: 1.5,
                   }}
@@ -2239,7 +2311,7 @@ export default function CustomsCalculator({ user }) {
                       const daysOld = Math.floor((Date.now() - new Date(exciseRatesLastChecked)) / 86400000);
                       const stale = daysOld > 14;
                       return (
-                        <span style={{ color: stale ? "#dc2626" : "#6b7280" }}>
+                        <span style={{ color: stale ? "var(--terracotta)" : "var(--text-secondary)" }}>
                           {stale ? "⚠ " : ""}Rates last verified {daysOld === 0 ? "today" : `${daysOld}d ago`}
                           {stale ? " — may be outdated" : ""} ·{" "}
                         </span>
@@ -2250,7 +2322,7 @@ export default function CustomsCalculator({ user }) {
                     href="https://douanes.public.lu/fr/accises/taux-droits-accise.html"
                     target="_blank"
                     rel="noopener"
-                    style={{ color: "#10b981" }}
+                    style={{ color: "var(--sage)" }}
                   >
                     ADA rate tables ↗
                   </a>
@@ -2282,11 +2354,11 @@ export default function CustomsCalculator({ user }) {
               {!exciseResult ? (
                 <div
                   style={{
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-strong)",
                     borderRadius: 2,
                     padding: 24,
-                    color: "#6b7280",
+                    color: "var(--text-secondary)",
                     fontSize: 13,
                     lineHeight: 1.7,
                   }}
@@ -2294,7 +2366,7 @@ export default function CustomsCalculator({ user }) {
                   Select a category, enter the quantities, and press Calculate Excise.
                 </div>
               ) : (
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 2, padding: 24 }}>
+                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-strong)", borderRadius: 2, padding: 24 }}>
                   {/* Category label */}
                   <div
                     style={{
@@ -2309,9 +2381,9 @@ export default function CustomsCalculator({ user }) {
                     {exciseResult.label}
                   </div>
 
-                  <div style={{ borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ borderBottom: "1px solid var(--border-strong)" }}>
                     <div className="result-row">
-                      <span style={{ color: "#6b7280", fontSize: 13 }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
                         Excise Duty (LU)
                         {exciseResult.note && (
                           <span
@@ -2319,7 +2391,7 @@ export default function CustomsCalculator({ user }) {
                               fontFamily: "var(--font-courier-prime), monospace",
                               marginLeft: 8,
                               fontSize: 11,
-                              color: "#6b7280",
+                              color: "var(--text-secondary)",
                             }}
                           >
                             {exciseResult.note}
@@ -2332,21 +2404,21 @@ export default function CustomsCalculator({ user }) {
                     </div>
                     {exciseResult.cifVal > 0 && (
                       <div className="result-row">
-                        <span style={{ color: "#6b7280", fontSize: 13 }}>Declared goods value</span>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Declared goods value</span>
                         <span style={{ fontFamily: "var(--font-courier-prime), monospace", fontSize: 13 }}>
                           € {fmt(exciseResult.cifVal)}
                         </span>
                       </div>
                     )}
                     <div className="result-row" style={{ borderBottom: "none" }}>
-                      <span style={{ color: "#6b7280", fontSize: 13 }}>
+                      <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
                         Import VAT (LU)
                         <span
                           style={{
                             fontFamily: "var(--font-courier-prime), monospace",
                             marginLeft: 8,
                             fontSize: 11,
-                            color: "#6b7280",
+                            color: "var(--text-secondary)",
                           }}
                         >
                           {exciseResult.vatRate}% on {exciseResult.cifVal > 0 ? "goods + excise" : "excise only"}
@@ -2362,8 +2434,8 @@ export default function CustomsCalculator({ user }) {
                   <div
                     style={{
                       marginTop: 8,
-                      background: "linear-gradient(135deg, rgba(52,211,153,0.18), rgba(16,185,129,0.08))",
-                      border: "1px solid rgba(16,185,129,0.3)",
+                      background: "linear-gradient(135deg, rgba(52,211,153,0.18), rgba(156,168,138,0.08))",
+                      border: "1px solid rgba(156,168,138,0.3)",
                       borderRadius: 2,
                       padding: "18px 20px",
                       display: "flex",
@@ -2398,7 +2470,7 @@ export default function CustomsCalculator({ user }) {
                     style={{
                       marginTop: 12,
                       fontSize: 11,
-                      color: "#6b7280",
+                      color: "var(--text-secondary)",
                       fontFamily: "var(--font-courier-prime), monospace",
                       lineHeight: 1.5,
                     }}
@@ -2417,9 +2489,9 @@ export default function CustomsCalculator({ user }) {
                       letterSpacing: 2,
                       textTransform: "uppercase",
                       fontFamily: "var(--font-oswald), sans-serif",
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid var(--border-strong)",
                       borderRadius: 2,
-                      color: "#10b981",
+                      color: "var(--sage)",
                       background: "none",
                       cursor: "pointer",
                     }}
@@ -2674,10 +2746,10 @@ export default function CustomsCalculator({ user }) {
                   if (!fxAmount || converted === null) return null;
                   return (
                     <div className="v2-pill v2-pill-green" style={{marginTop:14}}>
-                      <span style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:22,fontWeight:700,color:"#059669"}}>
+                      <span style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:22,fontWeight:700,color:"var(--sage-dim)"}}>
                         {converted.toLocaleString("de-LU",{minimumFractionDigits:4,maximumFractionDigits:4})} {fxTo}
                       </span>
-                      <span style={{fontSize:12,color:"#6B7280",display:"block",marginTop:4,fontFamily:"var(--font-courier-prime),monospace"}}>
+                      <span style={{fontSize:12,color:"var(--text-secondary)",display:"block",marginTop:4,fontFamily:"var(--font-courier-prime),monospace"}}>
                         1 {fxFrom} = {rate?.toFixed(6)} {fxTo} · ECB {allRatesDate || rateDate}
                       </span>
                     </div>
@@ -2705,7 +2777,7 @@ export default function CustomsCalculator({ user }) {
                   <div style={{textAlign:"right"}}>EUR per unit</div>
                 </div>
                 {Object.entries(allRates).length === 0 ? (
-                  <div style={{padding:"24px 20px",textAlign:"center",color:"#9CA3AF",fontSize:13}}>Loading rates…</div>
+                  <div style={{padding:"24px 20px",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Loading rates…</div>
                 ) : (
                   [
                     {code:"USD",flag:"🇺🇸",name:"US Dollar"},
@@ -2761,7 +2833,7 @@ export default function CustomsCalculator({ user }) {
                     value={hsCode}
                     onChange={(e) => setHsCode(e.target.value.replace(/[^0-9.]/g,""))}
                   />
-                  <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"#9CA3AF",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
+                  <span style={{display:"flex",alignItems:"center",padding:"0 10px",fontFamily:"var(--font-courier-prime),monospace",color:"var(--text-muted)",fontSize:12,flexShrink:0,whiteSpace:"nowrap"}}>
                     {hsCode ? `→ ${hsCode.replace(/\D/g,"").padEnd(8,"·")}` : "enter code"}
                   </span>
                 </div>
@@ -2771,24 +2843,24 @@ export default function CustomsCalculator({ user }) {
                 <div className="v2-sec-h">Classification databases</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {[
-                    {name:"EU EBTI — European Binding Tariff Information",authority:"European Commission / DG TAXUD",desc:"Legally binding BTI decisions issued by EU member states. Binding across the entire EU for 3 years.",url:`https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp?Lang=en${hsCode.replace(/\D/g,"").length>=4?`&nomenc=${hsCode.replace(/\D/g,"").slice(0,8)}`:""}`,flag:"🇪🇺",badge:"Binding · EU-wide",badgeColor:"#059669"},
-                    {name:"TARES — Décisions de Classification",authority:"BAZG / Switzerland",desc:"Swiss customs classification decisions. Useful for CH/LI goods and EU comparison.",url:"https://www.bazg.admin.ch/fr/decisions-classification-tarifaire-tares",flag:"🇨🇭",badge:"Switzerland",badgeColor:"#dc2626"},
-                    {name:"UK BTI — Binding Tariff Information",authority:"HMRC / UK Trade Tariff",desc:"UK post-Brexit BTI decisions. Useful for UK-origin goods.",url:`https://www.trade-tariff.service.gov.uk/binding_tariff_information${hsCode.replace(/\D/g,"").length>=4?`?commodity_code=${hsCode.replace(/\D/g,"")}`:""}`,flag:"🇬🇧",badge:"Post-Brexit",badgeColor:"#1d4ed8"},
-                    {name:"WCO — Classification Opinions",authority:"World Customs Organization",desc:"International HS Committee opinions. Authoritative for HS6 chapter-level disputes.",url:"https://www.wcoomd.org/en/topics/nomenclature/instrument-and-tools/hs_classification_opinions.aspx",flag:"🌐",badge:"HS6 · Global",badgeColor:"#7c3aed"},
-                    {name:"ECICS — Chemical Substances",authority:"European Commission",desc:"EU classification of chemical substances. Essential for Chapter 28/29/38 goods.",url:"https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_consultation.jsp?Lang=en",flag:"⚗️",badge:"Ch. 28–38",badgeColor:"#d97706"},
+                    {name:"EU EBTI — European Binding Tariff Information",authority:"European Commission / DG TAXUD",desc:"Legally binding BTI decisions issued by EU member states. Binding across the entire EU for 3 years.",url:`https://ec.europa.eu/taxation_customs/dds2/ebti/ebti_consultation.jsp?Lang=en${hsCode.replace(/\D/g,"").length>=4?`&nomenc=${hsCode.replace(/\D/g,"").slice(0,8)}`:""}`,flag:"🇪🇺",badge:"Binding · EU-wide",badgeColor:"var(--sage-dim)"},
+                    {name:"TARES — Décisions de Classification",authority:"BAZG / Switzerland",desc:"Swiss customs classification decisions. Useful for CH/LI goods and EU comparison.",url:"https://www.bazg.admin.ch/fr/decisions-classification-tarifaire-tares",flag:"🇨🇭",badge:"Switzerland",badgeColor:"var(--terracotta)"},
+                    {name:"UK BTI — Binding Tariff Information",authority:"HMRC / UK Trade Tariff",desc:"UK post-Brexit BTI decisions. Useful for UK-origin goods.",url:`https://www.trade-tariff.service.gov.uk/binding_tariff_information${hsCode.replace(/\D/g,"").length>=4?`?commodity_code=${hsCode.replace(/\D/g,"")}`:""}`,flag:"🇬🇧",badge:"Post-Brexit",badgeColor:"var(--navy)"},
+                    {name:"WCO — Classification Opinions",authority:"World Customs Organization",desc:"International HS Committee opinions. Authoritative for HS6 chapter-level disputes.",url:"https://www.wcoomd.org/en/topics/nomenclature/instrument-and-tools/hs_classification_opinions.aspx",flag:"🌐",badge:"HS6 · Global",badgeColor:"var(--navy-light)"},
+                    {name:"ECICS — Chemical Substances",authority:"European Commission",desc:"EU classification of chemical substances. Essential for Chapter 28/29/38 goods.",url:"https://ec.europa.eu/taxation_customs/dds2/ecics/chemicalsubstance_consultation.jsp?Lang=en",flag:"⚗️",badge:"Ch. 28–38",badgeColor:"var(--terracotta)"},
                   ].map(({name,authority,desc,url,flag,badge,badgeColor}) => (
                     <a key={name} href={url} target="_blank" rel="noopener noreferrer" className="v2-ruling-card">
                       <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
                         <span style={{fontSize:22,flexShrink:0,lineHeight:1}}>{flag}</span>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
-                            <span style={{fontSize:13,fontWeight:700,color:"#111827"}}>{name}</span>
+                            <span style={{fontSize:13,fontWeight:700,color:"var(--text-primary)"}}>{name}</span>
                             <span style={{fontSize:10,fontWeight:700,letterSpacing:1,padding:"2px 7px",borderRadius:10,background:`${badgeColor}18`,color:badgeColor,textTransform:"uppercase",fontFamily:"var(--font-oswald),sans-serif"}}>{badge}</span>
                           </div>
                           <div className="v2-ruling-meta">{authority}</div>
                           <div className="v2-ruling-desc" style={{marginTop:4}}>{desc}</div>
                         </div>
-                        <span style={{fontSize:14,color:"#10b981",flexShrink:0}}>↗</span>
+                        <span style={{fontSize:14,color:"var(--sage)",flexShrink:0}}>↗</span>
                       </div>
                     </a>
                   ))}
@@ -2845,7 +2917,37 @@ export default function CustomsCalculator({ user }) {
           </div>
         )}
       </div>
+        </main>
+      </div>{/* end app-shell */}
       </div>{/* end position:relative content wrapper */}
     </div>
   );
+}
+
+function NavIcon({ name }) {
+  const p = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "search":
+      return <svg {...p}><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>;
+    case "calc":
+      return <svg {...p}><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="13" x2="9" y2="13"/><line x1="12" y1="13" x2="13" y2="13"/><line x1="16" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="9" y2="17"/><line x1="12" y1="17" x2="16" y2="17"/></svg>;
+    case "excise":
+      return <svg {...p}><path d="M8 2h8l-1 4H9z"/><path d="M6 6h12l-1 14H7z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>;
+    case "cbam":
+      return <svg {...p}><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/><path d="M3 12h18"/></svg>;
+    case "truck":
+      return <svg {...p}><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 4v3h-7"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>;
+    case "fx":
+      return <svg {...p}><path d="M17 4l3 3-3 3"/><path d="M20 7H9a4 4 0 0 0 0 8h4"/><path d="M7 20l-3-3 3-3"/><path d="M4 17h11a4 4 0 0 0 0-8h-4"/></svg>;
+    case "scroll":
+      return <svg {...p}><path d="M6 2h12v16a4 4 0 0 1-4 4H6z"/><path d="M6 2v16a4 4 0 0 1-4-4h4"/><line x1="10" y1="7" x2="14" y2="7"/><line x1="10" y1="11" x2="14" y2="11"/></svg>;
+    case "book":
+      return <svg {...p}><path d="M4 4v16l8-3 8 3V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2z"/><line x1="12" y1="17" x2="12" y2="2"/></svg>;
+    case "shield":
+      return <svg {...p}><path d="M12 2L4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6z"/><path d="M9 12l2 2 4-4"/></svg>;
+    case "logout":
+      return <svg {...p}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><line x1="5" y1="12" x2="15" y2="12"/></svg>;
+    default:
+      return <svg {...p}><circle cx="12" cy="12" r="3"/></svg>;
+  }
 }

@@ -125,13 +125,13 @@ function getVisible({interacted, originCountry, cif, preferential, antiDumpingRa
 /* ── Node styles — dossier palette ───────────────────────── */
 const ENTER = "nodeEnter 0.28s cubic-bezier(0.34,1.56,0.64,1) both";
 
-// Dossier palette: bone paper, forest ink, brass accents, oxblood for danger.
+// Dutify Pocket palette: charcoal surface, sage accent, terracotta for danger.
 const PAL = {
-  decision: { bg: "#FBF8F0", border: "#B8914A", text: "#1F3B2D", abg: "#1F3B2D", at: "#F5F1E8" },
-  good:     { bg: "#FBF8F0", border: "#1F3B2D", text: "#14281E", abg: "#1F3B2D", at: "#F5F1E8" },
-  bad:      { bg: "#FBF8F0", border: "#6B2C2C", text: "#6B2C2C", abg: "#6B2C2C", at: "#FBF8F0" },
-  neutral:  { bg: "#FBF8F0", border: "#9A8B5E", text: "#1F3B2D", abg: "#5A6B5F", at: "#F5F1E8" },
-  amber:    { bg: "#FBF8F0", border: "#8A6A33", text: "#8A6A33", abg: "#B8914A", at: "#14281E" },
+  decision: { bg: "#252A35", border: "#9CA88A", text: "#F5F5F5", abg: "#9CA88A", at: "#0b0e13" },
+  good:     { bg: "#252A35", border: "#9CA88A", text: "#F5F5F5", abg: "#9CA88A", at: "#0b0e13" },
+  bad:      { bg: "#252A35", border: "#C4634A", text: "#F5F5F5", abg: "#C4634A", at: "#F5F5F5" },
+  neutral:  { bg: "#252A35", border: "#A0A8B8", text: "#F5F5F5", abg: "#5C6478", at: "#F5F5F5" },
+  amber:    { bg: "#252A35", border: "#BCC8A8", text: "#BCC8A8", abg: "#9CA88A", at: "#0b0e13" },
 };
 
 const FONT_DISPLAY_STACK = `var(--font-display), "Fraunces", Georgia, serif`;
@@ -140,14 +140,14 @@ const FONT_MONO_STACK = `var(--font-mono), "JetBrains Mono", monospace`;
 function StartNode({ data }) {
   return (
     <div style={{
-      background: "#14281E", border: "1.5px solid #B8914A", borderRadius: 2,
-      color: "#D9BE83", padding: "12px 28px",
-      fontFamily: FONT_DISPLAY_STACK, fontSize: 15, fontWeight: 500,
-      letterSpacing: "-0.01em", fontVariationSettings: '"opsz" 32, "SOFT" 50',
-      boxShadow: "inset 0 0 0 2px #14281E, 0 0 0 3px #B8914A, 0 4px 12px rgba(20,40,30,.2)",
+      background: "#2C3040", border: "1.5px solid #9CA88A", borderRadius: 8,
+      color: "#F5F5F5", padding: "12px 28px",
+      fontFamily: FONT_DISPLAY_STACK, fontSize: 15, fontWeight: 700,
+      letterSpacing: "-0.01em",
+      boxShadow: "inset 0 0 0 2px #252A35, 0 0 0 3px rgba(156,168,138,0.4), 0 4px 12px rgba(0,0,0,.4)",
     }}>
       {data.label}
-      <Handle type="source" position={Position.Bottom} style={{ background: "#B8914A", border: "1px solid #8A6A33" }}/>
+      <Handle type="source" position={Position.Bottom} style={{ background: "#9CA88A", border: "1px solid #7A8A6A" }}/>
     </div>
   );
 }
@@ -168,7 +168,7 @@ function DecisionNode({ data }) {
       fontFamily: FONT_DISPLAY_STACK,
       fontVariationSettings: '"opsz" 18, "SOFT" 50',
       fontWeight: 500,
-      boxShadow: a ? `0 0 0 3px rgba(184,145,74,0.35), 0 4px 12px rgba(31,59,45,0.15)` : "0 1px 0 #E8DFC4, 0 2px 8px rgba(31,59,45,.08)",
+      boxShadow: a ? `0 0 0 3px rgba(156,168,138,0.35), 0 4px 12px rgba(0,0,0,0.15)` : "0 1px 0 #2E3445, 0 2px 8px rgba(0,0,0,.08)",
       animation: ENTER,
       transition: "background 0.2s, box-shadow 0.2s, color 0.2s",
     }}>
@@ -179,14 +179,14 @@ function DecisionNode({ data }) {
         <div style={{
           marginTop: 6, padding: "3px 10px", borderRadius: 2, fontSize: 11, fontWeight: 500,
           fontFamily: FONT_MONO_STACK, letterSpacing: "0.04em",
-          background: a ? "rgba(245,241,232,0.15)" : "rgba(184,145,74,0.12)",
-          border: a ? "1px solid rgba(245,241,232,0.25)" : "1px solid rgba(184,145,74,0.3)",
+          background: a ? "rgba(0,0,0,0.18)" : "rgba(156,168,138,0.12)",
+          border: a ? "1px solid rgba(0,0,0,0.28)" : "1px solid rgba(156,168,138,0.3)",
         }}>
           {data.val}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} id="yes" style={{ left: "30%", background: "#1F3B2D" }}/>
-      <Handle type="source" position={Position.Bottom} id="no" style={{ left: "70%", background: "#6B2C2C" }}/>
+      <Handle type="source" position={Position.Bottom} id="yes" style={{ left: "30%", background: "#9CA88A" }}/>
+      <Handle type="source" position={Position.Bottom} id="no" style={{ left: "70%", background: "#C4634A" }}/>
     </div>
   );
 }
@@ -207,7 +207,7 @@ function ResultNode({ data }) {
       fontFamily: FONT_DISPLAY_STACK,
       fontVariationSettings: '"opsz" 18, "SOFT" 50',
       fontWeight: 500,
-      boxShadow: a ? `0 0 0 3px rgba(184,145,74,0.35), 0 4px 12px rgba(31,59,45,0.15)` : "0 1px 0 #E8DFC4, 0 2px 8px rgba(31,59,45,.08)",
+      boxShadow: a ? `0 0 0 3px rgba(156,168,138,0.35), 0 4px 12px rgba(0,0,0,0.15)` : "0 1px 0 #2E3445, 0 2px 8px rgba(0,0,0,.08)",
       animation: ENTER,
       transition: "background 0.2s, box-shadow 0.2s, color 0.2s",
     }}>
@@ -218,8 +218,8 @@ function ResultNode({ data }) {
         <div style={{
           marginTop: 5, padding: "3px 10px", borderRadius: 2, fontSize: 11, fontWeight: 500,
           fontFamily: FONT_MONO_STACK, letterSpacing: "0.04em",
-          background: a ? "rgba(245,241,232,0.15)" : "rgba(31,59,45,0.06)",
-          border: a ? "1px solid rgba(245,241,232,0.25)" : "1px solid rgba(31,59,45,0.15)",
+          background: a ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.06)",
+          border: a ? "1px solid rgba(0,0,0,0.28)" : "1px solid rgba(0,0,0,0.15)",
         }}>
           {data.val}
         </div>
@@ -281,21 +281,21 @@ function buildGraph({ visible, activeNodes, cif, hasPref, addPct, vatRate, vat, 
 
   // Edge colour semantics: forest = yes/continue, oxblood = no/danger, brass = informational
   const edgeDefs = [
-    {id:"e0", s:"start", t:"q1",    sh:null,  col:"#5A6B5F", lbl:null},
-    {id:"e1y",s:"q1",   t:"r_eu",  sh:"yes", col:"#1F3B2D", lbl:"Yes"},
-    {id:"e1n",s:"q1",   t:"q2",    sh:"no",  col:"#6B2C2C", lbl:"No"},
-    {id:"e2n",s:"q2",   t:"r_lv",  sh:"yes", col:"#9A8B5E", lbl:"≤ €150"},
-    {id:"e2y",s:"q2",   t:"q3",    sh:"no",  col:"#6B2C2C", lbl:"> €150"},
-    {id:"e3y",s:"q3",   t:"r_pref",sh:"yes", col:"#1F3B2D", lbl:"Yes"},
-    {id:"e3n",s:"q3",   t:"q4",    sh:"no",  col:"#6B2C2C", lbl:"No / MFN"},
-    {id:"ep", s:"r_pref",t:"q4",   sh:null,  col:"#9A8B5E", lbl:null},
-    {id:"e4y",s:"q4",   t:"r_add", sh:"yes", col:"#6B2C2C", lbl:"Yes"},
-    {id:"e4n",s:"q4",   t:"q5",    sh:"no",  col:"#1F3B2D", lbl:"No"},
-    {id:"ea", s:"r_add",t:"q5",    sh:null,  col:"#9A8B5E", lbl:null},
-    {id:"e5y",s:"q5",   t:"r_exc", sh:"yes", col:"#6B2C2C", lbl:"Yes"},
-    {id:"e5n",s:"q5",   t:"vat",   sh:"no",  col:"#1F3B2D", lbl:"No"},
-    {id:"ee", s:"r_exc",t:"vat",   sh:null,  col:"#9A8B5E", lbl:null},
-    {id:"e6", s:"vat",  t:"total", sh:null,  col:"#B8914A", lbl:null},
+    {id:"e0", s:"start", t:"q1",    sh:null,  col:"#5C6478", lbl:null},
+    {id:"e1y",s:"q1",   t:"r_eu",  sh:"yes", col:"#9CA88A", lbl:"Yes"},
+    {id:"e1n",s:"q1",   t:"q2",    sh:"no",  col:"#C4634A", lbl:"No"},
+    {id:"e2n",s:"q2",   t:"r_lv",  sh:"yes", col:"#A0A8B8", lbl:"≤ €150"},
+    {id:"e2y",s:"q2",   t:"q3",    sh:"no",  col:"#C4634A", lbl:"> €150"},
+    {id:"e3y",s:"q3",   t:"r_pref",sh:"yes", col:"#9CA88A", lbl:"Yes"},
+    {id:"e3n",s:"q3",   t:"q4",    sh:"no",  col:"#C4634A", lbl:"No / MFN"},
+    {id:"ep", s:"r_pref",t:"q4",   sh:null,  col:"#A0A8B8", lbl:null},
+    {id:"e4y",s:"q4",   t:"r_add", sh:"yes", col:"#C4634A", lbl:"Yes"},
+    {id:"e4n",s:"q4",   t:"q5",    sh:"no",  col:"#9CA88A", lbl:"No"},
+    {id:"ea", s:"r_add",t:"q5",    sh:null,  col:"#A0A8B8", lbl:null},
+    {id:"e5y",s:"q5",   t:"r_exc", sh:"yes", col:"#C4634A", lbl:"Yes"},
+    {id:"e5n",s:"q5",   t:"vat",   sh:"no",  col:"#9CA88A", lbl:"No"},
+    {id:"ee", s:"r_exc",t:"vat",   sh:null,  col:"#A0A8B8", lbl:null},
+    {id:"e6", s:"vat",  t:"total", sh:null,  col:"#9CA88A", lbl:null},
   ];
 
   const edges = edgeDefs
@@ -398,7 +398,7 @@ function InputPanel({inputs, onChange, onFetchDuty, dutyLoading}) {
       {inc.needsIns     && fld("Insurance", num("insurance","e.g. 20"))}
       {currency!=="EUR" && fld(`FX rate (${currency}/EUR)`, num("fxRate","e.g. 1.08"))}
 
-      <hr style={{border:"none",borderTop:"1px solid #e5e7eb",margin:"2px 0"}}/>
+      <hr style={{border:"none",borderTop:"1px solid var(--border-strong)",margin:"2px 0"}}/>
 
       {fld("HS code",
         <div style={{ display: "flex", gap: 6 }}>
@@ -561,7 +561,7 @@ export default function CustomsFlow() {
               proOptions={{ hideAttribution: true }}
               nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
             >
-              <Background color="#D4C9A8" gap={32} size={1}/>
+              <Background color="#2E3445" gap={32} size={1}/>
               <Controls showInteractive={false}/>
             </ReactFlow>
           </div>

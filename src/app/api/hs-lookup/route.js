@@ -2,7 +2,33 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/apiAuth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { sendPushToUser } from "@/lib/push";
 export const maxDuration = 60;
+
+// One push per completed classification. Confidence < 60% (mapped from the
+// model's "low" label) routes to the lowConfidence channel so the user's
+// category toggle can separate review-worthy results from routine ones.
+// Fire-and-forget: never block the classify response on the push.
+function firePushForResult(userId, result) {
+  const code = result?.cn8 || result?.cn10 || result?.hs6;
+  if (!code) return;                           // unresolved — nothing to notify
+  if (result.needsMoreInfo || result.error) return;
+
+  const pct = typeof result.confidencePct === "number" ? result.confidencePct : null;
+  const title = result.description
+    ? `${code.replace(/\s+/g, "")} · ${result.description.slice(0, 40)}`
+    : `Classified → ${code}`;
+  const body = result.rationale?.slice(0, 120) ?? "Tap to review the full breakdown.";
+
+  const category = pct != null && pct < 60 ? "lowConfidence" : "newResults";
+  sendPushToUser({
+    userId,
+    category,
+    title: category === "lowConfidence" ? `Low confidence — ${code}` : title,
+    body,
+    data: { hs6: result.hs6, cn8: result.cn8, cn10: result.cn10 },
+  }).catch(() => {});
+}
 
 // Cache entries older than 180 days are considered stale (CN codes update annually)
 const CACHE_MAX_AGE_DAYS = 180;
@@ -17,6 +43,13 @@ const TARIC_TREE_BASE = "https://ec.europa.eu/taxation_customs/dds2/taric/nomenc
 const classifySchema = z.object({
   type: z.literal("classify"),
   description: z.string().min(1).max(1000),
+  // Client-side preference for how verbose the rationale should be.
+  // "detailed" is Pro-only and is silently downgraded to "medium" for free
+  // users until the plan check is wired.
+  explanationLevel: z.enum(["short", "medium", "detailed"]).optional(),
+  // When false, skip the TARIC SOAP verification + sibling probe entirely.
+  // Results are faster but marked `taricVerified: false`. Defaults to true.
+  autoTaricValidation: z.boolean().optional(),
 });
 
 const rateSchema = z.object({
@@ -120,6 +153,42 @@ function buildSensitiveGoods(hs6, bestMatch) {
   }
 
   return SENSITIVE_CHAPTERS[chapter] ?? null;
+}
+
+/**
+ * Secondary existence check against USITC's HTS REST endpoint.
+ * Because the first 6 HS digits are globally harmonised (HS 2022), any real
+ * subheading shows up in both EU TARIC and US HTS. When TARIC is silent, a
+ * USITC miss is a strong "this code was invented or long-abolished" signal.
+ * Returns "exists" | "missing" | "unknown" — treat `unknown` as neutral so
+ * USITC downtime never blocks a lookup.
+ */
+async function usitcHs6Exists(hs6) {
+  const digits = String(hs6 || "").replace(/\D/g, "").slice(0, 6);
+  if (digits.length < 6) return "unknown";
+  const formatted = `${digits.slice(0, 4)}.${digits.slice(4, 6)}`; // "6105.10"
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(
+      `https://hts.usitc.gov/reststop/search?keyword=${encodeURIComponent(formatted)}`,
+      { signal: ctrl.signal, headers: { Accept: "application/json" } }
+    );
+    clearTimeout(t);
+    if (!r.ok) return "unknown";
+    const arr = await r.json();
+    if (!Array.isArray(arr) || arr.length === 0) return "missing";
+    // USITC sometimes returns unrelated hits (e.g. 9903 chapter-99 overlays)
+    // for abolished codes. Only accept results whose `htsno` actually starts
+    // with the 6-digit prefix we asked about.
+    const hit = arr.some((item) => {
+      const n = String(item?.htsno || "").replace(/\D/g, "");
+      return n.startsWith(digits);
+    });
+    return hit ? "exists" : "missing";
+  } catch {
+    return "unknown";
+  }
 }
 
 async function taricVerify(cn8, originCountry = null) {
@@ -437,10 +506,16 @@ Key changes your training may not have:
 Output raw JSON only. Two options:
 
 OPTION A — confident (clear single heading):
-{"status":"classified","hs6":"6-digit","heading":"4-digit","confidence":"high","reasoning":"1-2 sentence justification citing the key GRI or chapter note"}
+{"status":"classified","hs6":"6-digit","heading":"4-digit","confidence":"high","confidencePct":<integer 70-99>,"reasoning":"1-2 sentence justification citing the key GRI or chapter note"}
 
 OPTION B — not confident (ambiguous, needs info, multiple options, or unusual product):
 {"status":"escalate","reason":"why you are not confident"}
+
+The confidencePct field must reflect a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI 1 — be honest, not optimistic:
+- 95–99: textbook case, the description unambiguously lands on one subheading with no competing headings
+- 85–94: clear classification but one secondary heading you ruled out
+- 75–84: reasonable confidence, multiple plausible headings, you picked one based on the dominant characteristic
+- 70–74: borderline — consider returning escalate instead
 
 Rules:
 - Return OPTION A only when you are genuinely certain of the 6-digit subheading
@@ -507,10 +582,17 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
   "hs6": "6-digit string (e.g. 880730)",
   "heading": "4-digit heading (e.g. 8807)",
   "confidence": "high | medium",
+  "confidencePct": <integer 60-99>,
   "reasoning": "Authoritative reasoning citing: (1) which GRI applies (GRI 1–6) and why, (2) the relevant Chapter Note or Section Note by number (e.g. 'Chapter 61 Note 3 excludes...'), (3) the WCO Explanatory Note for the heading/subheading (e.g. 'EN 6203 covers...'), (4) any applicable EU BTI reference or CJEU ruling. If a CN 2026 dedicated subheading exists for this product, state it explicitly. Be specific — quote the rule, do not just name it.",
   "chapter": "HS chapter name",
   "notes": "any ambiguity, assumptions, or CN 2026 subheading notes"
 }
+
+The confidencePct field is a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI. Be honest, not rounded:
+- 95–99: unambiguous, one clear heading, no competing notes
+- 85–94: strong case, one secondary heading ruled out by a named note
+- 75–84: reasonable fit, multiple headings considered, picked on dominant characteristic
+- 60–74: weak fit — strongly consider switching to OPTION 2 (needs_info) instead
 
 OPTION 2 — NEED MORE INFO:
 {
@@ -587,9 +669,32 @@ function saturnUrl(cn10) {
 
 const CONFIDENCE_PCT = { high: 92, medium: 72, low: 45 };
 
-async function runClassification(data, userId, emit) {
+// Map the client's chosen verbosity onto a rationale instruction injected
+// into the Claude user message. "detailed" is silently downgraded to
+// "medium" for free users until the `User.plan` column lands.
+function rationaleInstruction(level) {
+  switch (level) {
+    case "short":
+      return "For the 'reasoning' field: 1 sentence, <120 chars, cite only the decisive GRI or chapter note.";
+    case "detailed":
+      return "For the 'reasoning' field: 3–5 sentences citing the applicable GRI, relevant chapter/section notes, the rejected alternative headings you considered and why, and any BTI precedent you recall. Around 600 chars.";
+    case "medium":
+    default:
+      return "For the 'reasoning' field: 1–2 sentences (around 250 chars) naming the chapter and the GRI/note that applies.";
+  }
+}
+
+async function runClassification(data, userId, isPro, emit) {
   const descNorm = normalizeDescription(data.description);
   const staleThreshold = new Date(Date.now() - CACHE_MAX_AGE_DAYS * 86400000);
+
+  // Pro-gated knobs: `detailed` explanation level is Pro-only; free users are
+  // silently downgraded to `medium`. `model: "sonnet"` override will also be
+  // gated here when the client starts sending it (post-billing wiring).
+  const requestedLevel = data.explanationLevel ?? "medium";
+  const effectiveLevel =
+    requestedLevel === "detailed" && !isPro ? "medium" : requestedLevel;
+  const userMessage = `Product: ${data.description}\n\n${rationaleInstruction(effectiveLevel)}`;
 
   // Cache check
   emit({ type: "thinking", text: "Checking cache…" });
@@ -605,6 +710,7 @@ async function runClassification(data, userId, emit) {
         dutyRate: result.standardDutyRate ?? null, fromCache: true,
       }}),
     ]).catch(() => {});
+    firePushForResult(userId, result);
     emit({ type: "result", payload: { ...result, fromCache: true } });
     return;
   }
@@ -615,7 +721,7 @@ async function runClassification(data, userId, emit) {
   let modelUsed = "haiku";
   emit({ type: "thinking", text: "Haiku: fast-path analysis…" });
   try {
-    const haiku = await callClaude(HAIKU_SYSTEM, `Product: ${data.description}`, "claude-haiku-4-5-20251001", 600);
+    const haiku = await callClaude(HAIKU_SYSTEM, userMessage, "claude-haiku-4-5-20251001", 600);
     if (haiku.status === "classified" && haiku.confidence === "high" && haiku.hs6?.length >= 6) {
       emit({ type: "thinking", text: `Haiku → ${haiku.hs6} (high confidence)` });
       claudeResult = {
@@ -631,7 +737,7 @@ async function runClassification(data, userId, emit) {
       emit({ type: "thinking", text: `Haiku uncertain (${haiku.status ?? "—"}) → escalating to Sonnet` });
       modelUsed = "sonnet";
       emit({ type: "thinking", text: "Sonnet: full GRI / WCO / CN 2026 analysis…" });
-      claudeResult = await callClaude(CLASSIFY_SYSTEM, `Product: ${data.description}`);
+      claudeResult = await callClaude(CLASSIFY_SYSTEM, userMessage);
       emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidence ?? "—"})` });
     }
   } catch {
@@ -639,7 +745,7 @@ async function runClassification(data, userId, emit) {
     modelUsed = "sonnet";
     emit({ type: "thinking", text: "Sonnet: full GRI / WCO / CN 2026 analysis…" });
     try {
-      claudeResult = await callClaude(CLASSIFY_SYSTEM, `Product: ${data.description}`);
+      claudeResult = await callClaude(CLASSIFY_SYSTEM, userMessage);
       emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidence ?? "—"})` });
     } catch {
       emit({ type: "error", message: "Classification service error", status: 502 });
@@ -704,84 +810,183 @@ async function runClassification(data, userId, emit) {
   }
 
   // Single classification
-  const hs6 = (claudeResult.hs6 || "").replace(/\D/g, "").slice(0, 6);
-  const heading = hs6.slice(0, 4);
+  let hs6 = (claudeResult.hs6 || "").replace(/\D/g, "").slice(0, 6);
+  let heading = hs6.slice(0, 4);
 
   if (hs6.length < 4) {
     emit({ type: "error", message: "Classification service returned an invalid code", status: 502 });
     return;
   }
 
+  // Prefer the model's self-calibrated confidencePct (0–99). Only fall back
+  // to the bucket map when the response is from an older shape that didn't
+  // include the field — the map exists as a safety net, not a forced bucket.
+  const selfReportedPct = Number.isFinite(claudeResult.confidencePct)
+    ? Math.max(0, Math.min(99, Math.round(claudeResult.confidencePct)))
+    : null;
+  const resolvedPct = selfReportedPct ?? CONFIDENCE_PCT[claudeResult.confidence] ?? 72;
+
   let finalResult = {
     ...claudeResult,
     hs6,
     taricChapter: hs6.slice(0, 2),
     rationale: claudeResult.reasoning,
-    confidencePct: CONFIDENCE_PCT[claudeResult.confidence] ?? 72,
+    confidencePct: resolvedPct,
     _model: modelUsed,
   };
 
-  // TARIC heading browse
-  emit({ type: "thinking", text: `Probing TARIC · heading ${heading}…` });
-  let siblings = [];
-  try {
-    siblings = await taricBrowseHeading(heading);
-  } catch (e) {
-    // Both SOAP + tree path already failed — siblings stays empty
-  }
-  // If SOAP returned empty (not thrown), try the tree as a secondary source
-  if (siblings.length === 0) {
-    const treeSiblings = await taricBrowseHeadingFromTree(heading);
-    if (treeSiblings.length > 0) siblings = treeSiblings;
-  }
-  const taricFromTree = siblings.length > 0 && siblings[0]?._fromTree;
+  // ── Cross-jurisdiction existence gate (USITC HTS) ────────────────────────
+  // First 6 digits are globally harmonised — if USITC doesn't know the code,
+  // it's almost certainly abolished (Claude's training data still has the
+  // pre-HS-2017 codes) or invalid. When rejected we do ONE Sonnet retry with
+  // the rejected code as a "do not pick this" hint, turning the catch into a
+  // fix rather than just a warning.
+  emit({ type: "thinking", text: "Cross-checking heading against USITC…" });
+  let usitcStatus = await usitcHs6Exists(hs6);
+  if (usitcStatus === "missing") {
+    emit({ type: "thinking", text: `USITC: heading ${heading} not found — likely abolished. Retrying with Sonnet…` });
+    try {
+      const retryMessage =
+        `${userMessage}\n\n` +
+        `CRITICAL: The heading ${heading} does NOT exist in the current 2026 nomenclature. ` +
+        `It was almost certainly abolished or renumbered (e.g. HS 2017 moved 8803 → 8807, ` +
+        `HS 2022 restructured Ch 28/29 battery precursors). Pick a different, currently ` +
+        `valid 6-digit subheading. If unsure, return status=escalate or needs_info.`;
+      const retry = await callClaude(CLASSIFY_SYSTEM, retryMessage);
+      const retryHs6 = String(retry.hs6 || "").replace(/\D/g, "").slice(0, 6);
+      if (retryHs6.length === 6 && retryHs6 !== hs6) {
+        const retryStatus = await usitcHs6Exists(retryHs6);
+        if (retryStatus !== "missing") {
+          emit({ type: "thinking", text: `Sonnet retry → ${retryHs6} (${retry.confidence ?? "—"}) — accepting` });
+          // Swap to the retry result and continue normal TARIC processing below.
+          claudeResult = retry;
+          modelUsed = "sonnet";
+          hs6 = retryHs6;
+          heading = retryHs6.slice(0, 4);
+          const retryPct = Number.isFinite(retry.confidencePct)
+            ? Math.max(0, Math.min(99, Math.round(retry.confidencePct)))
+            : CONFIDENCE_PCT[retry.confidence] ?? 72;
+          finalResult = {
+            ...retry,
+            hs6,
+            taricChapter: hs6.slice(0, 2),
+            rationale: retry.reasoning,
+            confidencePct: retryPct,
+            _model: modelUsed,
+          };
+          usitcStatus = retryStatus; // update for the downstream success path
+        } else {
+          emit({ type: "thinking", text: `Sonnet retry also missing in USITC — giving up` });
+        }
+      } else {
+        emit({ type: "thinking", text: `Sonnet retry returned no fresh code — giving up` });
+      }
+    } catch (e) {
+      emit({ type: "thinking", text: "Sonnet retry failed — giving up" });
+    }
 
-  if (siblings.length === 0) {
-    // Unverified: either the heading is wrong or our probing missed it.
-    // Don't override Claude's confidence — empty probes are more often a
-    // probing gap than a hallucination. Just flag as unverified.
-    emit({ type: "thinking", text: `TARIC: heading ${heading} not matched via probe — keeping AI confidence (${finalResult.confidence})` });
-    finalResult.taricVerified = false;
-    finalResult.taricWarning = `Could not verify heading ${heading} in EU TARIC via automated probe. Verify on Saturn.`;
-    finalResult.saturnUrl = saturnUrl(hs6);
+    // If retry didn't rescue us, emit a low-confidence warning result.
+    if (usitcStatus === "missing") {
+      finalResult.taricVerified = false;
+      finalResult.confidence = "low";
+      finalResult.confidencePct = 20;
+      finalResult.taricWarning = `Heading ${heading} could not be verified in either EU TARIC or US HTS — even after a Sonnet retry. Please re-classify with more detail.`;
+      finalResult.saturnUrl = saturnUrl(hs6);
+      // No cache write — don't poison other users' lookups.
+      prisma.hsSearchHistory.create({ data: {
+        userId, description: data.description,
+        hs6: finalResult.hs6 || null, cn8: null,
+        dutyRate: null, fromCache: false,
+      }}).catch(() => {});
+      emit({ type: "result", payload: finalResult });
+      return;
+    }
+  } else if (usitcStatus === "exists") {
+    emit({ type: "thinking", text: `USITC: heading ${heading} confirmed to exist globally ✓` });
   } else {
-    const treeNote = taricFromTree ? " (TARIC SOAP unavailable — rates via Saturn link)" : "";
-    emit({ type: "thinking", text: `TARIC: found ${siblings.length} declarable CN code${siblings.length !== 1 ? "s" : ""} under ${heading}${treeNote}` });
-    const exactMatch = siblings.find(s => s.cn8.startsWith(hs6));
-    const bestMatch = exactMatch || siblings[0];
+    emit({ type: "thinking", text: "USITC check inconclusive — continuing with TARIC" });
+  }
 
-    finalResult.cn8 = bestMatch.cn8;
-    finalResult.cn10 = bestMatch.cn10;
-    finalResult.hs6 = bestMatch.cn8.slice(0, 6);
-    finalResult.description = bestMatch.description;
-    finalResult.taricVerified = !taricFromTree; // Full SOAP verification only
-    finalResult.saturnUrl = saturnUrl(bestMatch.cn10);
+  // TARIC heading browse — skippable per-request via `autoTaricValidation`.
+  const autoTaric = data.autoTaricValidation !== false; // default on
+  if (!autoTaric) {
+    emit({ type: "thinking", text: "TARIC validation disabled — returning AI result as-is" });
+    finalResult.taricVerified = false;
+    finalResult.saturnUrl = saturnUrl(hs6);
+  }
 
-    if (bestMatch.mfnRate !== null) {
-      finalResult.standardDutyRate = bestMatch.mfnRate;
-      finalResult.mfnRateRaw = bestMatch.mfnRateRaw;
-      emit({ type: "thinking", text: `MFN duty rate: ${bestMatch.mfnRateRaw ?? bestMatch.mfnRate + "%"}` });
-    } else if (taricFromTree) {
-      emit({ type: "thinking", text: "MFN duty rate: TARIC SOAP offline — check Saturn link" });
-    } else {
-      emit({ type: "thinking", text: "MFN duty rate: not found in TARIC measures" });
+  if (autoTaric) {
+    emit({ type: "thinking", text: `Probing TARIC · heading ${heading}…` });
+    let siblings = [];
+    try {
+      siblings = await taricBrowseHeading(heading);
+    } catch (e) {
+      // Both SOAP + tree path already failed — siblings stays empty
     }
-
-    if (!exactMatch) {
-      finalResult.taricWarning = `AI suggested ${hs6} but nearest valid code is ${bestMatch.cn8.slice(0, 6)}. Review the siblings below.`;
-      if (finalResult.confidence === "high") finalResult.confidence = "medium";
-      emit({ type: "thinking", text: `Best match: ${bestMatch.cn8} (nearest to suggested ${hs6})` });
-    } else {
-      if (finalResult.confidence === "medium") finalResult.confidence = "high";
-      emit({ type: "thinking", text: `Exact match: ${bestMatch.cn8}${taricFromTree ? " — nomenclature confirmed ✓" : " — TARIC confirmed ✓"}` });
+    // If SOAP returned empty (not thrown), try the tree as a secondary source
+    if (siblings.length === 0) {
+      const treeSiblings = await taricBrowseHeadingFromTree(heading);
+      if (treeSiblings.length > 0) siblings = treeSiblings;
     }
-    finalResult.confidencePct = CONFIDENCE_PCT[finalResult.confidence] ?? 72;
-    if (siblings.length > 1) finalResult.taricSiblings = siblings.map(s => { const { _fromTree, ...r } = s; return r; });
+    const taricFromTree = siblings.length > 0 && siblings[0]?._fromTree;
 
-    const sensitiveGoods = buildSensitiveGoods(finalResult.hs6, bestMatch);
-    if (sensitiveGoods) {
-      finalResult.sensitiveGoods = sensitiveGoods;
-      emit({ type: "thinking", text: `⚠️ Sensitive/prohibited goods: ${sensitiveGoods.category}` });
+    if (siblings.length === 0) {
+      // Unverified: either the heading is wrong (e.g. 8803 — abolished and
+      // renumbered to 8807) or the probe missed it. Force confidence down so
+      // the client surfaces it as low-trust, and set an explicit warning the
+      // ResultCard renders as a terracotta banner.
+      emit({ type: "thinking", text: `TARIC: heading ${heading} not matched via probe — confidence downgraded to low` });
+      finalResult.taricVerified = false;
+      finalResult.taricWarning = `Heading ${heading} could not be verified in EU TARIC. It may be abolished or renumbered in CN 2026 — please re-classify with more detail or verify on Saturn.`;
+      finalResult.saturnUrl = saturnUrl(hs6);
+      finalResult.confidence = "low";
+      finalResult.confidencePct = Math.min(finalResult.confidencePct ?? 40, 40);
+    } else {
+      const treeNote = taricFromTree ? " (TARIC SOAP unavailable — rates via Saturn link)" : "";
+      emit({ type: "thinking", text: `TARIC: found ${siblings.length} declarable CN code${siblings.length !== 1 ? "s" : ""} under ${heading}${treeNote}` });
+      const exactMatch = siblings.find(s => s.cn8.startsWith(hs6));
+      const bestMatch = exactMatch || siblings[0];
+
+      finalResult.cn8 = bestMatch.cn8;
+      finalResult.cn10 = bestMatch.cn10;
+      finalResult.hs6 = bestMatch.cn8.slice(0, 6);
+      finalResult.description = bestMatch.description;
+      finalResult.taricVerified = !taricFromTree; // Full SOAP verification only
+      finalResult.saturnUrl = saturnUrl(bestMatch.cn10);
+
+      if (bestMatch.mfnRate !== null) {
+        finalResult.standardDutyRate = bestMatch.mfnRate;
+        finalResult.mfnRateRaw = bestMatch.mfnRateRaw;
+        emit({ type: "thinking", text: `MFN duty rate: ${bestMatch.mfnRateRaw ?? bestMatch.mfnRate + "%"}` });
+      } else if (taricFromTree) {
+        emit({ type: "thinking", text: "MFN duty rate: TARIC SOAP offline — check Saturn link" });
+      } else {
+        emit({ type: "thinking", text: "MFN duty rate: not found in TARIC measures" });
+      }
+
+      if (!exactMatch) {
+        finalResult.taricWarning = `AI suggested ${hs6} but nearest valid code is ${bestMatch.cn8.slice(0, 6)}. Review the siblings below.`;
+        if (finalResult.confidence === "high") finalResult.confidence = "medium";
+        emit({ type: "thinking", text: `Best match: ${bestMatch.cn8} (nearest to suggested ${hs6})` });
+      } else {
+        if (finalResult.confidence === "medium") finalResult.confidence = "high";
+        emit({ type: "thinking", text: `Exact match: ${bestMatch.cn8}${taricFromTree ? " — nomenclature confirmed ✓" : " — TARIC confirmed ✓"}` });
+      }
+      // Nudge the model's self-reported pct based on TARIC feedback rather
+      // than snapping to a bucket: exact match +5, non-exact −10.
+      if (selfReportedPct != null) {
+        const delta = exactMatch ? 5 : -10;
+        finalResult.confidencePct = Math.max(40, Math.min(99, selfReportedPct + delta));
+      } else {
+        finalResult.confidencePct = CONFIDENCE_PCT[finalResult.confidence] ?? 72;
+      }
+      if (siblings.length > 1) finalResult.taricSiblings = siblings.map(s => { const { _fromTree, ...r } = s; return r; });
+
+      const sensitiveGoods = buildSensitiveGoods(finalResult.hs6, bestMatch);
+      if (sensitiveGoods) {
+        finalResult.sensitiveGoods = sensitiveGoods;
+        emit({ type: "thinking", text: `⚠️ Sensitive/prohibited goods: ${sensitiveGoods.category}` });
+      }
     }
   }
 
@@ -800,6 +1005,7 @@ async function runClassification(data, userId, emit) {
     }}),
   ]).catch(() => {});
 
+  firePushForResult(userId, finalResult);
   emit({ type: "result", payload: finalResult });
 }
 
@@ -809,6 +1015,7 @@ export async function POST(req) {
   const a = await requireUser(req);
   if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
   const userId = a.userId;
+  const isPro = a.user?.plan === "pro";
 
   let body;
   try { body = await req.json(); }
@@ -853,7 +1060,7 @@ export async function POST(req) {
     // Legacy JSON path — web app and non-streaming clients
     let payload = null;
     let errPayload = null;
-    await runClassification(data, userId, (event) => {
+    await runClassification(data, userId, isPro, (event) => {
       if (event.type === "result") payload = event.payload;
       if (event.type === "error") errPayload = event;
     });
@@ -869,7 +1076,7 @@ export async function POST(req) {
         try { controller.enqueue(enc.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch {}
       };
       try {
-        await runClassification(data, userId, emit);
+        await runClassification(data, userId, isPro, emit);
       } catch (e) {
         emit({ type: "error", message: e?.message ?? "Unknown error", status: 502 });
       }

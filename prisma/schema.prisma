@@ -13,6 +13,7 @@ model User {
   name          String?
   passwordHash  String
   role          String          @default("USER")
+  plan          String          @default("free")   // "free" | "pro"
   createdAt     DateTime        @default(now())
   shipments     Shipment[]
   favourites    HSFavourite[]
@@ -20,6 +21,9 @@ model User {
   sessions      Session[]
   hsHistory     HsSearchHistory[]
   apiTokens     ApiToken[]
+  pushTokens    DevicePushToken[]
+  notificationPrefs NotificationPrefs?
+  notifications Notification[]
 }
 
 // Long-lived bearer tokens for the mobile app. Plaintext is shown once at
@@ -150,4 +154,57 @@ model OtpCode {
 
   @@index([email, createdAt])
   @@index([createdAt])
+}
+
+// Expo push token per device. One user can have many rows (phone, tablet).
+// Row exists only while the master push toggle is ON on that device —
+// DELETE /api/me/push-token removes it. Delivery gates live on
+// NotificationPrefs (per user), not here.
+model DevicePushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique   // Expo push token "ExponentPushToken[...]"
+  platform  String             // "ios" | "android" | "web"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Per-user notification preferences. One row per user, mirrors the mobile
+// client toggles 1:1 so the server can decide whether to enqueue a push or
+// send an email without re-deriving state.
+model NotificationPrefs {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pushEnabled        Boolean  @default(true)          // master
+  pushNewResults     Boolean  @default(true)
+  pushLowConfidence  Boolean  @default(true)
+  pushBilling        Boolean  @default(true)          // "subscription reminders"
+  pushProductUpdates Boolean  @default(false)
+  emailEnabled       Boolean  @default(true)          // marketing/product emails
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// Durable inbox entry — one row per push we dispatched (or would have
+// dispatched if the user was muted). The mobile app renders these in a
+// bell-icon notification centre so users can catch up on missed banners.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String               // "newResults" | "lowConfidence" | "billing" | "productUpdates"
+  title     String
+  body      String
+  data      String?              // JSON blob — whatever was put on the push payload
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
 }

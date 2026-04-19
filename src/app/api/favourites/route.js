@@ -73,6 +73,16 @@ export async function DELETE(req) {
   const a = await requireUser(req);
   if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
 
+  // `?all=1` wipes every favourite for the current user. Used by the
+  // Data & Privacy screen's "Delete All Classifications" action.
+  const url = new URL(req.url);
+  if (url.searchParams.get("all") === "1") {
+    const result = await prisma.hSFavourite.deleteMany({
+      where: { userId: a.userId },
+    });
+    return NextResponse.json({ ok: true, deleted: result.count });
+  }
+
   let body;
   try {
     body = await req.json();

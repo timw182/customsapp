@@ -2,6 +2,54 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "./HsLookupTabV2.module.css";
 
+function CameraIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  );
+}
+function MicIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8" y1="23" x2="16" y2="23"/>
+    </svg>
+  );
+}
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+    </svg>
+  );
+}
+
+function productEmoji(desc) {
+  const s = String(desc || "").toLowerCase();
+  if (/\b(shoe|boot|sneaker|running|sandal|footwear)\b/.test(s)) return "👟";
+  if (/\b(headphone|earbud|speaker|audio)\b/.test(s)) return "🎧";
+  if (/\b(laptop|computer|notebook|pc)\b/.test(s)) return "💻";
+  if (/\b(phone|smartphone|mobile|tablet|ipad)\b/.test(s)) return "📱";
+  if (/\b(camera|lens)\b/.test(s)) return "📷";
+  if (/\b(watch|smartwatch)\b/.test(s)) return "⌚";
+  if (/\b(wine|beer|spirit|whisky|vodka|alcohol)\b/.test(s)) return "🍷";
+  if (/\b(tobacco|cigar|cigarette|vape)\b/.test(s)) return "🚬";
+  if (/\b(car|vehicle|automobile)\b/.test(s)) return "🚗";
+  if (/\b(battery|lithium)\b/.test(s)) return "🔋";
+  if (/\b(steel|iron|metal)\b/.test(s)) return "🔩";
+  if (/\b(clothing|shirt|jacket|dress|textile|apparel)\b/.test(s)) return "👕";
+  if (/\b(cheese|food|snack|confection|chocolate)\b/.test(s)) return "🧀";
+  if (/\b(book|magazine|paper)\b/.test(s)) return "📚";
+  if (/\b(bag|luggage|backpack)\b/.test(s)) return "🎒";
+  if (/\b(toy|game)\b/.test(s)) return "🧸";
+  if (/\b(jewellery|jewelry|gold|silver|ring)\b/.test(s)) return "💎";
+  return "📦";
+}
+
 const PROGRESS_STAGES = [
   { label: "AI classifying goods…",         pct: 18, ms: 0    },
   { label: "Verifying with EU TARIC…",      pct: 42, ms: 3500 },
@@ -22,6 +70,14 @@ export default function HsLookupTabV2({
   const timersRef = useRef([]);
   const [history, setHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [toast, setToast] = useState("");
+  const toastTimerRef = useRef(null);
+
+  function showToast(msg) {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(""), 2200);
+  }
 
   // Load search history
   useEffect(() => {
@@ -78,8 +134,8 @@ export default function HsLookupTabV2({
     d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`
   ) || (hsResult?.hs6 || "");
 
-  const confColor = hsResult?.confidence === "high" ? "#10b981"
-    : hsResult?.confidence === "medium" ? "#D97706" : "#DC2626";
+  const confColor = hsResult?.confidence === "high" ? "var(--sage)"
+    : hsResult?.confidence === "medium" ? "var(--terracotta)" : "var(--terracotta)";
   const confWidth = hsResult?.confidence === "high" ? "90%"
     : hsResult?.confidence === "medium" ? "60%" : "30%";
 
@@ -113,49 +169,77 @@ export default function HsLookupTabV2({
   return (
     <div className={styles.wrap}>
 
-      {/* ── LOOKUP CARD ── */}
-      <div className={styles.card}>
-        <div className={styles.cardHdr}>
-          <div className={styles.cardIcon}>🔍</div>
-          <span className={styles.cardTitle}>HS Code Lookup</span>
-          <span className={styles.cardSub}>AI-assisted classification · TARIC verification</span>
-        </div>
-        <div className={styles.cardBody}>
-          <div className={styles.lbl}>Describe the goods</div>
-          <div className={styles.inpRow} style={{marginBottom:12}}>
+      {/* ── HERO (mockup-aligned: camera + input + mic + CTA) ── */}
+      <section className={styles.hero}>
+        <p className={styles.heroEyebrow}>Search</p>
+        <h1 className={styles.heroTitle}>Dutify HS Code Lookup</h1>
+        <p className={styles.heroSub}>AI-assisted classification · cross-checked against EU TARIC</p>
+
+        <div className={styles.heroRow}>
+          <button
+            type="button"
+            className={styles.cameraCircle}
+            onClick={() => showToast("Camera upload — coming soon")}
+            aria-label="Camera upload (coming soon)"
+          >
+            <CameraIcon />
+          </button>
+
+          <div className={styles.inputPill}>
+            <span className={styles.inputPillIcon}><SearchIcon /></span>
             <input
-              className={styles.inp}
+              className={styles.inputPillInput}
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !hsLoading && description.trim() && lookupHS()}
-              placeholder="e.g. waterproof running shoes with rubber sole, size 42"
+              placeholder="Describe the product or enter keywords…"
             />
             <button
-              className={styles.btnGold}
-              onClick={() => lookupHS()}
-              disabled={hsLoading || !description.trim()}
+              type="button"
+              className={styles.voiceBtn}
+              onClick={() => showToast("Voice dictation — coming soon")}
+              aria-label="Voice dictation (coming soon)"
             >
-              {hsLoading ? <><span className={styles.spinner}/>Classifying…</> : "Classify"}
+              <MicIcon />
             </button>
           </div>
-          <div className={styles.hint}>
-            Claude AI classifies based on your description. Always verify against official TARIC before lodging a declaration.
-          </div>
+        </div>
 
-          {/* Progress bar */}
-          {progress.active && (
-            <div className={styles.progressWrap}>
-              <div className={styles.progressBar}>
-                <div className={styles.progressFill} style={{ width: `${progress.pct}%` }} />
-              </div>
-              <div className={styles.progressLabel}>{progress.label}</div>
+        <button
+          className={styles.classifyCta}
+          onClick={() => lookupHS()}
+          disabled={hsLoading || !description.trim()}
+        >
+          {hsLoading ? <><span className={styles.spinner}/>Classifying…</> : "Classify"}
+        </button>
+
+        {progress.active && (
+          <div className={styles.heroProgress}>
+            <div className={styles.heroProgressBar}>
+              <div className={styles.heroProgressFill} style={{ width: `${progress.pct}%` }} />
             </div>
-          )}
+            <div className={styles.heroProgressLabel}>{progress.label}</div>
+          </div>
+        )}
 
+        <div className={styles.heroHint}>
+          Claude AI classifies based on your description. Always verify against official TARIC before lodging a declaration.
+        </div>
+      </section>
+
+      {/* ── RESULT CARD — renders only when there's something to show ── */}
+      {(hsResult?.error || hsResult?.isCandidates || hsResult?.cn8 || hsResult?.hs6 || hsResult?.needsMoreInfo) && (
+      <div className={styles.card}>
+        <div className={styles.cardHdr}>
+          <div className={styles.cardIcon}>✓</div>
+          <span className={styles.cardTitle}>Result</span>
+          <span className={styles.cardSub}>EU TARIC · AI-verified</span>
+        </div>
+        <div className={styles.cardBody}>
           {/* Error */}
           {hsResult?.error && (
-            <div className={`${styles.infoPill} ${styles.pillRed}`} style={{marginTop:14}}>
+            <div className={`${styles.infoPill} ${styles.pillRed}`}>
               ⚠️ {hsResult.error}
             </div>
           )}
@@ -184,9 +268,9 @@ export default function HsLookupTabV2({
                             <span className={styles.candidatePct}>{c.confidencePct}%</span>
                           )}
                           {c.mfnRateRaw ? (
-                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={c.mfnRateRaw}>MFN {c.mfnRateRaw}</span>
+                            <span style={{fontSize:10,fontWeight:700,color:'var(--sage-dim)',background:'rgba(156,168,138,.09)',border:'1px solid rgba(156,168,138,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={c.mfnRateRaw}>MFN {c.mfnRateRaw}</span>
                           ) : c.mfnRate != null ? (
-                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>MFN {c.mfnRate}%</span>
+                            <span style={{fontSize:10,fontWeight:700,color:'var(--sage-dim)',background:'rgba(156,168,138,.09)',border:'1px solid rgba(156,168,138,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>MFN {c.mfnRate}%</span>
                           ) : null}
                           {c.taricVerified && (
                             <span className={`${styles.tag} ${styles.tagGold}`}>✓ TARIC</span>
@@ -248,14 +332,14 @@ export default function HsLookupTabV2({
                 </div>
               </div>
               <div className={styles.alertBodyAmber}>
-                <p style={{fontSize:12,color:"#6B7280",marginBottom:12}}>Click an answer to refine:</p>
+                <p style={{fontSize:12,color:"var(--text-secondary)",marginBottom:12}}>Click an answer to refine:</p>
                 {hsResult.questions?.map((q,i) => {
                   const qText = typeof q === "string" ? q : q.question;
                   const answers = typeof q === "string" ? [] : (q.answers || []);
                   if (dismissedQuestions.has(i)) return null;
                   return (
                     <div key={i} style={{marginBottom:12}}>
-                      <div style={{fontFamily:"var(--font-oswald,Oswald),sans-serif",fontSize:10.5,fontWeight:600,letterSpacing:1,color:"#92400e",marginBottom:6,textTransform:"uppercase"}}>
+                      <div style={{fontFamily:"var(--font-oswald,Oswald),sans-serif",fontSize:10.5,fontWeight:600,letterSpacing:1,color:"var(--terracotta)",marginBottom:6,textTransform:"uppercase"}}>
                         ❓ {qText}
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -276,7 +360,7 @@ export default function HsLookupTabV2({
                 })}
                 {hsResult.possibleChapters?.length > 0 && (
                   <div style={{marginTop:8}}>
-                    <p style={{fontSize:11.5,color:"#6B7280",marginBottom:7}}>Could be classified under:</p>
+                    <p style={{fontSize:11.5,color:"var(--text-secondary)",marginBottom:7}}>Could be classified under:</p>
                     <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                       {hsResult.possibleChapters.map((ch,i) => (
                         <button key={i} className={`${styles.answerPill} ${styles.answerPillGray}`}
@@ -288,11 +372,11 @@ export default function HsLookupTabV2({
                   </div>
                 )}
                 {hsResult.hint && (
-                  <div style={{marginTop:12,padding:"10px 12px",background:"#fef9c3",borderRadius:6,fontSize:12.5,color:"#713f12"}}>
+                  <div style={{marginTop:12,padding:"10px 12px",background:"var(--terracotta-bg)",borderRadius:6,fontSize:12.5,color:"var(--terracotta)"}}>
                     💡 {hsResult.hint}
                   </div>
                 )}
-                <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid #fde68a"}}>
+                <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid rgba(196,99,74,0.25)"}}>
                   <button
                     className={styles.btnGold}
                     onClick={() => lookupHS(description)}
@@ -314,7 +398,7 @@ export default function HsLookupTabV2({
                 <div className={styles.resultRates}>
                   <span className={styles.resultRateItem}>
                     MFN duty: <strong>{hsResult.standardDutyRate ?? "—"}%</strong>
-                    {hsResult.mfnRateEstimated && <span style={{fontSize:9,color:'#d97706',marginLeft:4}}>(AI est.)</span>}
+                    {hsResult.mfnRateEstimated && <span style={{fontSize:9,color:'var(--terracotta)',marginLeft:4}}>(AI est.)</span>}
                   </span>
                   <span className={styles.resultRateItem}>
                     Luxembourg VAT: <strong>{hsResult.vatRateLU || 17}%</strong>
@@ -325,19 +409,19 @@ export default function HsLookupTabV2({
                 </div>
                 {hsResult.taricVerified === true && (
                   <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4,marginBottom:2}}>
-                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,color:'#059669',background:'#d1fae5',border:'1px solid #6ee7b7',borderRadius:4,padding:'2px 8px'}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:600,color:'var(--sage-dim)',background:'var(--sage-bg)',border:'1px solid rgba(156,168,138,0.4)',borderRadius:4,padding:'2px 8px'}}>
                       ✓ TARIC verified (LU)
                     </span>
                   </div>
                 )}
                 {hsResult.taricVerified === false && (
-                  <div style={{marginTop:4,marginBottom:2,padding:'6px 10px',background:'#fef3c7',border:'1px solid #fbbf24',borderRadius:4,fontSize:11.5,color:'#92400e'}}>
+                  <div style={{marginTop:4,marginBottom:2,padding:'6px 10px',background:'var(--terracotta-bg)',border:'1px solid rgba(196,99,74,0.4)',borderRadius:4,fontSize:11.5,color:'var(--terracotta)'}}>
                     ⚠️ {hsResult.taricWarning}
                   </div>
                 )}
                 {hsResult.taricSiblings?.length > 1 && (
-                  <div style={{marginTop:6,padding:'8px 10px',background:'#f0fdf4',border:'1px solid #86efac',borderRadius:6}}>
-                    <div style={{fontSize:11,fontWeight:600,color:'#166534',marginBottom:6,textTransform:'uppercase',letterSpacing:'.5px'}}>
+                  <div style={{marginTop:6,padding:'8px 10px',background:'var(--sage-bg)',border:'1px solid rgba(156,168,138,0.35)',borderRadius:6}}>
+                    <div style={{fontSize:11,fontWeight:600,color:'var(--sage-light)',marginBottom:6,textTransform:'uppercase',letterSpacing:'.5px'}}>
                       📋 Valid 10-digit TARIC codes under {hsResult.hs6} — pick the most specific:
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -345,17 +429,17 @@ export default function HsLookupTabV2({
                         const dispCode = s.cn10 || s.cn8;
                         const isSelected = (s.cn10 && s.cn10 === (hsResult.cn10||hsResult.cn8)) || s.cn8 === hsResult.cn8;
                         return (
-                        <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? '#dcfce7' : 'white',border: isSelected ? '1px solid #86efac' : '1px solid #e5e7eb'}}>
-                          <span style={{fontFamily:'monospace',fontWeight:700,fontSize:12,color:'#166534',minWidth:85}}>{dispCode.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/,(_, a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`)}</span>
-                          <span style={{fontSize:12,color:'#374151',flex:1}}>{s.description}</span>
+                        <div key={s.cn10||s.cn8} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',borderRadius:4,background: isSelected ? 'var(--sage-bg)' : 'var(--bg-input)',border: isSelected ? '1px solid rgba(156,168,138,0.5)' : '1px solid var(--border-strong)'}}>
+                          <span style={{fontFamily:'monospace',fontWeight:700,fontSize:12,color:'var(--sage-light)',minWidth:85}}>{dispCode.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/,(_, a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`)}</span>
+                          <span style={{fontSize:12,color:'var(--text-secondary)',flex:1}}>{s.description}</span>
                           {s.mfnRateRaw ? (
-                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={s.mfnRateRaw}>{s.mfnRateRaw}</span>
+                            <span style={{fontSize:10,fontWeight:700,color:'var(--sage-dim)',background:'rgba(156,168,138,.09)',border:'1px solid rgba(156,168,138,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}} title={s.mfnRateRaw}>{s.mfnRateRaw}</span>
                           ) : s.mfnRate != null ? (
-                            <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{s.mfnRate}%</span>
+                            <span style={{fontSize:10,fontWeight:700,color:'var(--sage-dim)',background:'rgba(156,168,138,.09)',border:'1px solid rgba(156,168,138,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{s.mfnRate}%</span>
                           ) : (
-                            <span style={{fontSize:10,fontWeight:600,color:'#9CA3AF',background:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>—</span>
+                            <span style={{fontSize:10,fontWeight:600,color:'var(--text-muted)',background:'var(--bg-card)',border:'1px solid var(--border-strong)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>—</span>
                           )}
-                          {isSelected && <span style={{fontSize:10,color:'#16a34a',whiteSpace:'nowrap'}}>← AI pick</span>}
+                          {isSelected && <span style={{fontSize:10,color:'var(--sage)',whiteSpace:'nowrap'}}>← AI pick</span>}
                           <button
                             className={`${styles.btnGhost} ${styles.btnSm}`}
                             onClick={() => { setHsCode(dispCode); setTab('calculator'); }}
@@ -419,7 +503,7 @@ export default function HsLookupTabV2({
                   <div className={styles.expBody}>
                     {hsResult.requiredDocuments.map((doc,i) => (
                       <div key={i} className={styles.expRow}>
-                        <span style={{width:16,height:16,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,background:doc.mandatory?"#d1fae5":"transparent",border:`2px solid ${doc.mandatory?"#10b981":"#E5E7EB"}`,color:"#10b981",flexShrink:0}}>
+                        <span style={{width:16,height:16,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,background:doc.mandatory?"var(--sage-bg)":"transparent",border:`2px solid ${doc.mandatory?"var(--sage)":"var(--border-strong)"}`,color:"var(--sage)",flexShrink:0}}>
                           {doc.mandatory?"✓":""}
                         </span>
                         {doc.name}
@@ -465,56 +549,59 @@ export default function HsLookupTabV2({
           )}
         </div>
       </div>
-
-      {/* ── RECENT SEARCHES ── */}
-      {history.length > 0 && (
-        <div className={styles.card}>
-          <div className={styles.cardHdr}>
-            <div className={styles.cardIcon}>🕒</div>
-            <span className={styles.cardTitle}>Recent Searches</span>
-            <span className={styles.cardSub}>Cached — no API tokens used</span>
-            <button
-              onClick={clearHistory}
-              style={{marginLeft:'auto',fontSize:10,color:'var(--muted)',background:'none',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',cursor:'pointer',fontFamily:'var(--f-head)',letterSpacing:.5,textTransform:'uppercase'}}
-            >
-              Clear all
-            </button>
-          </div>
-          <div className={styles.cardBody} style={{padding:'10px 14px'}}>
-            <div style={{display:'flex',flexDirection:'column',gap:4}}>
-              {history.map((item) => {
-                const code = item.cn8 || item.hs6 || '';
-                const fmt = code.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_,a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`);
-                const ago = (() => {
-                  const diff = Date.now() - new Date(item.createdAt).getTime();
-                  if (diff < 3600000) return `${Math.round(diff/60000)}m ago`;
-                  if (diff < 86400000) return `${Math.round(diff/3600000)}h ago`;
-                  return `${Math.round(diff/86400000)}d ago`;
-                })();
-                return (
-                  <div key={item.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:6,border:'1px solid var(--border)',background:'var(--surface,#fff)',cursor:'pointer',transition:'.15s'}}
-                    onMouseEnter={e => e.currentTarget.style.borderColor='rgba(16,185,129,.4)'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor='var(--border)'}
-                    onClick={() => { setDescription(item.description); lookupHS(item.description); }}
-                  >
-                    <span style={{fontSize:12,color:'var(--body)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description}</span>
-                    {fmt && <span style={{fontFamily:'var(--f-mono)',fontSize:11,fontWeight:700,color:'var(--text)',whiteSpace:'nowrap'}}>{fmt}</span>}
-                    {item.dutyRate != null && <span style={{fontSize:10,fontWeight:700,color:'#059669',background:'rgba(16,185,129,.09)',border:'1px solid rgba(16,185,129,.25)',borderRadius:3,padding:'1px 6px',whiteSpace:'nowrap'}}>{item.dutyRate}%</span>}
-                    {item.fromCache && <span style={{fontSize:9,color:'#059669',whiteSpace:'nowrap',fontFamily:'var(--f-head)',letterSpacing:.5}}>⚡ cached</span>}
-                    <span style={{fontSize:10,color:'var(--subtle)',whiteSpace:'nowrap'}}>{ago}</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}
-                      style={{fontSize:12,color:'var(--subtle)',background:'none',border:'none',cursor:'pointer',padding:'0 2px',lineHeight:1,flexShrink:0}}
-                      title="Remove"
-                    >×</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       )}
 
+      {/* ── RECENT SEARCHES — 3-col card grid from mockup ── */}
+      {history.length > 0 && (
+        <section className={styles.recentSection}>
+          <div className={styles.recentHdr}>
+            <span className={styles.recentHdrTitle}>Recent searches</span>
+            <button onClick={clearHistory} className={styles.recentHdrClear}>
+              Clear
+            </button>
+          </div>
+          <div className={styles.recentGrid}>
+            {history.slice(0, 9).map((item) => {
+              const code = item.cn8 || item.hs6 || '';
+              const fmt = code.replace(/(\d{4})(\d{2})(\d{2})(\d{2})?/, (_,a,b,c,d) => d ? `${a}.${b}.${c}.${d}` : `${a}.${b}.${c}`);
+              const ago = (() => {
+                const diff = Date.now() - new Date(item.createdAt).getTime();
+                if (diff < 3600000) return `${Math.round(diff/60000)}m ago`;
+                if (diff < 86400000) return `${Math.round(diff/3600000)}h ago`;
+                return `${Math.round(diff/86400000)}d ago`;
+              })();
+              return (
+                <div
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  className={styles.recentCard}
+                  onClick={() => { setDescription(item.description); lookupHS(item.description); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setDescription(item.description); lookupHS(item.description); } }}
+                >
+                  <div className={styles.recentCardTop}>
+                    <span className={styles.recentCardEmoji}>{productEmoji(item.description)}</span>
+                    <span className={styles.recentCardTitle}>{item.description}</span>
+                  </div>
+                  <div className={styles.recentCardMeta}>
+                    {fmt && <span className={styles.recentCardCode}>{fmt}</span>}
+                    {item.dutyRate != null && <span className={styles.recentCardRate}>{item.dutyRate}%</span>}
+                    <span style={{marginLeft:"auto"}}>{item.fromCache ? "⚡ cached · " : ""}{ago}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); deleteHistoryItem(item.id); }}
+                    className={styles.recentCardDelete}
+                    title="Remove"
+                  >×</button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {toast && <div className={styles.toast}>{toast}</div>}
     </div>
   );
 }

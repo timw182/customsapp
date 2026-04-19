@@ -12,6 +12,7 @@ export default auth((req) => {
                       req.nextUrl.pathname.startsWith('/api/me') ||
                       req.nextUrl.pathname.startsWith('/api/admin/tokens') ||
                       req.nextUrl.pathname.startsWith('/api/admin/users') ||
+                      req.nextUrl.pathname.startsWith('/api/admin/broadcast-notification') ||
                       req.nextUrl.pathname === '/' ||
                       req.nextUrl.pathname === '/landing.html' ||
                       req.nextUrl.pathname.startsWith('/preview')

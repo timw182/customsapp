@@ -3,10 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const FIELDS = [
-  { key: "name",       label: "Full Name",    type: "text",     auto: "name" },
-  { key: "email",      label: "Email",        type: "email",    auto: "email" },
-  { key: "password",   label: "Password",     type: "password", auto: "new-password" },
-  { key: "inviteCode", label: "Invite Code",  type: "text",     auto: "off", mono: true },
+  { key: "name",       label: "Full name",    type: "text",     auto: "name",          placeholder: "Your full name" },
+  { key: "email",      label: "Email",        type: "email",    auto: "email",         placeholder: "you@example.com" },
+  { key: "password",   label: "Password",     type: "password", auto: "new-password",  placeholder: "••••••••" },
+  { key: "inviteCode", label: "Invite code",  type: "text",     auto: "off",           placeholder: "DUTIFY-XXXXXX", mono: true },
 ];
 
 export default function RegisterPage() {
@@ -37,60 +37,47 @@ export default function RegisterPage() {
 
   return (
     <main className="auth-page">
-      <div className="reg-shell">
-        <header className="reg-head">
-          <span className="eyebrow">Form R-01 · Admittance by invite</span>
-          <h1 className="display display-md">Register a new dossier</h1>
-          <p className="serif italic-serif muted">
-            Complete every field below. Your invite code is verified against the registrar before issuance.
-          </p>
-        </header>
+      <div className="auth-card">
+        <div className="auth-brand">
+          <span className="auth-brand-mark">D</span>
+          <span className="auth-brand-name">Dutify</span>
+        </div>
 
-        <hr className="hairline-double" />
+        <h1 className="auth-title">Register</h1>
+        <p className="auth-sub">Create your Dutify dossier using an invite code.</p>
 
         {error && (
-          <div className="alert alert-danger mb-4">
-            <div>
-              <div className="alert-title">Refused</div>
-              {error}
-            </div>
+          <div className="auth-error">
+            <strong>Refused.</strong> {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="stack-4">
-          {FIELDS.map(({ key, label, type, auto, mono }, i) => (
-            <div className="field-row--stack" key={key}>
-              <label className="field-label" htmlFor={`reg-${key}`}>
-                <span className="reg-field-num">{String(i + 1).padStart(2, "0")}</span>
-                {label}
-                <span className="req">*</span>
-              </label>
+        <form onSubmit={handleSubmit} className="auth-form">
+          {FIELDS.map(({ key, label, type, auto, placeholder, mono }) => (
+            <label className="auth-field" key={key}>
+              <span>{label}</span>
               <input
-                id={`reg-${key}`}
                 type={type}
                 name={key}
                 value={form[key]}
                 onChange={update(key)}
                 autoComplete={auto}
+                placeholder={placeholder}
                 required
                 style={mono ? { fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" } : undefined}
               />
-            </div>
+            </label>
           ))}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-cta btn-lg w-full mt-3"
-          >
-            {loading ? "Issuing credentials…" : "Issue the dossier"}
+          <button type="submit" disabled={loading} className="auth-submit">
+            {loading ? "Creating account…" : "Create account"}
             <span aria-hidden>→</span>
           </button>
         </form>
 
-        <footer className="reg-foot">
-          Already admitted? <a href="/login" className="forest strong">Sign in →</a>
-        </footer>
+        <div className="auth-foot">
+          Already have an account? <a href="/login">Sign in →</a>
+        </div>
       </div>
 
       <style jsx>{`
@@ -99,51 +86,151 @@ export default function RegisterPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: var(--sp-7) var(--gutter);
+          padding: 40px 20px;
           background:
-            radial-gradient(900px 500px at 50% 10%, rgba(184,145,74,0.08), transparent 60%),
-            var(--paper-bone);
+            radial-gradient(900px 500px at 50% 10%, rgba(156,168,138,0.08), transparent 60%),
+            radial-gradient(1000px 600px at 100% 100%, rgba(19,41,75,0.25), transparent 55%),
+            var(--bg);
         }
-        .reg-shell {
+        .auth-card {
           width: 100%;
-          max-width: 560px;
-          background: var(--paper-cream);
-          border: 1px solid var(--rule-hair);
-          border-top: 3px solid var(--brass);
-          border-radius: var(--radius-md);
+          max-width: 460px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-lg);
           box-shadow: var(--shadow-lift);
-          padding: var(--sp-8) var(--sp-7);
-          position: relative;
+          padding: 40px 36px 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
-        .reg-shell::before {
+        .auth-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 4px;
+        }
+        .auth-brand-mark {
+          width: 28px; height: 28px;
+          border-radius: 8px;
+          background: linear-gradient(145deg, var(--sage) 0%, var(--sage-dim) 100%);
+          color: #0b0e13;
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 15px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 0 1px rgba(156,168,138,0.3);
+        }
+        .auth-brand-name {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 20px;
+          letter-spacing: -0.01em;
+          color: var(--text-primary);
+        }
+        .auth-brand-name::after {
           content: "";
-          position: absolute;
-          inset: var(--sp-3);
-          border: 1px solid var(--rule-hair);
-          border-radius: var(--radius-sm);
-          pointer-events: none;
+          display: inline-block;
+          width: 4px; height: 4px;
+          background: var(--sage);
+          border-radius: 50%;
+          margin-left: 3px;
+          vertical-align: top;
+          margin-top: 4px;
         }
-        .reg-head { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-5); }
-        .reg-head h1 { color: var(--ink-forest-deep); }
-        .reg-head p { max-width: 48ch; line-height: 1.5; }
-        .reg-field-num {
+        .auth-title {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 28px;
+          letter-spacing: -0.02em;
+          color: var(--text-primary);
+          margin: 0;
+        }
+        .auth-sub {
+          color: var(--text-secondary);
+          font-size: 14px;
+          margin: 0 0 4px;
+        }
+        .auth-error {
+          background: var(--terracotta-bg);
+          border: 1px solid rgba(196,99,74,0.4);
+          color: var(--terracotta);
+          padding: 10px 14px;
+          border-radius: var(--radius-md);
+          font-size: 13.5px;
+        }
+        .auth-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .auth-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .auth-field > span {
           font-family: var(--font-mono);
-          color: var(--brass-deep);
-          font-size: 10px;
-          margin-right: 6px;
-          letter-spacing: 0.12em;
+          font-size: 10.5px;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--text-muted);
         }
-        .reg-foot {
-          margin-top: var(--sp-5);
-          padding-top: var(--sp-4);
-          border-top: 1px solid var(--rule-soft);
-          font-size: var(--fs-sm);
+        .auth-field input {
+          height: 46px;
+          padding: 0 16px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-md);
+          color: var(--text-primary);
+          font-family: var(--font-body);
+          font-size: 14px;
+          transition: border-color .12s ease, box-shadow .12s ease;
+        }
+        .auth-field input:focus {
+          outline: none;
+          border-color: var(--sage);
+          box-shadow: 0 0 0 4px rgba(156,168,138,0.18);
+        }
+        .auth-field input::placeholder { color: var(--text-muted); }
+        .auth-submit {
+          margin-top: 6px;
+          height: 52px;
+          background: var(--navy);
+          border: 1px solid var(--navy-light);
+          border-radius: var(--radius-md);
+          color: var(--text-primary);
+          font-family: var(--font-body);
+          font-size: 14.5px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+        }
+        .auth-submit:hover:not(:disabled) {
+          background: var(--navy-light);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(19,41,75,0.45);
+        }
+        .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .auth-foot {
           text-align: center;
+          padding-top: 8px;
+          border-top: 1px solid var(--border-subtle);
+          font-size: 13px;
+          color: var(--text-secondary);
         }
-        @media (max-width: 640px) {
-          .reg-shell { padding: var(--sp-7) var(--sp-5); }
-          .reg-shell::before { inset: var(--sp-2); }
+        .auth-foot a {
+          color: var(--sage);
+          text-decoration: none;
+          font-weight: 500;
         }
+        .auth-foot a:hover { color: var(--sage-light); }
       `}</style>
     </main>
   );

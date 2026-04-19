@@ -25,106 +25,57 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      <div className="auth-shell">
-        {/* Left column — identity */}
-        <aside className="auth-aside">
-          <div className="auth-brand">
-            <span className="eyebrow">Grand-Duché de Luxembourg</span>
-            <h1 className="auth-brand-name display display-md">
-              Dutify<span className="auth-brand-amp">&amp;</span>Co.
-            </h1>
-            <p className="auth-brand-sub serif italic-serif">
-              Bureau of Import Duty, Classification &amp; Excise.
-              <br />
-              Established for Luxembourg customs professionals.
-            </p>
+      <div className="auth-card">
+        <div className="auth-brand">
+          <span className="auth-brand-mark">D</span>
+          <span className="auth-brand-name">Dutify</span>
+        </div>
+
+        <h1 className="auth-title">Welcome back</h1>
+        <p className="auth-sub">Sign in to your EU customs workspace.</p>
+
+        {error && (
+          <div className="auth-error">
+            <strong>Refused.</strong> {error}
           </div>
+        )}
 
-          <div className="ornament">
-            <span className="ornament-mark">§ § §</span>
-          </div>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <label className="auth-field">
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder="you@example.com"
+              required
+            />
+          </label>
 
-          <dl className="auth-ledger">
-            <div>
-              <dt>MFN &amp; Preferential</dt>
-              <dd>TARIC SOAP verified</dd>
-            </div>
-            <div>
-              <dt>HS Classification</dt>
-              <dd>AI-assisted · CN10 probed</dd>
-            </div>
-            <div>
-              <dt>Excise &amp; CBAM</dt>
-              <dd>Schema-driven</dd>
-            </div>
-          </dl>
+          <label className="auth-field">
+            <span>Password</span>
+            <input
+              type="password"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+            />
+          </label>
 
-          <div className="auth-footmark num">
-            Vol. XVII · Folio 04 · MMXXVI
-          </div>
-        </aside>
+          <button type="submit" disabled={loading} className="auth-submit">
+            {loading ? "Signing in…" : "Sign in"}
+            <span aria-hidden>→</span>
+          </button>
+        </form>
 
-        {/* Right column — sign-in card */}
-        <section className="auth-card">
-          <header className="auth-card-head">
-            <div className="seal seal-lg" aria-hidden>D</div>
-            <span className="eyebrow">Entry &amp; Clearance</span>
-            <h2 className="display display-sm">Sign in to your dossier</h2>
-          </header>
-
-          <hr className="hairline-double" />
-
-          {error && (
-            <div className="alert alert-danger mb-4">
-              <div>
-                <div className="alert-title">Refused</div>
-                {error}
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="stack-4">
-            <div className="field-row--stack">
-              <label className="field-label" htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div className="field-row--stack">
-              <label className="field-label" htmlFor="login-password">Password</label>
-              <input
-                id="login-password"
-                type="password"
-                name="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-cta btn-lg w-full"
-            >
-              {loading ? "Verifying…" : "Enter the dossier"}
-              <span aria-hidden>→</span>
-            </button>
-          </form>
-
-          <footer className="auth-card-foot">
-            <span className="muted">Invited to join?</span>{" "}
-            <a href="/register" className="forest strong">Register with an invite code →</a>
-          </footer>
-        </section>
+        <div className="auth-foot">
+          Invited to join? <a href="/register">Register with your invite code →</a>
+        </div>
       </div>
 
       <style jsx>{`
@@ -133,123 +84,151 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: var(--sp-7) var(--gutter);
+          padding: 40px 20px;
           background:
-            radial-gradient(900px 500px at 15% 10%, rgba(184,145,74,0.08), transparent 60%),
-            radial-gradient(1000px 600px at 100% 100%, rgba(31,59,45,0.06), transparent 55%),
-            var(--paper-bone);
-        }
-        .auth-shell {
-          width: 100%;
-          max-width: 1080px;
-          display: grid;
-          grid-template-columns: 1.1fr 1fr;
-          background: var(--paper-cream);
-          border: 1px solid var(--rule-hair);
-          border-bottom: 3px solid var(--brass);
-          border-radius: var(--radius-md);
-          box-shadow: var(--shadow-lift);
-          overflow: hidden;
-        }
-        .auth-aside {
-          padding: var(--sp-8) var(--sp-7);
-          background:
-            linear-gradient(180deg, var(--paper-cream) 0%, var(--paper-bone) 100%);
-          position: relative;
-          display: flex;
-          flex-direction: column;
-        }
-        .auth-aside::before {
-          content: "";
-          position: absolute;
-          inset: var(--sp-4);
-          border: 1px solid var(--rule-hair);
-          border-radius: var(--radius-sm);
-          pointer-events: none;
-        }
-        .auth-brand { position: relative; z-index: 1; }
-        .auth-brand-name {
-          margin-top: var(--sp-2);
-          color: var(--ink-forest-deep);
-        }
-        .auth-brand-amp {
-          color: var(--brass);
-          font-style: italic;
-          margin: 0 0.1em;
-          font-variation-settings: "opsz" 72, "SOFT" 50;
-        }
-        .auth-brand-sub {
-          margin-top: var(--sp-3);
-          color: var(--ink-muted);
-          font-size: var(--fs-md);
-          max-width: 32ch;
-          line-height: 1.5;
-        }
-        .auth-ledger {
-          position: relative;
-          z-index: 1;
-          margin-top: auto;
-          display: grid;
-          gap: var(--sp-3);
-        }
-        .auth-ledger > div {
-          display: flex;
-          justify-content: space-between;
-          gap: var(--sp-3);
-          padding: var(--sp-2) 0;
-          border-bottom: 1px solid var(--rule-soft);
-          align-items: baseline;
-        }
-        .auth-ledger dt {
-          font-family: var(--font-body);
-          font-size: var(--fs-xs);
-          text-transform: uppercase;
-          letter-spacing: var(--track-label);
-          color: var(--ink-muted);
-        }
-        .auth-ledger dd {
-          font-family: var(--font-mono);
-          font-size: var(--fs-xs);
-          color: var(--ink-forest-deep);
-        }
-        .auth-footmark {
-          position: relative;
-          z-index: 1;
-          margin-top: var(--sp-6);
-          font-size: 10px;
-          letter-spacing: 0.3em;
-          color: var(--brass-deep);
-          text-transform: uppercase;
+            radial-gradient(900px 500px at 15% 10%, rgba(156,168,138,0.08), transparent 60%),
+            radial-gradient(1000px 600px at 100% 100%, rgba(19,41,75,0.25), transparent 55%),
+            var(--bg);
         }
         .auth-card {
-          padding: var(--sp-8) var(--sp-7);
+          width: 100%;
+          max-width: 440px;
+          background: var(--bg-card);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-lift);
+          padding: 40px 36px 32px;
           display: flex;
           flex-direction: column;
-          gap: var(--sp-5);
-          background:
-            radial-gradient(600px 400px at 100% 0%, rgba(184,145,74,0.05), transparent 60%),
-            var(--paper-cream);
+          gap: 18px;
         }
-        .auth-card-head {
+        .auth-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+        .auth-brand-mark {
+          width: 28px; height: 28px;
+          border-radius: 8px;
+          background: linear-gradient(145deg, var(--sage) 0%, var(--sage-dim) 100%);
+          color: #0b0e13;
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 15px;
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 0 0 1px rgba(156,168,138,0.3);
+        }
+        .auth-brand-name {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 20px;
+          letter-spacing: -0.01em;
+          color: var(--text-primary);
+        }
+        .auth-brand-name::after {
+          content: "";
+          display: inline-block;
+          width: 4px; height: 4px;
+          background: var(--sage);
+          border-radius: 50%;
+          margin-left: 3px;
+          vertical-align: top;
+          margin-top: 4px;
+        }
+        .auth-title {
+          font-family: var(--font-display);
+          font-weight: 700;
+          font-size: 28px;
+          letter-spacing: -0.02em;
+          color: var(--text-primary);
+          margin: 0;
+        }
+        .auth-sub {
+          color: var(--text-secondary);
+          font-size: 14px;
+          margin: 0 0 4px;
+        }
+        .auth-error {
+          background: var(--terracotta-bg);
+          border: 1px solid rgba(196,99,74,0.4);
+          color: var(--terracotta);
+          padding: 10px 14px;
+          border-radius: var(--radius-md);
+          font-size: 13.5px;
+        }
+        .auth-form {
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          gap: var(--sp-3);
+          gap: 14px;
         }
-        .auth-card-head .seal { margin-bottom: var(--sp-2); }
-        .auth-card-head h2 { color: var(--ink-forest-deep); line-height: 1.1; }
-        .auth-card-foot {
-          margin-top: var(--sp-3);
-          padding-top: var(--sp-4);
-          border-top: 1px solid var(--rule-soft);
-          font-size: var(--fs-sm);
+        .auth-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
-        @media (max-width: 860px) {
-          .auth-shell { grid-template-columns: 1fr; }
-          .auth-aside { padding: var(--sp-7) var(--sp-5); }
-          .auth-aside::before { inset: var(--sp-3); }
-          .auth-card { padding: var(--sp-7) var(--sp-5); }
+        .auth-field > span {
+          font-family: var(--font-mono);
+          font-size: 10.5px;
+          font-weight: 500;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          color: var(--text-muted);
         }
+        .auth-field input {
+          height: 46px;
+          padding: 0 16px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-strong);
+          border-radius: var(--radius-md);
+          color: var(--text-primary);
+          font-family: var(--font-body);
+          font-size: 14px;
+          transition: border-color .12s ease, box-shadow .12s ease;
+        }
+        .auth-field input:focus {
+          outline: none;
+          border-color: var(--sage);
+          box-shadow: 0 0 0 4px rgba(156,168,138,0.18);
+        }
+        .auth-field input::placeholder { color: var(--text-muted); }
+        .auth-submit {
+          margin-top: 6px;
+          height: 52px;
+          background: var(--navy);
+          border: 1px solid var(--navy-light);
+          border-radius: var(--radius-md);
+          color: var(--text-primary);
+          font-family: var(--font-body);
+          font-size: 14.5px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+        }
+        .auth-submit:hover:not(:disabled) {
+          background: var(--navy-light);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(19,41,75,0.45);
+        }
+        .auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .auth-foot {
+          text-align: center;
+          padding-top: 8px;
+          border-top: 1px solid var(--border-subtle);
+          font-size: 13px;
+          color: var(--text-secondary);
+        }
+        .auth-foot a {
+          color: var(--sage);
+          text-decoration: none;
+          font-weight: 500;
+        }
+        .auth-foot a:hover { color: var(--sage-light); }
       `}</style>
     </main>
   );

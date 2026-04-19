@@ -19,12 +19,23 @@ export async function GET(req) {
   }
   const user = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, plan: true, createdAt: true },
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
-  return NextResponse.json({ user });
+
+  // Classifications the user has run this calendar month. Counts both cached
+  // and fresh results — a "lookup" the user deliberately invoked is the
+  // billable unit, regardless of whether we had to call Claude for it.
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+  const usageThisMonth = await prisma.hsSearchHistory.count({
+    where: { userId: auth.userId, createdAt: { gte: startOfMonth } },
+  });
+
+  return NextResponse.json({ user: { ...user, usageThisMonth } });
 }
 
 export async function DELETE(req) {
