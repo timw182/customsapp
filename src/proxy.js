@@ -8,6 +8,10 @@ export default auth((req) => {
   const isPublicApi = req.nextUrl.pathname.startsWith('/api/register') ||
                       req.nextUrl.pathname.startsWith('/api/auth') ||
                       req.nextUrl.pathname.startsWith('/api/hs-lookup') ||
+                      req.nextUrl.pathname.startsWith('/api/taric-describe') ||
+                      req.nextUrl.pathname.startsWith('/api/trade-agreements') ||
+                      req.nextUrl.pathname.startsWith('/api/taric-rates') ||
+                      req.nextUrl.pathname.startsWith('/api/vat-lookup') ||
                       req.nextUrl.pathname.startsWith('/api/favourites') ||
                       req.nextUrl.pathname.startsWith('/api/me') ||
                       req.nextUrl.pathname.startsWith('/api/admin/tokens') ||
@@ -15,7 +19,8 @@ export default auth((req) => {
                       req.nextUrl.pathname.startsWith('/api/admin/broadcast-notification') ||
                       req.nextUrl.pathname === '/' ||
                       req.nextUrl.pathname === '/landing.html' ||
-                      req.nextUrl.pathname.startsWith('/preview')
+                      req.nextUrl.pathname.startsWith('/preview') ||
+                      req.nextUrl.pathname.startsWith('/desktop')
   const isAdminPage = req.nextUrl.pathname.startsWith('/admin')
   const isAdminUser = req.auth?.user?.role === 'ADMIN'
 

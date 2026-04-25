@@ -600,10 +600,16 @@ Key changes your training may not have:
 Output raw JSON only. Two options:
 
 OPTION A — confident (clear single heading):
-{"status":"classified","hs6":"6-digit","heading":"4-digit","confidence":"high","confidencePct":<integer 70-99>,"reasoning":"1-2 sentence justification citing the key GRI or chapter note"}
+{"status":"classified","hs6":"6-digit","heading":"4-digit","confidence":"high","confidencePct":<integer 70-99>,"reasoning":"1-2 sentence justification citing the key GRI or chapter note","alternatives":[{"hs6":"6-digit","heading":"4-digit","confidence_pct":<integer 1-69>,"label":"short product label for this alternative","reasoning":"1 short sentence: why this was considered and why it was rejected in favour of the primary"},{"hs6":"6-digit","heading":"4-digit","confidence_pct":<integer 1-69>,"label":"short product label","reasoning":"1 short sentence"}]}
 
 OPTION B — not confident (ambiguous, needs info, multiple options, or unusual product):
 {"status":"escalate","reason":"why you are not confident"}
+
+Rules for alternatives in OPTION A:
+- ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings you considered and ruled out.
+- Each alternative's confidence_pct must be LESS than the primary confidencePct, and must sum with the primary to ≤100.
+- Ordered by confidence_pct descending.
+- Use real HS 2022 subheadings — do not invent codes.
 
 The confidencePct field must reflect a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI 1 — be honest, not optimistic:
 - 95–99: textbook case, the description unambiguously lands on one subheading with no competing headings
@@ -679,8 +685,18 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
   "confidencePct": <integer 60-99>,
   "reasoning": "Authoritative reasoning citing: (1) which GRI applies (GRI 1–6) and why, (2) the relevant Chapter Note or Section Note by number (e.g. 'Chapter 61 Note 3 excludes...'), (3) the WCO Explanatory Note for the heading/subheading (e.g. 'EN 6203 covers...'), (4) any applicable EU BTI reference or CJEU ruling. If a CN 2026 dedicated subheading exists for this product, state it explicitly. Be specific — quote the rule, do not just name it.",
   "chapter": "HS chapter name",
-  "notes": "any ambiguity, assumptions, or CN 2026 subheading notes"
+  "notes": "any ambiguity, assumptions, or CN 2026 subheading notes",
+  "alternatives": [
+    {"hs6": "6-digit string", "heading": "4-digit heading", "confidence_pct": <integer 1-59>, "label": "short product label for this alternative", "reasoning": "1-2 sentence summary: why this subheading was considered and why it was rejected in favour of the primary (cite the deciding GRI / chapter note)"},
+    {"hs6": "6-digit string", "heading": "4-digit heading", "confidence_pct": <integer 1-59>, "label": "short product label", "reasoning": "1-2 sentence summary"}
+  ]
 }
+
+Rules for alternatives in OPTION 1:
+- ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings that you seriously considered and ruled out.
+- Each alternative's confidence_pct must be LESS than the primary confidencePct, and the three values (primary + 2 alternatives) must sum to ≤100.
+- Ordered by confidence_pct descending.
+- Alternatives must be real HS 2022 subheadings — do not invent codes. Prefer subheadings in different chapters/headings when the disambiguation hinged on material or function.
 
 The confidencePct field is a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI. Be honest, not rounded:
 - 95–99: unambiguous, one clear heading, no competing notes
@@ -763,6 +779,34 @@ function saturnUrl(cn10) {
 
 const CONFIDENCE_PCT = { high: 92, medium: 72, low: 45 };
 
+// Normalize the model's self-reported `alternatives` into the shape the client
+// consumes. We intentionally don't TARIC-probe alternatives — cost + latency.
+// Each entry is the model's ranked next-best 6-digit subheading with a short
+// label and its self-calibrated confidence. Returned as [] when missing.
+function normalizeAlternatives(raw, primaryHs6) {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  if (primaryHs6) seen.add(primaryHs6);
+  return raw
+    .map((a) => {
+      const hs6 = String(a?.hs6 || "").replace(/\D/g, "").slice(0, 6);
+      const heading = String(a?.heading || hs6).replace(/\D/g, "").slice(0, 4);
+      const pctRaw = Number(a?.confidence_pct ?? a?.confidencePct);
+      const confidencePct = Number.isFinite(pctRaw)
+        ? Math.max(1, Math.min(99, Math.round(pctRaw)))
+        : null;
+      return {
+        hs6,
+        heading,
+        confidencePct,
+        label: typeof a?.label === "string" ? a.label.slice(0, 140) : "",
+        reasoning: typeof a?.reasoning === "string" ? a.reasoning.slice(0, 400) : "",
+      };
+    })
+    .filter((a) => a.hs6.length === 6 && !seen.has(a.hs6) && (seen.add(a.hs6) || true))
+    .slice(0, 2);
+}
+
 // Map the client's chosen verbosity onto a rationale instruction injected
 // into the Claude user message. "detailed" is silently downgraded to
 // "medium" for free users until the `User.plan` column lands.
@@ -801,7 +845,9 @@ async function runClassification(data, userId, isPro, emit) {
       prisma.hsSearchHistory.create({ data: {
         userId, description: data.description,
         hs6: result.hs6 || null, cn8: result.cn8 || null,
-        dutyRate: result.standardDutyRate ?? null, fromCache: true,
+        dutyRate: result.standardDutyRate ?? null,
+        confidencePct: result.confidencePct ?? null,
+        fromCache: true,
       }}),
     ]).catch(() => {});
     firePushForResult(userId, result);
@@ -826,6 +872,7 @@ async function runClassification(data, userId, isPro, emit) {
         reasoning: haiku.reasoning || "",
         chapter: "",
         notes: "Classified by Haiku (fast path)",
+        alternatives: haiku.alternatives,
       };
     } else {
       emit({ type: "thinking", text: `Haiku uncertain (${haiku.status ?? "—"}) → escalating to Sonnet` });
@@ -927,6 +974,7 @@ async function runClassification(data, userId, isPro, emit) {
     rationale: claudeResult.reasoning,
     confidencePct: resolvedPct,
     _model: modelUsed,
+    alternatives: normalizeAlternatives(claudeResult.alternatives, hs6),
   };
 
   // ── Cross-jurisdiction existence gate (USITC HTS) ────────────────────────
@@ -967,6 +1015,7 @@ async function runClassification(data, userId, isPro, emit) {
             rationale: retry.reasoning,
             confidencePct: retryPct,
             _model: modelUsed,
+            alternatives: normalizeAlternatives(retry.alternatives, hs6),
           };
           usitcStatus = retryStatus; // update for the downstream success path
         } else {
@@ -990,7 +1039,9 @@ async function runClassification(data, userId, isPro, emit) {
       prisma.hsSearchHistory.create({ data: {
         userId, description: data.description,
         hs6: finalResult.hs6 || null, cn8: null,
-        dutyRate: null, fromCache: false,
+        dutyRate: null,
+        confidencePct: finalResult.confidencePct ?? null,
+        fromCache: false,
       }}).catch(() => {});
       emit({ type: "result", payload: finalResult });
       return;
@@ -1131,7 +1182,9 @@ async function runClassification(data, userId, isPro, emit) {
     prisma.hsSearchHistory.create({ data: {
       userId, description: data.description,
       hs6: finalResult.hs6 || null, cn8: finalResult.cn8 || null,
-      dutyRate: finalResult.standardDutyRate ?? null, fromCache: false,
+      dutyRate: finalResult.standardDutyRate ?? null,
+      confidencePct: finalResult.confidencePct ?? null,
+      fromCache: false,
     }}),
   ]).catch(() => {});
 

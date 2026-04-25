@@ -3,2907 +3,1418 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dutify — Luxembourg Import Duty Calculator</title>
+    <meta name="description" content="Dutify — EU customs declaration engine. AI-classified HS codes, TARIC verification, Incoterms-aware CIF, EU27 VAT lookup, FTA preference detection. Built in Luxembourg." />
+    <title>Dutify · EU Customs Declaration Engine · Luxembourg</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Courier+Prime:wght@400;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+
     <style>
+      /* ════════════════════════════════════════════════════════════════
+         DUTIFY — LANDING · CUSTOMS DECLARATION FORM AESTHETIC
+         Tokens locked to the webapp's dark sage-on-charcoal theme.
+         ════════════════════════════════════════════════════════════════ */
       :root {
-        --bg: #f0f7f4;
-        --bg2: #e8f3ee;
-        --bg-mint: #e2f0e9;
-        --card: #ffffff;
-        --border: rgba(0, 0, 0, 0.05);
-        --accent: #10b981;
-        --accent-light: #d1fae5;
-        --accent-dark: #059669;
-        --text: #111827;
-        --text2: #374151;
-        --muted: #6b7280;
-        --subtle: #9ca3af;
+        /* Surfaces — slightly warmer than the app charcoal so this reads
+           as "cardstock" rather than "screen". Still in the same family. */
+        --paper:        #1a1d24;
+        --paper-2:      #21252e;
+        --paper-3:      #2a2f3a;
+        --paper-edge:   #14171c;
+
+        --ink:          #ece8dc;     /* warm ivory, not pure white */
+        --ink-2:        #b8b3a3;
+        --ink-3:        #6f6c5f;
+        --ink-faint:    #4a4838;
+
+        --sage:         #9ca88a;
+        --sage-deep:    #7a8a6a;
+        --sage-bright:  #c1cdab;
+
+        --terracotta:   #c4634a;
+        --terracotta-2: #d8826a;
+
+        --rule:         rgba(236, 232, 220, 0.12);
+        --rule-strong:  rgba(236, 232, 220, 0.28);
+        --rule-sage:    rgba(156, 168, 138, 0.45);
+
+        --font-display: 'Oswald', 'Bebas Neue', 'Helvetica Neue Condensed', sans-serif;
+        --font-body:    'DM Sans', ui-sans-serif, system-ui, sans-serif;
+        --font-mono:    'Courier Prime', ui-monospace, 'Courier New', monospace;
+
+        --max:    1280px;
+        --gutter: clamp(20px, 4vw, 56px);
       }
 
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      html {
-        scroll-behavior: smooth;
-      }
-
+      html { scroll-behavior: smooth; color-scheme: dark; }
       body {
-        background: var(--bg);
-        color: var(--text);
-        font-family:
-          "Inter",
-          -apple-system,
-          sans-serif;
-        font-size: 16px;
-        line-height: 1.6;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 15px;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
+        font-feature-settings: "ss01", "kern";
+        position: relative;
       }
 
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 32px;
-        position: relative;
+      /* ── Atmospheric layers ──────────────────────────────────────
+         A subtle vignette gives the page a printed-on-cardstock feel.
+         The grain layer is an SVG turbulence overlay, fixed-position
+         so it stays steady as the user scrolls — like film grain on
+         a still photograph. */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(120% 80% at 50% -10%, rgba(156,168,138,0.08), transparent 55%),
+          radial-gradient(80% 60% at 0% 100%, rgba(196,99,74,0.05), transparent 60%),
+          radial-gradient(70% 60% at 100% 80%, rgba(156,168,138,0.04), transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.18 0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
+        opacity: 0.32;
+        mix-blend-mode: overlay;
+        pointer-events: none;
         z-index: 1;
       }
 
-      /* Nav */
-      nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        padding: 16px 32px;
-        background: linear-gradient(to bottom, var(--bg) 0%, rgba(240,247,244,0.7) 60%, transparent 100%);
-      }
-      .nav-inner {
-        max-width: 1200px;
+      .wrap {
+        position: relative;
+        z-index: 2;
+        max-width: var(--max);
         margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .nav-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 22px;
-        color: var(--text);
-      }
-      .nav-links {
-        display: flex;
-        align-items: center;
-        gap: 40px;
-      }
-      .nav-links a {
-        font-size: 15px;
-        font-weight: 500;
-        color: var(--muted);
-        text-decoration: none;
-        transition: color 0.2s;
-      }
-      .nav-links a:hover {
-        color: var(--text);
-      }
-      .nav-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        padding: 0 var(--gutter);
       }
 
-      /* Buttons */
+      /* ════════════════════════════════════════════════════════════════
+         LETTERHEAD · top of the document
+         ════════════════════════════════════════════════════════════════ */
+      header.letterhead {
+        position: relative;
+        z-index: 4;
+        padding: 28px 0 18px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .letterhead__inner {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 32px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-decoration: none;
+        color: inherit;
+      }
+      .brand__mark {
+        width: 38px; height: 38px;
+        border: 1.5px solid var(--sage);
+        border-radius: 4px;
+        display: grid; place-items: center;
+        background:
+          repeating-linear-gradient(45deg, transparent 0 6px, rgba(156,168,138,0.08) 6px 7px);
+        position: relative;
+      }
+      .brand__mark::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 1px dashed rgba(156,168,138,0.45);
+        border-radius: 2px;
+      }
+      .brand__mark svg { width: 18px; height: 18px; position: relative; z-index: 1; }
+      .brand__name {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 26px;
+        letter-spacing: 0.02em;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+      .brand__name .dot {
+        display: inline-block;
+        width: 7px; height: 7px;
+        background: var(--sage);
+        margin-left: 3px;
+        vertical-align: 4px;
+      }
+      .brand__sub {
+        display: block;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        margin-top: 3px;
+      }
+
+      .formref {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        color: var(--ink-2);
+        text-align: right;
+        line-height: 1.55;
+        text-transform: uppercase;
+      }
+      .formref strong { color: var(--sage-bright); font-weight: 700; }
+      .formref .row { display: flex; gap: 18px; justify-content: flex-end; }
+      .formref .row + .row { margin-top: 3px; }
+      .formref em { color: var(--ink-3); font-style: normal; }
+
+      /* Top nav row, right-aligned secondary links */
+      .topnav {
+        display: flex;
+        gap: 18px;
+        padding: 14px 0 0;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+      .topnav a {
+        color: var(--ink-2);
+        text-decoration: none;
+        padding-bottom: 2px;
+        border-bottom: 1px solid transparent;
+        transition: color 180ms, border-color 180ms;
+      }
+      .topnav a:hover { color: var(--sage); border-bottom-color: var(--sage); }
+      .topnav .spacer { flex: 1; }
+
+      /* ════════════════════════════════════════════════════════════════
+         HERO · two-column document layout
+         Left: claim + sub + actions.
+         Right: a "specimen" filled-out form card.
+         ════════════════════════════════════════════════════════════════ */
+      section.hero {
+        position: relative;
+        padding: 64px 0 88px;
+        overflow: hidden;
+      }
+
+      /* SPECIMEN watermark behind the hero */
+      .hero::before {
+        content: "SPECIMEN";
+        position: absolute;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-12deg);
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: clamp(180px, 26vw, 380px);
+        color: var(--ink);
+        opacity: 0.025;
+        letter-spacing: 0.06em;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 0;
+      }
+
+      .hero__grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 64px;
+        position: relative;
+        z-index: 2;
+      }
+      @media (max-width: 1020px) {
+        .hero__grid { grid-template-columns: 1fr; gap: 56px; }
+      }
+
+      .hero__eyebrow {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: var(--sage);
+        text-transform: uppercase;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .hero__eyebrow::before {
+        content: ""; width: 28px; height: 1px; background: var(--sage);
+      }
+
+      .hero__title {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: clamp(48px, 6.6vw, 96px);
+        line-height: 0.92;
+        letter-spacing: -0.012em;
+        text-transform: uppercase;
+        margin-top: 22px;
+        color: var(--ink);
+      }
+      .hero__title .em {
+        color: var(--sage);
+        font-style: italic;
+        font-weight: 500;
+      }
+      .hero__title .underline {
+        display: inline-block;
+        position: relative;
+      }
+      .hero__title .underline::after {
+        content: "";
+        position: absolute;
+        left: 0; right: 0;
+        bottom: 0.06em;
+        height: 6px;
+        background: var(--sage);
+        opacity: 0.35;
+      }
+
+      .hero__lede {
+        font-size: 17.5px;
+        line-height: 1.55;
+        color: var(--ink-2);
+        max-width: 56ch;
+        margin-top: 28px;
+        font-weight: 400;
+      }
+      .hero__lede strong { color: var(--ink); font-weight: 600; }
+
+      .hero__actions {
+        display: flex;
+        gap: 14px;
+        margin-top: 36px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
       .btn {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-family: inherit;
+        gap: 12px;
+        font-family: var(--font-display);
+        font-size: 14.5px;
         font-weight: 500;
-        font-size: 15px;
-        padding: 12px 24px;
-        border-radius: 12px;
-        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        padding: 16px 24px;
         text-decoration: none;
-        transition: all 0.2s;
+        border-radius: 0;
+        cursor: pointer;
         border: none;
+        transition: transform 180ms, background 180ms, color 180ms, border-color 180ms;
       }
-      .btn-primary {
-        background: var(--accent);
-        color: white;
+      .btn--primary {
+        background: var(--sage);
+        color: var(--paper);
         position: relative;
-        overflow: hidden;
-        z-index: 0;
       }
-      .btn-primary::before {
+      .btn--primary::before {
         content: "";
         position: absolute;
-        inset: 0;
-        background: white;
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
+        inset: -4px;
+        border: 1px solid var(--sage);
+        opacity: 0.35;
+        pointer-events: none;
       }
-      .btn-primary:hover::before { transform: translateX(0); }
-      .btn-primary:hover { color: var(--accent); transform: translateY(-1px); }
-
-      .btn-secondary {
-        background: white;
-        color: var(--text);
-        border: 2px solid var(--text);
-        position: relative;
-        overflow: hidden;
-        z-index: 0;
+      .btn--primary:hover { background: var(--sage-bright); transform: translate(-1px, -1px); }
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid var(--rule-strong);
       }
-      .btn-secondary::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: var(--text);
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
-      }
-      .btn-secondary:hover::before { transform: translateX(0); }
-      .btn-secondary:hover { color: white; }
-
-      .btn-accent {
-        background: var(--accent);
-        color: white;
-        position: relative;
-        overflow: hidden;
-        z-index: 0;
-      }
-      .btn-accent::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: white;
-        transform: translateX(-101%);
-        transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        z-index: -1;
-      }
-      .btn-accent:hover::before { transform: translateX(0); }
-      .btn-accent:hover { color: var(--accent); transform: translateY(-1px); }
-
-      /* Hero */
-      #hero {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        padding-top: 96px;
-      }
-      .hero-body {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        padding: 60px 0 80px;
-      }
-      .hero-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 80px;
-        align-items: center;
-      }
-      .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: white;
-        border: 2px solid var(--text);
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text2);
-        border-radius: 50px;
-        margin-bottom: 28px;
-      }
-      .hero-badge span {
-        width: 8px;
-        height: 8px;
-        background: var(--accent);
-        border-radius: 50%;
-      }
-      .hero-title {
-        font-size: clamp(44px, 5vw, 64px);
+      .btn--ghost:hover { border-color: var(--sage); color: var(--sage); }
+      .btn .arrow {
+        display: inline-block;
+        font-family: var(--font-mono);
         font-weight: 700;
-        line-height: 1.1;
-        color: var(--text);
-        margin-bottom: 24px;
-        letter-spacing: -1px;
-      }
-      .hero-sub {
-        font-size: 18px;
-        color: var(--muted);
-        line-height: 1.7;
-        margin-bottom: 40px;
-        max-width: 500px;
-      }
-      .hero-actions {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 48px;
-      }
-      .hero-stats {
-        display: flex;
-        gap: 48px;
-      }
-      .hero-stat {
-        text-align: left;
-      }
-      .hero-stat-num {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--text);
-        letter-spacing: -1px;
-      }
-      .hero-stat-label {
-        font-size: 14px;
-        color: var(--muted);
-        margin-top: 4px;
-      }
-
-      /* Hero preview card */
-      .hero-preview {
-        background: white;
-        border-radius: 24px;
-        box-shadow:
-          0 0 0 1px rgba(0, 0, 0, 0.06),
-          0 0 40px rgba(0, 0, 0, 0.12);
-        overflow: hidden;
-      }
-      .preview-header {
-        padding: 20px 24px;
-        background: #fafafa;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .preview-dots {
-        display: flex;
-        gap: 8px;
-      }
-      .preview-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #e5e5e5;
-      }
-      .preview-dot:first-child {
-        background: #ff5f57;
-      }
-      .preview-dot:nth-child(2) {
-        background: #febc2e;
-      }
-      .preview-dot:nth-child(3) {
-        background: #28c840;
-      }
-      .preview-title {
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--muted);
-      }
-      .preview-badge {
-        font-size: 12px;
-        font-weight: 600;
-        padding: 6px 12px;
-        border-radius: 8px;
-        background: var(--accent-light);
-        color: var(--accent-dark);
-      }
-      .preview-body {
-        padding: 28px;
-      }
-      .preview-field {
-        margin-bottom: 20px;
-      }
-      .preview-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-      }
-      .preview-input {
-        background: var(--bg);
-        border-radius: 12px;
-        padding: 14px 16px;
-        font-size: 15px;
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .preview-input .tag {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 6px;
-        background: var(--accent-light);
-        color: var(--accent-dark);
-      }
-      .preview-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
-      .preview-divider {
-        height: 1px;
-        background: var(--border);
-        margin: 24px 0;
-      }
-      .preview-result {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-      }
-      .preview-result-label {
-        font-size: 15px;
-        color: var(--muted);
-      }
-      .preview-result-value {
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--text);
-      }
-      .preview-result.total {
-        padding-top: 20px;
-        margin-top: 8px;
-        border-top: 2px solid var(--bg);
-      }
-      .preview-result.total .preview-result-label {
-        font-weight: 600;
-        color: var(--text);
         font-size: 16px;
-      }
-      .preview-result.total .preview-result-value {
-        font-size: 28px;
-        color: var(--accent);
-        letter-spacing: -1px;
+        transform: translateY(-1px);
       }
 
-      /* Trust bar */
-      #trust {
-        padding: 22px 0;
-        border-top: 1px solid rgba(0, 0, 0, 0.07);
-      }
-      .trust-inner {
+      .hero__meta {
+        margin-top: 40px;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 48px;
+        gap: 28px;
         flex-wrap: wrap;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
       }
-      .trust-item {
+      .hero__meta span { display: inline-flex; align-items: center; gap: 7px; }
+      .hero__meta .pip { width: 5px; height: 5px; background: var(--sage-deep); border-radius: 50%; }
+
+      /* ── SPECIMEN form card (right-side of hero) ─────────────────── */
+      .specimen {
+        background: var(--paper-2);
+        border: 1px solid var(--rule);
+        position: relative;
+        padding: 0;
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        line-height: 1.55;
+        box-shadow:
+          0 1px 0 rgba(0,0,0,0.4),
+          0 24px 60px -20px rgba(0,0,0,0.65);
+      }
+      /* Cut corners on the card — a subtle nod to security paper */
+      .specimen::before, .specimen::after {
+        content: "";
+        position: absolute;
+        width: 14px; height: 14px;
+        border: 1px solid var(--sage);
+        opacity: 0.5;
+      }
+      .specimen::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+      .specimen::after  { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+
+      .specimen__head {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--paper-edge);
+      }
+      .specimen__title {
+        font-family: var(--font-display);
         font-size: 14px;
         font-weight: 500;
-        color: var(--muted);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .trust-icon {
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-      }
-
-      /* Sections */
-      .section {
-        padding: 120px 0;
-      }
-      .section-header {
-        text-align: center;
-        margin-bottom: 72px;
-      }
-      .section-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: white;
-        border: 2px solid var(--text);
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent);
-        border-radius: 50px;
-        margin-bottom: 20px;
+        color: var(--ink);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.16em;
       }
-      .section-title {
-        font-size: clamp(36px, 4vw, 52px);
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 20px;
-        line-height: 1.15;
-        letter-spacing: -1px;
-      }
-      .section-sub {
-        font-size: 18px;
-        color: var(--muted);
-        max-width: 600px;
-        margin: 0 auto;
-        line-height: 1.7;
-      }
-
-      /* Feature tabs layout */
-      .feature-tabs-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 48px;
-        align-items: center;
-      }
-      .feature-tab-list {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .feature-tab-btn {
-        width: 100%;
-        text-align: left;
-        padding: 16px 18px;
-        border-radius: 14px;
-        border: 1px solid transparent;
-        background: transparent;
-        cursor: pointer;
-        transition:
-          background 0.22s,
-          box-shadow 0.22s,
-          border-color 0.22s,
-          transform 0.18s;
-        display: flex;
-        align-items: flex-start;
-        gap: 14px;
-      }
-      .feature-tab-btn:hover {
-        transform: translateY(-2px);
-      }
-      .feature-tab-btn.f-active {
-        transform: none;
-      }
-      .feature-tab-icon {
-        font-size: 20px;
-        flex-shrink: 0;
-        margin-top: 1px;
-        opacity: 0.45;
-        transition: opacity 0.22s;
-      }
-      .feature-tab-btn.f-active .feature-tab-icon {
-        opacity: 1;
-      }
-      .feature-tab-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text);
-        line-height: 1.3;
-      }
-      .feature-tab-desc {
-        font-size: 13.5px;
-        color: var(--muted);
-        line-height: 1.6;
-        margin-top: 5px;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        transition:
-          max-height 0.35s ease,
-          opacity 0.28s ease;
-      }
-      .feature-tab-btn.f-active .feature-tab-desc {
-        max-height: 72px;
-        opacity: 1;
-      }
-
-      /* Features section background */
-      #features {
-        position: relative;
-        overflow: hidden;
-      }
-      .features-blobs {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        z-index: 0;
-      }
-      .features-blob {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(72px);
-        opacity: 0.55;
-      }
-      .feature-tabs-layout {
-        position: relative;
-        z-index: 1;
-      }
-      #features .section-header {
-        position: relative;
-        z-index: 1;
-      }
-
-      /* Active tab: frosted */
-      .feature-tab-btn.f-active {
-        background: rgba(255, 255, 255, 0.65) !important;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border-color: rgba(167, 243, 208, 0.7) !important;
-        box-shadow:
-          0 4px 20px rgba(0, 0, 0, 0.07),
-          inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-      }
-      .feature-tab-btn:hover:not(.f-active) {
-        background: rgba(255, 255, 255, 0.45);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-
-      /* Preview panel */
-      .feature-preview-panel {
-        background: rgba(255, 255, 255, 0.42);
-        backdrop-filter: blur(22px) saturate(180%);
-        -webkit-backdrop-filter: blur(22px) saturate(180%);
-        border-radius: 24px;
-        box-shadow:
-          0 8px 32px rgba(0, 0, 0, 0.08),
-          inset 0 1px 0 rgba(255, 255, 255, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        min-height: 380px;
-        position: relative;
-        overflow: hidden;
-      }
-      .fp {
-        position: absolute;
-        inset: 0;
-        padding: 28px 28px 24px;
-        opacity: 0;
-        transform: translateY(10px);
-        transition:
-          opacity 0.38s ease,
-          transform 0.38s ease;
-        pointer-events: none;
-      }
-      .fp.f-active {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-      .fp-label {
+      .specimen__title em { color: var(--sage); font-style: normal; }
+      .specimen__chip {
         font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 2.5px;
-        text-transform: uppercase;
-        color: #10b981;
-        margin-bottom: 16px;
-      }
-      .fp-card {
-        background: #f8fafc;
-        border-radius: 12px;
-        padding: 0;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-      }
-      .fp-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 14px;
-        font-size: 13px;
-        color: var(--muted);
-        border-bottom: 1px solid #f1f5f9;
-      }
-      .fp-row:last-child {
-        border-bottom: none;
-      }
-      .fp-val {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 13px;
-      }
-      .fp-total {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 10px;
-        padding: 11px 14px;
-        background: #ecfdf5;
-        border-radius: 10px;
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #059669;
-      }
-      .fp-badge {
-        display: inline-flex;
-        align-items: center;
-        font-size: 11px;
-        font-weight: 600;
+        letter-spacing: 0.16em;
+        color: var(--sage);
+        border: 1px solid var(--rule-sage);
         padding: 3px 8px;
-        border-radius: 20px;
-        letter-spacing: 0.2px;
-      }
-      .fp-badge-g {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        color: #065f46;
-      }
-      .fp-badge-gr {
-        background: #f1f5f9;
-        color: #6b7280;
-      }
-      .fp-badge-b {
-        background: #dbeafe;
-        color: #1d4ed8;
-      }
-      .fp-badge-r {
-        background: #fee2e2;
-        color: #b91c1c;
-      }
-      .fp-hs-code {
-        font-family: "Courier New", monospace;
-        font-size: 30px;
-        letter-spacing: 5px;
-        color: #10b981;
-        font-weight: 700;
-        line-height: 1;
-        margin-bottom: 5px;
-      }
-
-      /* Steps */
-      .steps-container {
-        background: white;
-        border-radius: 24px;
-        padding: 60px;
-        position: relative;
-      }
-      /* Steps: animated progress rail */
-      .steps-rail {
-        position: absolute;
-        top: 88px; /* 60px padding-top + 28px = center of step-num circles */
-        left: 15%; right: 15%;
-        height: 3px;
-        pointer-events: none;
-        z-index: 0;
-      }
-      .steps-rail-track {
-        position: absolute; inset: 0;
-        background: #e5e7eb; border-radius: 2px;
-      }
-      .steps-rail-fill {
-        position: absolute; top: 0; left: 0; bottom: 0;
-        width: 0%;
-        background: linear-gradient(90deg, #059669, #10b981, #34d399);
-        border-radius: 2px;
-        box-shadow: 0 0 10px rgba(16,185,129,0.55);
-      }
-      .steps-rail-head {
-        position: absolute;
-        top: 50%; left: 0%;
-        width: 16px; height: 16px; border-radius: 50%;
-        background: #10b981;
-        box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7);
-        transform: translate(-50%, -50%);
-        opacity: 1;
-      }
-      @keyframes headPulse {
-        0%, 100% { box-shadow: 0 0 0 4px rgba(16,185,129,0.18), 0 0 20px rgba(16,185,129,0.7); }
-        50%       { box-shadow: 0 0 0 10px rgba(16,185,129,0), 0 0 28px rgba(16,185,129,0.9); }
-      }
-      .steps-rail-head.pulsing { animation: headPulse 0.7s ease-in-out 2; }
-@keyframes stepPing {
-        0%   { box-shadow: 0 0 0 0   rgba(16,185,129,0.7), 0 2px 8px rgba(0,0,0,0.12); }
-        50%  { box-shadow: 0 0 0 10px rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
-        100% { box-shadow: 0 0 0 0   rgba(16,185,129,0),   0 2px 8px rgba(0,0,0,0.12); }
-      }
-      .step-num.ping { animation: stepPing 0.65s ease-out; }
-      .steps-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 40px;
-        position: relative;
-        z-index: 1;
-      }
-      .step-card {
-        text-align: center;
-      }
-      .step-num {
-        width: 56px;
-        height: 56px;
-        background: var(--bg);
-        color: var(--text);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        font-weight: 700;
-        margin: 0 auto 24px;
-      }
-      .step-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 12px;
-      }
-      .step-body {
-        font-size: 15px;
-        color: var(--muted);
-        line-height: 1.6;
-      }
-
-      /* CTA */
-      #cta {
-        padding: 120px 0;
-      }
-      .cta-card {
-        background: #111827;
-        border-radius: 32px;
-        padding: 80px;
-        text-align: center;
-      }
-      .cta-title {
-        font-size: clamp(36px, 4vw, 52px);
-        font-weight: 700;
-        color: white;
-        margin-bottom: 20px;
-        line-height: 1.15;
-        letter-spacing: -1px;
-      }
-      .cta-sub {
-        font-size: 18px;
-        color: #9ca3af;
-        margin-bottom: 40px;
-        max-width: 500px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-      .cta-actions {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-      }
-      .btn-cta {
-        background: white;
-        color: var(--text);
-      }
-      .btn-cta:hover {
-        background: #f5f5f5;
-      }
-      .btn-cta-ghost {
-        background: transparent;
-        color: #9ca3af;
-        border: 1px solid #374151;
-      }
-      .btn-cta-ghost:hover {
-        color: white;
-        border-color: #6b7280;
-      }
-
-      /* Footer */
-      footer {
-        padding: 48px 0;
-        border-top: 1px solid var(--border);
-      }
-      .footer-inner {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .footer-logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 600;
-        font-size: 18px;
-        color: var(--text);
-      }
-      .footer-note {
-        font-size: 13px;
-        color: var(--muted);
-        margin-top: 8px;
-      }
-      .footer-links {
-        display: flex;
-        gap: 32px;
-      }
-      .footer-links a {
-        font-size: 14px;
-        color: var(--muted);
-        text-decoration: none;
-        transition: color 0.2s;
-      }
-      .footer-links a:hover {
-        color: var(--text);
-      }
-
-      /* Scroll hint arrow */
-      .scroll-hint {
-        display: flex;
-        justify-content: center;
-        padding: 20px 0 32px;
-        color: var(--muted);
-        opacity: 0.6;
-        animation: scrollBounce 2s ease-in-out infinite;
-        transition: opacity 0.4s ease;
-      }
-      .scroll-hint.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-      @keyframes scrollBounce {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(8px);
-        }
-      }
-
-      /* Mobile */
-      @media (max-width: 1200px) {
-        .feature-tabs-layout {
-          gap: 32px;
-        }
-      }
-      @media (max-width: 1000px) {
-        .hero-grid {
-          grid-template-columns: 1fr;
-          gap: 48px;
-        }
-        .carousel-wrapper {
-          max-width: 540px;
-          margin: 0 auto;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        .carousel-slides {
-          width: 100%;
-        }
-        .steps-grid {
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
-        }
-        .nav-links {
-          display: none;
-        }
-        .section {
-          padding: 80px 0;
-        }
-      }
-      @media (max-width: 640px) {
-        .container {
-          padding: 0 20px;
-        }
-        .hero-body {
-          padding: 36px 0 48px;
-        }
-        .hero-title {
-          letter-spacing: -0.5px;
-        }
-        .hero-sub {
-          font-size: 16px;
-        }
-        .hero-actions {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 12px;
-          margin-bottom: 36px;
-        }
-        .hero-actions .btn {
-          text-align: center;
-          justify-content: center;
-        }
-        .hero-stats {
-          gap: 24px;
-          flex-wrap: wrap;
-        }
-        .hero-stat-num {
-          font-size: 26px;
-        }
-        .feature-tabs-layout {
-          grid-template-columns: 1fr;
-          gap: 32px;
-        }
-        .feature-preview-panel {
-          min-height: 320px;
-        }
-        .steps-grid {
-          grid-template-columns: 1fr;
-          gap: 24px;
-        }
-        .steps-container {
-          padding: 32px 20px;
-        }
-        .section {
-          padding: 60px 0;
-        }
-        .section-title {
-          font-size: clamp(26px, 7vw, 36px);
-          letter-spacing: -0.5px;
-        }
-        .section-sub {
-          font-size: 15px;
-        }
-        .cta-card {
-          padding: 40px 20px;
-        }
-        .cta-title {
-          font-size: clamp(28px, 7vw, 40px);
-        }
-        .cta-actions {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .cta-actions .btn {
-          text-align: center;
-          justify-content: center;
-        }
-        .trust-inner {
-          gap: 20px;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        .footer-inner {
-          flex-direction: column;
-          gap: 24px;
-          text-align: center;
-        }
-        .footer-links {
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 20px;
-        }
-        .nav-actions .btn {
-          padding: 10px 16px;
-          font-size: 14px;
-        }
-        .calc-preview {
-          font-size: 13px;
-        }
-      }
-      #dotwave {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        pointer-events: none;
-        opacity: 0.16;
-      }
-      .blob-bg {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        overflow: hidden;
-        pointer-events: none;
-      }
-      .blob {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(70px);
-        opacity: 0.65;
-        will-change: transform;
-      }
-      .blob-1 {
-        width: 600px;
-        height: 600px;
-        background: rgba(16, 185, 129, 0.45);
-        top: -15%;
-        left: -10%;
-      }
-      .blob-2 {
-        width: 500px;
-        height: 500px;
-        background: rgba(52, 211, 153, 0.38);
-        top: 45%;
-        right: -8%;
-      }
-      .blob-3 {
-        width: 450px;
-        height: 450px;
-        background: rgba(167, 243, 208, 0.45);
-        bottom: -8%;
-        left: 25%;
-      }
-      .blob-4 {
-        width: 350px;
-        height: 350px;
-        background: rgba(16, 185, 129, 0.3);
-        top: 20%;
-        left: 55%;
-      }
-      .blob-5 {
-        width: 280px;
-        height: 280px;
-        background: rgba(5, 150, 105, 0.35);
-        top: 70%;
-        left: 10%;
-      }
-      .blob-6 {
-        width: 320px;
-        height: 320px;
-        background: rgba(110, 231, 183, 0.3);
-        top: 5%;
-        right: 20%;
-      }
-
-      /* Carousel */
-      .carousel-wrapper {
-        width: 100%;
-      }
-      .carousel-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-      }
-      .carousel-feature-name {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 3px;
         text-transform: uppercase;
-        color: var(--muted);
+        display: inline-flex; align-items: center; gap: 6px;
       }
-      .carousel-counter {
-        font-size: 11px;
-        letter-spacing: 2px;
-        color: var(--subtle);
+      .specimen__chip::before {
+        content: ""; width: 5px; height: 5px; background: var(--sage); border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(156,168,138,0.2);
+        animation: livePulse 1.7s ease-in-out infinite;
       }
-      .carousel-slides {
+      @keyframes livePulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.4; }
+      }
+
+      .specimen__rows { padding: 6px 0; }
+      .specimen__row {
         display: grid;
+        grid-template-columns: 110px 1fr auto;
+        align-items: baseline;
+        gap: 16px;
+        padding: 9px 18px;
+        border-bottom: 1px dotted var(--rule);
       }
-      .c-slide {
-        grid-area: 1/1;
-        opacity: 0;
-        transform: translateY(10px);
-        transition:
-          opacity 0.52s ease,
-          transform 0.52s ease;
-        pointer-events: none;
+      .specimen__row:last-child { border-bottom: none; }
+      .specimen__label {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+      }
+      .specimen__label .box {
+        display: inline-block;
+        font-family: var(--font-display);
+        background: var(--paper-3);
+        color: var(--sage);
+        padding: 1px 6px;
+        margin-right: 6px;
+        font-weight: 500;
+        font-size: 10px;
+      }
+      .specimen__value { color: var(--ink); font-size: 13px; line-height: 1.4; }
+      .specimen__value em { color: var(--ink-2); font-style: normal; }
+      .specimen__amount {
+        font-weight: 700;
+        color: var(--sage-bright);
+        font-variant-numeric: tabular-nums;
+        font-size: 14px;
+      }
+      .specimen__amount .neg { color: var(--terracotta-2); }
+
+      .specimen__total {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: end;
+        gap: 16px;
+        padding: 18px 18px 20px;
+        border-top: 2px solid var(--rule-strong);
+        background: linear-gradient(180deg, transparent, rgba(156,168,138,0.05));
+      }
+      .specimen__total .lbl {
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        color: var(--sage);
+        text-transform: uppercase;
+        font-family: var(--font-mono);
+      }
+      .specimen__total .val {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 38px;
+        color: var(--ink);
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+      }
+      .specimen__total .val .cur {
+        font-size: 16px;
+        color: var(--ink-3);
+        margin-right: 8px;
+        font-weight: 400;
+      }
+
+      .specimen__foot {
+        padding: 10px 18px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--ink-3);
+        border-top: 1px solid var(--rule);
+        background: var(--paper-edge);
         display: flex;
-        flex-direction: column;
+        gap: 16px;
+        justify-content: space-between;
       }
-      .c-slide.active {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
+
+      /* Caret blink for the typing simulation */
+      .caret {
+        display: inline-block;
+        width: 7px;
+        height: 1em;
+        background: var(--sage);
+        vertical-align: -2px;
+        animation: caret 1s steps(1) infinite;
+        margin-left: 2px;
       }
-      .carousel-nav {
+      @keyframes caret { 50% { opacity: 0; } }
+
+      /* ════════════════════════════════════════════════════════════════
+         BOXES · capabilities formatted like SAD form sections
+         ════════════════════════════════════════════════════════════════ */
+      section.boxes { padding: 96px 0 56px; }
+      .section__head {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 48px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .section__num {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        letter-spacing: 0.18em;
+        color: var(--sage);
+        text-transform: uppercase;
+        padding: 5px 10px;
+        border: 1px solid var(--rule-sage);
+      }
+      .section__title {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: clamp(34px, 4.4vw, 56px);
+        line-height: 1;
+        letter-spacing: -0.005em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .section__title em { color: var(--sage); font-style: italic; font-weight: 400; }
+      .section__sub {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        text-align: right;
+      }
+
+      .boxes__grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--rule);
+        border-left: 1px solid var(--rule);
+      }
+      @media (max-width: 720px) {
+        .boxes__grid { grid-template-columns: 1fr; }
+      }
+      .box {
+        position: relative;
+        padding: 32px 30px 36px;
+        border-right: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        transition: background 220ms;
+      }
+      .box:hover { background: rgba(156,168,138,0.03); }
+      .box__head {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .box__num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--sage);
+        background: var(--paper-edge);
+        padding: 3px 8px;
+        text-transform: uppercase;
+      }
+      .box__h {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 22px;
+        line-height: 1.1;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .box__body {
+        font-size: 14.5px;
+        line-height: 1.6;
+        color: var(--ink-2);
+        max-width: 56ch;
+      }
+      .box__body strong { color: var(--ink); font-weight: 600; }
+      .box__details {
         margin-top: 18px;
-        width: 100%;
-      }
-      .carousel-dots {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        padding-top: 16px;
+        border-top: 1px dashed var(--rule);
+        display: grid;
         gap: 6px;
       }
-      .c-dot {
-        height: 3px;
-        width: 16px;
-        border-radius: 2px;
-        background: rgba(0, 0, 0, 0.14);
-        cursor: pointer;
-        transition: all 0.35s ease;
-        border: none;
-        padding: 0;
-        outline: none;
+      .leader {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: var(--ink-3);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
       }
-      .c-dot.active {
-        background: var(--accent);
-        width: 32px;
-      }
-      .carousel-progress {
-        height: 2px;
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: 1px;
-        overflow: hidden;
-        width: 80%;
-        max-width: 200px;
-      }
-      .carousel-progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, var(--accent-dark), var(--accent));
-        width: 0%;
-      }
-      /* Calc cards */
-      .calc-preview {
-        background: rgba(245, 248, 246, 0.98);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow:
-          0 12px 48px rgba(0, 0, 0, 0.18),
-          0 2px 8px rgba(0, 0, 0, 0.1),
-          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      .leader__lbl { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+      .leader__lbl::after {
+        content: "";
         flex: 1;
-        display: flex;
-        flex-direction: column;
+        border-bottom: 1px dotted var(--ink-faint);
+        margin: 0 4px;
+        transform: translateY(-3px);
+      }
+      .leader__val { color: var(--sage-bright); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+      /* ════════════════════════════════════════════════════════════════
+         WIRE · live mono panel (teletype)
+         ════════════════════════════════════════════════════════════════ */
+      section.wire { padding: 56px 0 96px; }
+      .wire__panel {
+        background: #0d1015;
+        border: 1px solid var(--rule);
         position: relative;
-        z-index: 1;
-      }
-      .c-slide:nth-child(1) .calc-header {
-        background: rgba(16, 185, 129, 0.15);
-      }
-      .c-slide:nth-child(2) .calc-header {
-        background: rgba(99, 102, 241, 0.15);
-      }
-      .c-slide:nth-child(3) .calc-header {
-        background: rgba(245, 158, 11, 0.15);
-      }
-      .c-slide:nth-child(4) .calc-header {
-        background: rgba(236, 72, 153, 0.15);
-      }
-      .c-slide:nth-child(5) .calc-header {
-        background: rgba(59, 130, 246, 0.15);
-      }
-      .calc-header {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        padding: 14px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid rgba(16, 185, 129, 0.15);
-      }
-      .calc-header-title {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: rgba(16, 185, 129, 0.9);
-      }
-      .calc-badge {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        padding: 3px 10px;
-        border-radius: 4px;
-        background: rgba(16, 185, 129, 0.15);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: var(--accent);
-      }
-      .calc-body {
-        padding: 20px;
-        flex: 1;
-      }
-      .calc-field {
-        margin-bottom: 14px;
-      }
-      .calc-field label {
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        color: var(--muted);
-        display: block;
-        margin-bottom: 5px;
-      }
-      .calc-input {
-        background: var(--bg);
-        border: 1px solid rgba(0, 0, 0, 0.07);
-        border-radius: 8px;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: var(--text);
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .calc-input span {
-        color: var(--muted);
-        font-size: 11px;
-      }
-      .calc-divider {
-        height: 1px;
-        background: rgba(0, 0, 0, 0.07);
-        margin: 16px 0;
-      }
-      .calc-result-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        font-size: 13px;
-      }
-      .calc-result-row:last-child {
-        border-bottom: none;
-      }
-      .calc-result-label {
-        color: var(--muted);
-      }
-      .calc-result-val {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text);
-      }
-      .calc-result-val.accent {
-        color: var(--accent);
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-      }
-      .tag-g {
-        display: inline-block;
-        padding: 2px 7px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        background: var(--accent-light);
-        color: var(--accent-dark);
-      }
-      .calc-footer {
-        padding: 12px 20px;
-        background: var(--bg);
-        border-top: 1px solid rgba(0, 0, 0, 0.06);
-        font-size: 11px;
-        color: var(--muted);
-        font-style: italic;
-        text-align: center;
-      }
-      /* Slide helpers */
-      .hs-result {
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 6px;
-      }
-      .hs-result.best {
-        background: var(--accent-light);
-        border-color: rgba(16, 185, 129, 0.3);
-      }
-      .hs-result-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 3px;
-      }
-      .hs-code-mono {
-        font-family: monospace;
-        font-size: 14px;
-        color: var(--text);
-      }
-      .hs-rate-lbl {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text2);
-      }
-      .hs-rate-lbl.zero {
-        color: var(--accent-dark);
-      }
-      .hs-desc-text {
-        font-size: 11px;
-        color: var(--muted);
-      }
-      .fx-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 7px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-      }
-      .fx-row:last-child {
-        border-bottom: none;
-      }
-      .fx-curr {
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        color: var(--text2);
-      }
-      .fx-mid {
-        font-size: 11px;
-        color: var(--subtle);
-      }
-      .fx-val {
-        font-family: monospace;
-        font-size: 13px;
-        color: var(--text);
-      }
-      .fav-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 0;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-      }
-      .fav-row:last-child {
-        border-bottom: none;
-      }
-      .fav-star {
-        color: var(--accent);
-        font-size: 12px;
-        flex-shrink: 0;
-      }
-      .fav-code {
-        font-family: monospace;
-        font-size: 13px;
-        color: var(--text);
-        flex-shrink: 0;
-        min-width: 54px;
-      }
-      .fav-desc {
-        font-size: 11px;
-        color: var(--muted);
-        flex: 1;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
-      .fav-pct {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text2);
-        flex-shrink: 0;
-      }
-      .excise-toggle {
-        width: 28px;
-        height: 16px;
-        background: var(--accent);
-        border-radius: 8px;
-        position: relative;
-        flex-shrink: 0;
-      }
-      .excise-toggle::after {
+      .wire__panel::before {
         content: "";
         position: absolute;
-        right: 2px;
-        top: 2px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: white;
+        inset: 0;
+        background: repeating-linear-gradient(
+          to bottom,
+          transparent 0px,
+          transparent 2px,
+          rgba(156,168,138,0.025) 2px,
+          rgba(156,168,138,0.025) 3px
+        );
+        pointer-events: none;
+      }
+      .wire__head {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--rule);
+        background: rgba(0,0,0,0.25);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        position: relative;
+      }
+      .wire__head .pulse {
+        display: inline-flex; align-items: center; gap: 8px;
+        color: var(--sage);
+      }
+      .wire__head .pulse::before {
+        content: "";
+        width: 8px; height: 8px; border-radius: 50%; background: var(--sage);
+        animation: livePulse 1.4s ease-in-out infinite;
+      }
+      .wire__body {
+        padding: 24px 22px 26px;
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        line-height: 1.65;
+        color: var(--ink-2);
+        position: relative;
+      }
+      .wire__line { display: block; }
+      .wire__line .ts { color: var(--ink-3); margin-right: 14px; }
+      .wire__line .tag { color: var(--sage); margin-right: 14px; }
+      .wire__line .tag--warn { color: var(--terracotta-2); }
+      .wire__line .key { color: var(--ink); }
+      .wire__line .val { color: var(--sage-bright); font-weight: 700; }
+      .wire__line .meta { color: var(--ink-3); }
+      .wire__rule {
+        display: block;
+        color: var(--ink-faint);
+        margin: 4px 0;
+        letter-spacing: 0.04em;
+      }
+
+      /* ════════════════════════════════════════════════════════════════
+         PROCEDURE · numbered fields A → D
+         ════════════════════════════════════════════════════════════════ */
+      section.procedure { padding: 56px 0; }
+      .procedure__grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--rule);
+        border-left: 1px solid var(--rule);
+      }
+      @media (max-width: 980px) {
+        .procedure__grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 540px) {
+        .procedure__grid { grid-template-columns: 1fr; }
+      }
+      .field {
+        padding: 26px 24px 32px;
+        border-right: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        position: relative;
+      }
+      .field__letter {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        font-family: var(--font-display);
+        font-size: 64px;
+        font-weight: 300;
+        line-height: 1;
+        color: var(--sage);
+        opacity: 0.18;
+        letter-spacing: -0.04em;
+      }
+      .field__lbl {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        color: var(--sage);
+        text-transform: uppercase;
+      }
+      .field__h {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 22px;
+        line-height: 1.15;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        margin: 12px 0 12px;
+        color: var(--ink);
+      }
+      .field__b {
+        font-size: 14px;
+        color: var(--ink-2);
+        line-height: 1.55;
+      }
+      .field__b strong { color: var(--ink); font-weight: 600; }
+
+      /* ════════════════════════════════════════════════════════════════
+         AUTHORISATION · sign-in CTA styled as a customs form box
+         ════════════════════════════════════════════════════════════════ */
+      section.auth { padding: 88px 0; }
+      .auth__card {
+        position: relative;
+        padding: 48px 56px 52px;
+        border: 1px solid var(--rule-strong);
+        background:
+          linear-gradient(180deg, var(--paper-2), var(--paper));
+        overflow: hidden;
+      }
+      .auth__card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          repeating-linear-gradient(0deg, transparent 0 22px, var(--rule) 22px 23px),
+          repeating-linear-gradient(90deg, transparent 0 22px, var(--rule) 22px 23px);
+        opacity: 0.2;
+        pointer-events: none;
+      }
+      .auth__card::after {
+        content: "OFFICIAL · DUTIFY";
+        position: absolute;
+        top: 18px; right: 24px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        color: var(--terracotta);
+        opacity: 0.55;
+      }
+      .auth__inner {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 56px;
+        align-items: end;
+      }
+      @media (max-width: 920px) {
+        .auth__inner { grid-template-columns: 1fr; gap: 36px; }
+      }
+      .auth__lbl {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: var(--sage);
+        text-transform: uppercase;
+      }
+      .auth__h {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: clamp(34px, 4.6vw, 60px);
+        line-height: 0.96;
+        letter-spacing: -0.005em;
+        text-transform: uppercase;
+        margin-top: 14px;
+        color: var(--ink);
+      }
+      .auth__h em { color: var(--sage); font-style: italic; font-weight: 400; }
+      .auth__body {
+        margin-top: 18px;
+        max-width: 48ch;
+        color: var(--ink-2);
+        font-size: 15.5px;
+      }
+
+      .authform { display: flex; flex-direction: column; gap: 14px; }
+      .authform__row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0;
+        background: var(--paper-edge);
+        border: 1px solid var(--rule);
+      }
+      .authform__row:focus-within { border-color: var(--sage); }
+      .authform input {
+        appearance: none;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--ink);
+        font-family: var(--font-mono);
+        font-size: 15px;
+        padding: 18px 18px;
+        letter-spacing: 0.04em;
+      }
+      .authform input::placeholder { color: var(--ink-3); }
+      .authform__submit {
+        background: var(--sage);
+        color: var(--paper);
+        border: none;
+        font-family: var(--font-display);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 0 24px;
+        cursor: pointer;
+        transition: background 180ms;
+      }
+      .authform__submit:hover { background: var(--sage-bright); }
+      .authform__hint {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--ink-3);
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .authform__hint a { color: var(--sage); text-decoration: none; }
+      .authform__hint a:hover { color: var(--sage-bright); text-decoration: underline; }
+
+      /* ════════════════════════════════════════════════════════════════
+         FOOTER · perforated tear edge + colophon
+         ════════════════════════════════════════════════════════════════ */
+      .perforation {
+        height: 18px;
+        background:
+          radial-gradient(circle at 9px 9px, var(--paper) 4px, transparent 4.5px) 0 0 / 18px 18px,
+          var(--paper-edge);
+      }
+      footer.colophon {
+        background: var(--paper-edge);
+        padding: 40px 0 64px;
+        border-top: 1px solid var(--rule);
+      }
+      .colophon__grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr 1fr 1fr;
+        gap: 36px;
+      }
+      @media (max-width: 820px) {
+        .colophon__grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      .colophon__col h4 {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        color: var(--sage);
+        text-transform: uppercase;
+        margin-bottom: 14px;
+      }
+      .colophon__col a, .colophon__col li {
+        display: block;
+        font-size: 13px;
+        color: var(--ink-2);
+        text-decoration: none;
+        line-height: 2;
+        list-style: none;
+      }
+      .colophon__col a:hover { color: var(--sage); }
+      .colophon__brand {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 14px;
+      }
+      .colophon__brand .brand__name { font-size: 22px; }
+      .colophon__line {
+        font-size: 13px;
+        color: var(--ink-2);
+        max-width: 38ch;
+      }
+      .colophon__line strong { color: var(--ink); }
+
+      .colophon__bottom {
+        margin-top: 42px;
+        padding-top: 24px;
+        border-top: 1px solid var(--rule);
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 18px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+      }
+
+      /* ════════════════════════════════════════════════════════════════
+         MOTION · scroll-revealed sections
+         ════════════════════════════════════════════════════════════════ */
+      .reveal {
+        opacity: 0;
+        transform: translateY(18px);
+        transition: opacity 700ms var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+                    transform 700ms var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+      }
+      .reveal.in { opacity: 1; transform: none; }
+      .reveal[data-stagger="1"] { transition-delay: 80ms; }
+      .reveal[data-stagger="2"] { transition-delay: 160ms; }
+      .reveal[data-stagger="3"] { transition-delay: 240ms; }
+      .reveal[data-stagger="4"] { transition-delay: 320ms; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
+        .specimen__chip::before, .wire__head .pulse::before { animation: none; }
+      }
+
+      /* ── small-screen tweaks ─────────────────────────────── */
+      @media (max-width: 720px) {
+        .letterhead__inner { grid-template-columns: 1fr; gap: 16px; }
+        .formref { text-align: left; }
+        .formref .row { justify-content: flex-start; }
+        .topnav { flex-wrap: wrap; row-gap: 8px; }
+        .hero { padding: 40px 0 60px; }
+        .specimen__row { grid-template-columns: 90px 1fr auto; padding: 8px 14px; gap: 10px; }
+        .specimen__head, .specimen__total { padding-left: 14px; padding-right: 14px; }
+        .auth__card { padding: 32px 24px; }
       }
     </style>
   </head>
+
   <body>
-    <canvas id="dotwave"></canvas>
-    <div class="blob-bg">
-      <div class="blob blob-1"></div>
-      <div class="blob blob-2"></div>
-      <div class="blob blob-3"></div>
-      <div class="blob blob-4"></div>
-      <div class="blob blob-5"></div>
-      <div class="blob blob-6"></div>
-    </div>
-
-    <nav>
-      <div class="nav-inner">
-        <a href="#" class="nav-logo">
-          <svg width="32" height="32" viewBox="0 0 56 56" fill="none">
-            <rect width="56" height="56" rx="14" fill="#10b981" />
-            <rect x="25" y="10" width="6" height="16" rx="3" fill="white" />
-            <path
-              d="M14 22L28 38L42 22"
-              stroke="white"
-              stroke-width="5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <rect x="12" y="42" width="32" height="4" rx="2" fill="white" />
-          </svg>
-          Dutify
-        </a>
-        <div class="nav-links"></div>
-        <div class="nav-actions">
-          <a href="/login" class="btn btn-secondary">Log in</a>
-          <a href="/register" class="btn btn-primary">Get started →</a>
-        </div>
-      </div>
-    </nav>
-
-    <section id="hero">
-      <div class="hero-body">
-        <div class="container">
-          <div class="hero-grid">
-            <div class="hero-content">
-              <h1 class="hero-title">Calculate your import costs before they land</h1>
-              <p class="hero-sub">
-                Know exactly what you'll pay in customs duties, VAT, and total landed costs. Powered by TARIC data and
-                live ECB exchange rates.
-              </p>
-              <div class="hero-actions">
-                <a href="/register" class="btn btn-primary">Start here →</a>
-                <a href="#how" class="btn btn-secondary">See how it works</a>
-              </div>
-              <div class="hero-stats">
-                <div class="hero-stat">
-                  <div class="hero-stat-num">27+</div>
-                  <div class="hero-stat-label">FTA Agreements</div>
-                </div>
-                <div class="hero-stat">
-                  <div class="hero-stat-num">30+</div>
-                  <div class="hero-stat-label">Currencies</div>
-                </div>
-                <div class="hero-stat">
-                  <div class="hero-stat-num">17%</div>
-                  <div class="hero-stat-label">LU VAT Rate</div>
-                </div>
-              </div>
-            </div>
-            <div class="carousel-wrapper">
-              <div class="carousel-slides">
-                <!-- ① Duty Calculator -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Live calculation</span>
-                      <span class="calc-badge">✓ FTA Rate Applied</span>
-                    </div>
-                    <div class="calc-body">
-                      <div class="calc-field">
-                        <label>Origin Country</label>
-                        <div class="calc-input">South Korea (KR) <span>FTA ✓</span></div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>HS Code</label>
-                          <div class="calc-input">8471.30</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Duty Rate</label>
-                          <div class="calc-input">
-                            0% <span class="tag-g" style="font-size: 9px; padding: 1px 6px">FTA</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>Goods Value</label>
-                          <div class="calc-input">€ 12,400.00</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Incoterm</label>
-                          <div class="calc-input">CIF</div>
-                        </div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">CIF Value (customs base)</span>
-                        <span class="calc-result-val">€ 12,400.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Customs duty <span class="tag-g">0% FTA</span></span>
-                        <span class="calc-result-val">€ 0.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Import VAT (LU 17%)</span>
-                        <span class="calc-result-val">€ 2,108.00</span>
-                      </div>
-                      <div class="calc-result-row" style="padding-top: 12px">
-                        <span
-                          style="
-                            font-size: 14px;
-                            font-weight: 700;
-                            letter-spacing: 0.5px;
-                            text-transform: uppercase;
-                            color: var(--text);
-                          "
-                          >Total landed cost</span
-                        >
-                        <span class="calc-result-val accent">€ 14,508.00</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Estimate only · Always verify in TARIC · Powered by live ECB rates</div>
-                  </div>
-                </div>
-
-                <!-- ② AI HS Lookup -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">AI HS Classification</span>
-                      <span class="calc-badge" style="background: #16162a; border-color: #30307a; color: #9999ee"
-                        >✦ Claude AI</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div class="calc-field">
-                        <label>Product Description</label>
-                        <div class="calc-input" style="font-size: 12px; color: var(--text2)">
-                          Wireless noise-cancelling over-ear headphones
-                        </div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="hs-result best">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8518.30</span>
-                          <span class="hs-rate-lbl zero">0% DUTY</span>
-                        </div>
-                        <div class="hs-desc-text">
-                          Headphones &amp; earphones &nbsp;<span style="color: var(--accent-dark)">★ Best match</span>
-                        </div>
-                      </div>
-                      <div class="hs-result">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8518.40</span>
-                          <span class="hs-rate-lbl">3.7%</span>
-                        </div>
-                        <div class="hs-desc-text">Audio frequency electric amplifiers</div>
-                      </div>
-                      <div class="hs-result" style="margin-bottom: 0">
-                        <div class="hs-result-row">
-                          <span class="hs-code-mono">8527.91</span>
-                          <span class="hs-rate-lbl">2.8%</span>
-                        </div>
-                        <div class="hs-desc-text">Radio receivers incorporating sound recording</div>
-                      </div>
-                      <div style="margin-top: 14px; text-align: right">
-                        <a
-                          href="#"
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 1px;
-                            text-transform: uppercase;
-                            color: var(--accent-dark);
-                            text-decoration: none;
-                          "
-                          >Verify in TARIC ↗</a
-                        >
-                      </div>
-                    </div>
-                    <div class="calc-footer">AI-assisted · Always verify classifications · Not legal advice</div>
-                  </div>
-                </div>
-
-                <!-- ③ FX Converter -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">ECB Exchange Rates</span>
-                      <span class="calc-badge">↻ Live Today</span>
-                    </div>
-                    <div class="calc-body">
-                      <div
-                        style="
-                          display: grid;
-                          grid-template-columns: 1fr auto 1fr;
-                          gap: 10px;
-                          align-items: flex-end;
-                          margin-bottom: 20px;
-                        "
-                      >
-                        <div class="calc-field" style="margin-bottom: 0">
-                          <label>Amount (USD)</label>
-                          <div class="calc-input">$ 15,000.00</div>
-                        </div>
-                        <div style="padding-bottom: 9px; color: var(--muted); font-size: 16px">→</div>
-                        <div class="calc-field" style="margin-bottom: 0">
-                          <label>EUR</label>
-                          <div class="calc-input" style="color: var(--accent-dark)">€ 13,821.00</div>
-                        </div>
-                      </div>
-                      <div class="calc-divider" style="margin-top: 0"></div>
-                      <div class="fx-row">
-                        <span class="fx-curr">USD</span><span class="fx-mid">1 USD =</span
-                        ><span class="fx-val">0.9214 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">GBP</span><span class="fx-mid">1 GBP =</span
-                        ><span class="fx-val">1.1732 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">CNY</span><span class="fx-mid">1 CNY =</span
-                        ><span class="fx-val">0.1270 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">JPY</span><span class="fx-mid">1 JPY =</span
-                        ><span class="fx-val">0.0061 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">CHF</span><span class="fx-mid">1 CHF =</span
-                        ><span class="fx-val">1.0432 EUR</span>
-                      </div>
-                      <div class="fx-row">
-                        <span class="fx-curr">KRW</span><span class="fx-mid">1 KRW =</span
-                        ><span class="fx-val">0.0006 EUR</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Source: ECB · Updated every business day · 30+ currencies</div>
-                  </div>
-                </div>
-
-                <!-- ④ Excise Duties -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Excise Duties</span>
-                      <span class="calc-badge" style="background: #1e1200; border-color: #3d2600; color: #c8900a"
-                        >LU 2026 Rates</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px"
-                      >
-                        <span
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 2px;
-                            text-transform: uppercase;
-                            color: var(--muted);
-                          "
-                          >Include excise duties</span
-                        >
-                        <div class="excise-toggle"></div>
-                      </div>
-                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px">
-                        <div class="calc-field">
-                          <label>Category</label>
-                          <div class="calc-input">Spirits</div>
-                        </div>
-                        <div class="calc-field">
-                          <label>Volume (L)</label>
-                          <div class="calc-input">1,000 L</div>
-                        </div>
-                      </div>
-                      <div class="calc-field">
-                        <label>ABV</label>
-                        <div class="calc-input">40 %</div>
-                      </div>
-                      <div class="calc-divider"></div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Excise duty (spirits)</span>
-                        <span class="calc-result-val">€ 6,453.20</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Customs duty (FTA)</span>
-                        <span class="calc-result-val">€ 0.00</span>
-                      </div>
-                      <div class="calc-result-row">
-                        <span class="calc-result-label">Import VAT (17%)</span>
-                        <span class="calc-result-val">€ 3,497.04</span>
-                      </div>
-                      <div class="calc-result-row" style="padding-top: 12px">
-                        <span
-                          style="
-                            font-size: 14px;
-                            font-weight: 700;
-                            letter-spacing: 0.5px;
-                            text-transform: uppercase;
-                            color: var(--text);
-                          "
-                          >Total landed cost</span
-                        >
-                        <span class="calc-result-val accent">€ 27,550.24</span>
-                      </div>
-                    </div>
-                    <div class="calc-footer">Alcohol · Tobacco · Energy · Luxembourg Administration des Douanes</div>
-                  </div>
-                </div>
-
-                <!-- ⑤ HS Favourites -->
-                <div class="c-slide">
-                  <div class="calc-preview">
-                    <div class="calc-header">
-                      <span class="calc-header-title">Saved HS Codes</span>
-                      <span class="calc-badge" style="background: #181818; border-color: #2a2a2a; color: #666"
-                        >Your Library</span
-                      >
-                    </div>
-                    <div class="calc-body">
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">8471.30</span>
-                        <span class="fav-desc">Laptops &amp; portable computers</span>
-                        <span class="fav-pct">0.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">6110.20</span>
-                        <span class="fav-desc">Cotton jerseys &amp; pullovers</span>
-                        <span class="fav-pct">12.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">8517.12</span>
-                        <span class="fav-desc">Mobile phones &amp; smartphones</span>
-                        <span class="fav-pct">0.0%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">9403.20</span>
-                        <span class="fav-desc">Metal furniture for offices</span>
-                        <span class="fav-pct">2.7%</span>
-                      </div>
-                      <div class="fav-row">
-                        <span class="fav-star">★</span>
-                        <span class="fav-code">2204.21</span>
-                        <span class="fav-desc">Wine of fresh grapes (≤ 2 L)</span>
-                        <span class="fav-pct">32.0%</span>
-                      </div>
-                      <div style="margin-top: 16px; text-align: center">
-                        <span
-                          style="
-                            font-size: 11px;
-                            font-weight: 600;
-                            letter-spacing: 2px;
-                            text-transform: uppercase;
-                            color: var(--accent-dark);
-                          "
-                          >+ Add from HS Lookup</span
-                        >
-                      </div>
-                    </div>
-                    <div class="calc-footer">One-click reuse · Build your product library · Verify in TARIC</div>
-                  </div>
-                </div>
-              </div>
-              <!-- /carousel-slides -->
-              <div class="carousel-nav">
-                <div class="carousel-dots">
-                  <button class="c-dot" aria-label="Slide 1"></button>
-                  <button class="c-dot" aria-label="Slide 2"></button>
-                  <button class="c-dot" aria-label="Slide 3"></button>
-                  <button class="c-dot" aria-label="Slide 4"></button>
-                  <button class="c-dot" aria-label="Slide 5"></button>
-                </div>
-                <div class="carousel-progress"><div class="carousel-progress-bar" id="c-progress"></div></div>
-              </div>
-            </div>
-            <!-- /carousel-wrapper -->
-          </div>
-        </div>
-      </div>
-      <div class="scroll-hint">
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M12 5v14M5 12l7 7 7-7" />
-        </svg>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════════════
-         WHY SECTION — 3 pain-point cards + aircraft scroll reveal
-    ═══════════════════════════════════════════════════════════════ -->
-    <style>
-      #why {
-        padding: 120px 0;
-        position: relative;
-        overflow: visible;
-      }
-      .why-cards {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 28px;
-        position: relative;
-      }
-      .why-card {
-        background: #ffffff;
-        border-radius: 20px;
-        padding: 28px 28px 24px;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05);
-        opacity: 0;
-        transform: translateY(24px);
-        transition: opacity 0.52s ease, transform 0.52s ease, box-shadow 0.25s;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      .why-card.why-revealed {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      .why-card:hover {
-        box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.06);
-      }
-      /* coloured top accent stripe */
-      .why-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-        border-radius: 20px 20px 0 0;
-      }
-      .why-card-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-      .why-card-blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-      .why-card-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-
-      .why-icon-wrap {
-        width: 44px; height: 44px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 22px;
-        margin-bottom: 18px;
-        flex-shrink: 0;
-      }
-      .why-icon-amber  { background: rgba(245,158,11,0.12); }
-      .why-icon-blue   { background: rgba(59,130,246,0.12); }
-      .why-icon-purple { background: rgba(139,92,246,0.12); }
-
-      .why-card-title {
-        font-size: 17px;
-        font-weight: 700;
-        color: var(--text);
-        margin-bottom: 10px;
-        line-height: 1.3;
-      }
-      .why-card-desc {
-        font-size: 14px;
-        color: var(--muted);
-        line-height: 1.65;
-        margin-bottom: 22px;
-        flex: 1;
-      }
-      /* Mini UI mockups */
-      .why-mockup {
-        background: var(--bg);
-        border-radius: 12px;
-        padding: 12px 14px;
-        border: 1px solid rgba(0,0,0,0.07);
-        font-size: 12px;
-      }
-      .why-mockup-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 0;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        color: var(--muted);
-      }
-      .why-mockup-row:last-child { border-bottom: none; }
-      .why-mockup-val {
-        font-weight: 600;
-        color: var(--text);
-        font-size: 12px;
-      }
-      .why-mockup-val.green  { color: #059669; }
-      .why-mockup-val.red    { color: #dc2626; }
-      .why-mockup-val.total  { color: #059669; font-size: 13px; }
-      .why-mockup-tag {
-        font-size: 10px; font-weight: 600;
-        padding: 2px 7px; border-radius: 4px;
-        background: #d1fae5; color: #065f46;
-      }
-      .why-mockup-label {
-        font-size: 9px; font-weight: 600;
-        letter-spacing: 1.5px; text-transform: uppercase;
-        color: var(--subtle);
-        margin-bottom: 7px;
-      }
-
-
-      /* SVG plane overlay */
-      #why-plane-svg {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        pointer-events: none;
-        overflow: visible;
-        z-index: 10;
-      }
-      .why-trail {
-        fill: none;
-        stroke: #10b981;
-        stroke-width: 1.5;
-        stroke-dasharray: 6 5;
-        opacity: 0;
-        transition: opacity 0.4s;
-      }
-
-      /* FX mockup */
-      .why-fx-main {
-        display: flex; align-items: center; gap: 8px;
-        margin-bottom: 8px;
-      }
-      .why-fx-amount {
-        font-size: 16px; font-weight: 700; color: var(--text);
-      }
-      .why-fx-arrow { color: var(--muted); font-size: 14px; }
-      .why-fx-eur {
-        font-size: 16px; font-weight: 700; color: #059669;
-      }
-      .why-fx-note {
-        font-size: 10px; color: var(--subtle);
-        letter-spacing: 0.5px;
-      }
-
-      @media (max-width: 1000px) {
-        .why-cards { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
-      }
-      @media (max-width: 640px) {
-        #why { padding: 60px 0; }
-      }
-    </style>
-
-    <section id="why">
-      <div class="container">
-        <div class="section-header">
-          <div class="section-badge">The problem</div>
-          <h2 class="section-title">Why import costs catch<br/>businesses off guard</h2>
-          <p class="section-sub">Three reasons companies end up surprised at the border — and how Dutify solves each one.</p>
-        </div>
-
-        <div class="why-cards" id="why-cards">
-
-          <!-- Card 1 -->
-          <div class="why-card why-card-amber" id="why-c1">
-            <div class="why-icon-wrap why-icon-amber">📋</div>
-            <div class="why-card-title">Duty rates aren't obvious</div>
-            <div class="why-card-desc">Every product has an 8-digit CN code with its own rate. Miss it and you either overpay or get hit with penalties at clearance.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">HS lookup result</div>
-              <div class="why-mockup-row">
-                <span>HS code</span>
-                <span class="why-mockup-val" style="font-family:monospace">8471.30</span>
-              </div>
-              <div class="why-mockup-row">
-                <span>MFN rate</span>
-                <span class="why-mockup-val red">3.5 %</span>
-              </div>
-              <div class="why-mockup-row">
-                <span>FTA rate (EU-KR)</span>
-                <span class="why-mockup-val green">0 % <span class="why-mockup-tag">FTA</span></span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Card 2 -->
-          <div class="why-card why-card-blue" id="why-c2">
-            <div class="why-icon-wrap why-icon-blue">💱</div>
-            <div class="why-card-title">Currency moves change everything</div>
-            <div class="why-card-desc">Customs value must be declared in EUR at the ECB reference rate on the declaration date. A 5 % swing can materially shift your landed cost.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">ECB conversion today</div>
-              <div class="why-fx-main">
-                <span class="why-fx-amount">$15,000</span>
-                <span class="why-fx-arrow">→</span>
-                <span class="why-fx-eur">€ 13,821</span>
-              </div>
-              <div class="why-fx-note">Rate: 0.9214 · European Central Bank</div>
-            </div>
-          </div>
-
-          <!-- Card 3 -->
-          <div class="why-card why-card-purple" id="why-c3">
-            <div class="why-icon-wrap why-icon-purple">⚡</div>
-            <div class="why-card-title">VAT, excise &amp; CBAM stack up fast</div>
-            <div class="why-card-desc">Beyond customs duty, Luxembourg adds 17 % VAT, excise on alcohol and tobacco, and from 2026 CBAM carbon costs on heavy industry goods.</div>
-            <div class="why-mockup">
-              <div class="why-mockup-label">Cost breakdown</div>
-              <div class="why-mockup-row"><span>Customs duty</span><span class="why-mockup-val">€ 464</span></div>
-              <div class="why-mockup-row"><span>Import VAT 17 %</span><span class="why-mockup-val">€ 2,340</span></div>
-              <div class="why-mockup-row"><span>Excise</span><span class="why-mockup-val">€ 180</span></div>
-              <div class="why-mockup-row"><span>CBAM (2026)</span><span class="why-mockup-val">€ 12</span></div>
-              <div class="why-mockup-row"><span style="font-weight:600;color:var(--text)">Total extra costs</span><span class="why-mockup-val total">€ 2,996</span></div>
-            </div>
-          </div>
-
-          <!-- SVG plane layer -->
-          <svg id="why-plane-svg" aria-hidden="true">
-            <path id="why-trail" class="why-trail" d="" />
-            <g id="why-plane" transform="translate(-999,-999)">
-              <ellipse cx="1" cy="0" rx="11" ry="3.5" fill="#10b981"/>
-              <polygon points="0,0 -5,-13 -9,-13 -4,0" fill="#34d399"/>
-              <polygon points="0,0 -5,13 -9,13 -4,0" fill="#34d399"/>
-              <polygon points="-7,0 -10,-6 -12,-6 -10,0" fill="#059669"/>
-              <polygon points="-7,0 -10,6 -12,6 -10,0" fill="#059669"/>
-            </g>
-          </svg>
-        </div>
-      </div>
-    </section>
-
-    <script>
-    /* ── Why section: plane + card reveal on scroll ── */
-    (function () {
-      if (window.innerWidth < 640) {
-        document.querySelectorAll('#why-cards .why-card').forEach(function(c){ c.classList.add('why-revealed'); });
-        return;
-      }
-
-      var cards  = [
-        document.getElementById('why-c1'),
-        document.getElementById('why-c2'),
-        document.getElementById('why-c3'),
-      ];
-      var svg    = document.getElementById('why-plane-svg');
-      var trail  = document.getElementById('why-trail');
-      var plane  = document.getElementById('why-plane');
-      var wrap   = document.getElementById('why-cards');
-      if (!cards[0] || !svg || !trail || !plane || !wrap) return;
-
-      var played = false;
-
-      /* Get icon-wrap centre in wrap-relative coords.
-         Cards start with translateY(24px) before reveal, so subtract that offset
-         so the plane targets where icons will actually end up. */
-      function iconCentre(card) {
-        var wr = wrap.getBoundingClientRect();
-        var ir = card.querySelector('.why-icon-wrap').getBoundingClientRect();
-        var revealed = card.classList.contains('why-revealed');
-        return {
-          x: ir.left + ir.width  * 0.5 - wr.left,
-          y: ir.top  + ir.height * 0.5 - wr.top - (revealed ? 0 : 24),
-        };
-      }
-
-      function qbez(p0,p1,p2,t){
-        var u=1-t;
-        return { x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x, y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y };
-      }
-      function qbezSplit(p0,p1,p2,t){
-        var q1={ x:p0.x+t*(p1.x-p0.x), y:p0.y+t*(p1.y-p0.y) };
-        return [p0, q1, qbez(p0,p1,p2,t)];
-      }
-
-      function animateFlight(from, to, cp, dur, onProgress, onDone) {
-        var start = null;
-        function tick(now) {
-          if (!start) start = now;
-          var t = Math.min((now - start) / dur, 1);
-          var ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-          onProgress(ease);
-          if (t < 1) requestAnimationFrame(tick);
-          else if (onDone) onDone();
-        }
-        requestAnimationFrame(tick);
-      }
-
-      function buildPath(segs) {
-        if (!segs.length) return '';
-        var d = 'M ' + segs[0].from.x.toFixed(1) + ' ' + segs[0].from.y.toFixed(1);
-        segs.forEach(function(s){
-          d += ' Q ' + s.cp.x.toFixed(1)+' '+s.cp.y.toFixed(1)+
-               ' '+s.to.x.toFixed(1)+' '+s.to.y.toFixed(1);
-        });
-        return d;
-      }
-
-      function setPlane(x, y, angle) {
-        plane.setAttribute('transform',
-          'translate('+x.toFixed(1)+','+y.toFixed(1)+') rotate('+angle.toFixed(1)+')');
-      }
-
-      function playAnimation() {
-        if (played) return;
-        played = true;
-
-        var pts = cards.map(iconCentre);
-        var entry = { x: pts[0].x - 110, y: pts[0].y + 18 };
-
-        function cp(a, b) {
-          return { x: (a.x+b.x)*0.5, y: Math.min(a.y,b.y) - 48 };
-        }
-
-        var segs = [
-          { from: entry,  cp: { x:(entry.x+pts[0].x)*0.5, y:entry.y-30 }, to: pts[0] },
-          { from: pts[0], cp: cp(pts[0], pts[1]), to: pts[1] },
-          { from: pts[1], cp: cp(pts[1], pts[2]), to: pts[2] },
-        ];
-
-        trail.style.opacity = '0.55';
-        trail.setAttribute('d', '');
-        var completedSegs = [];
-
-        function revealCard(i) {
-          if (cards[i]) cards[i].classList.add('why-revealed');
-        }
-
-        function flySeg(segIdx) {
-          if (segIdx >= segs.length) {
-            var fade = 1;
-            (function fadeTick(){
-              fade -= 0.05;
-              plane.style.opacity = Math.max(0,fade);
-              trail.style.opacity = Math.max(0, 0.55*fade);
-              if (fade > 0) requestAnimationFrame(fadeTick);
-            })();
-            return;
-          }
-
-          var seg = segs[segIdx];
-          var dur = segIdx === 0 ? 560 : 820;
-
-          animateFlight(seg.from, seg.to, seg.cp, dur, function(t) {
-            var pos = qbez(seg.from, seg.cp, seg.to, t);
-            var dt = Math.min(t + 0.01, 1);
-            var pos2 = qbez(seg.from, seg.cp, seg.to, dt);
-            var angle = Math.atan2(pos2.y - pos.y, pos2.x - pos.x) * 180 / Math.PI;
-            setPlane(pos.x, pos.y, angle);
-
-            var partCp = qbezSplit(seg.from,seg.cp,seg.to,t)[1];
-            var partTo = qbezSplit(seg.from,seg.cp,seg.to,t)[2];
-            var d = buildPath(completedSegs) +
-              (completedSegs.length ? '' : 'M '+seg.from.x.toFixed(1)+' '+seg.from.y.toFixed(1)) +
-              ' Q '+partCp.x.toFixed(1)+' '+partCp.y.toFixed(1)+
-              ' '+partTo.x.toFixed(1)+' '+partTo.y.toFixed(1);
-            trail.setAttribute('d', d);
-
-          }, function() {
-            completedSegs.push({ from: seg.from, cp: seg.cp, to: seg.to });
-            if (segIdx === 0) revealCard(0);
-            else revealCard(segIdx);
-            setTimeout(function(){ flySeg(segIdx + 1); }, 180);
-          });
-        }
-
-        setPlane(entry.x, entry.y, 0);
-        plane.style.opacity = '1';
-        setTimeout(function(){ flySeg(0); }, 80);
-      }
-
-      var section = document.getElementById('why');
-      if ('IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(function(entries) {
-          entries.forEach(function(e){
-            if (e.isIntersecting) { playAnimation(); obs.disconnect(); }
-          });
-        }, { threshold: 0.3 });
-        obs.observe(section);
-      } else {
-        cards.forEach(function(c){ c.classList.add('why-revealed'); });
-      }
-    })();
-    </script>
-
-    <section id="features" class="section">
-      <!-- Background blobs for glass effect -->
-      <div class="features-blobs">
-        <div
-          class="features-blob"
-          style="width: 480px; height: 480px; background: rgba(16, 185, 129, 0.22); top: -120px; right: -80px"
-        ></div>
-        <div
-          class="features-blob"
-          style="width: 340px; height: 340px; background: rgba(52, 211, 153, 0.18); bottom: -60px; left: 5%"
-        ></div>
-        <div
-          class="features-blob"
-          style="width: 260px; height: 260px; background: rgba(167, 243, 208, 0.28); top: 40%; right: 38%"
-        ></div>
-      </div>
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">Everything you need for<br />confident importing</h2>
-          <p class="section-sub">
-            Built specifically for companies importing into Luxembourg. No more spreadsheet guesswork.
-          </p>
-        </div>
-        <div class="feature-tabs-layout">
-          <!-- Left: feature list -->
-          <div class="feature-tab-list">
-            <button class="feature-tab-btn" data-fi="0">
-              <span class="feature-tab-icon">⚡</span>
-              <div>
-                <div class="feature-tab-title">Instant calculations</div>
-                <div class="feature-tab-desc">
-                  Enter shipment details and get a complete duty, VAT, and landed-cost breakdown in seconds.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="1">
-              <span class="feature-tab-icon">🤖</span>
-              <div>
-                <div class="feature-tab-title">AI HS code lookup</div>
-                <div class="feature-tab-desc">
-                  Describe your product in plain language and get suggested HS codes with current duty rates.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="2">
-              <span class="feature-tab-icon">💶</span>
-              <div>
-                <div class="feature-tab-title">Live ECB rates</div>
-                <div class="feature-tab-desc">
-                  Real-time ECB currency conversion ensures accurate customs valuation across 30+ currencies.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="3">
-              <span class="feature-tab-icon">🌍</span>
-              <div>
-                <div class="feature-tab-title">FTA detection</div>
-                <div class="feature-tab-desc">
-                  Automatically apply preferential or zero-duty rates from 27+ EU free trade agreements.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="4">
-              <span class="feature-tab-icon">📄</span>
-              <div>
-                <div class="feature-tab-title">PDF reports</div>
-                <div class="feature-tab-desc">
-                  Generate professional calculation summaries ready to share with customs brokers and finance.
-                </div>
-              </div>
-            </button>
-
-            <button class="feature-tab-btn" data-fi="5">
-              <span class="feature-tab-icon">🌱</span>
-              <div>
-                <div class="feature-tab-title">CBAM calculator</div>
-                <div class="feature-tab-desc">
-                  Estimate EU Carbon Border Adjustment costs including phase-in factors through 2034.
-                </div>
-              </div>
-            </button>
-          </div>
-          <!-- /feature-tab-list -->
-
-          <!-- Right: preview panel -->
-          <div class="feature-preview-panel">
-            <!-- 0: Instant calculations -->
-            <div class="fp" data-fp="0">
-              <div class="fp-label">Import calculation</div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px">
-                <span style="font-size: 13px; color: var(--muted)">Shipment value</span>
-                <span style="font-size: 14px; font-weight: 700; color: var(--text)">USD 14,400</span>
-              </div>
-              <div class="fp-card">
-                <div class="fp-row"><span>CIF Value</span><span class="fp-val">€ 13,283.00</span></div>
-                <div class="fp-row"><span>Customs Duty (3.5%)</span><span class="fp-val">€ 464.91</span></div>
-                <div class="fp-row"><span>Import VAT (17%)</span><span class="fp-val">€ 2,339.72</span></div>
-              </div>
-              <div class="fp-total"><span>Total Landed Cost</span><span>€ 16,087.63</span></div>
-            </div>
-
-            <!-- 1: AI HS lookup -->
-            <div class="fp" data-fp="1">
-              <div class="fp-label">AI classification</div>
-              <div
-                style="
-                  background: #f8fafc;
-                  border-radius: 10px;
-                  padding: 12px 14px;
-                  font-size: 13px;
-                  color: var(--muted);
-                  border: 1px solid #e2e8f0;
-                  margin-bottom: 14px;
-                  line-height: 1.5;
-                "
-              >
-                💬 &ldquo;Wireless noise-cancelling headphones, over-ear, Bluetooth&rdquo;
-              </div>
-              <div style="background: #fff; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px 18px">
-                <div class="fp-hs-code">8518.30</div>
-                <div style="font-size: 13px; color: var(--muted); margin-bottom: 12px">Headphones and earphones</div>
-                <div style="display: flex; gap: 6px; flex-wrap: wrap">
-                  <span class="fp-badge fp-badge-g">✓ High confidence</span>
-                  <span class="fp-badge fp-badge-gr">Duty: 0%</span>
-                  <span class="fp-badge fp-badge-b">No excise</span>
-                </div>
-              </div>
-              <div style="margin-top: 10px; font-size: 12px; color: #9ca3af">3 alternative codes available</div>
-            </div>
-
-            <!-- 2: Live ECB rates -->
-            <div class="fp" data-fp="2">
-              <div class="fp-label">ECB exchange rates</div>
-              <div class="fp-card">
-                <div class="fp-row">
-                  <span>🇺🇸 USD <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.92148</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇬🇧 GBP <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">1.19724</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇨🇳 CNY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.12896</span>
-                </div>
-                <div class="fp-row">
-                  <span>🇯🇵 JPY <span style="color: var(--text); font-weight: 600; margin-left: 4px">→ EUR</span></span>
-                  <span class="fp-val" style="font-family: &quot;Courier New&quot;, monospace">0.00621</span>
-                </div>
-              </div>
-              <div style="margin-top: 10px; font-size: 11px; color: #9ca3af">
-                Updated 03.03.2026 · European Central Bank reference rates
-              </div>
-            </div>
-
-            <!-- 3: FTA detection -->
-            <div class="fp" data-fp="3">
-              <div class="fp-label">Free trade agreement</div>
-              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px">
-                <span style="font-size: 22px">🇯🇵</span>
-                <span style="font-size: 13px; color: var(--muted)">Japan → Luxembourg</span>
-                <span class="fp-badge fp-badge-g" style="margin-left: auto">✓ EU-Japan EPA</span>
-              </div>
-              <div class="fp-card">
-                <div class="fp-row"><span>HS code</span><span class="fp-val">7304.31</span></div>
-                <div class="fp-row"><span>MFN rate</span><span class="fp-val" style="color: #dc2626">2.7 %</span></div>
-                <div class="fp-row">
-                  <span>FTA rate (EPA)</span><span class="fp-val" style="color: #10b981">0 %</span>
-                </div>
-              </div>
-              <div
-                style="
-                  margin-top: 10px;
-                  background: #d1fae5;
-                  border-radius: 10px;
-                  padding: 10px 14px;
-                  font-size: 13px;
-                  font-weight: 600;
-                  color: #065f46;
-                "
-              >
-                Saving: € 842.40 on this shipment
-              </div>
-            </div>
-
-            <!-- 4: PDF reports -->
-            <div class="fp" data-fp="4">
-              <div class="fp-label">PDF export</div>
-              <div style="background: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0">
-                <div style="height: 3px; background: linear-gradient(90deg, #10b981, #34d399)"></div>
-                <div
-                  style="
-                    padding: 12px 14px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid #e2e8f0;
-                  "
-                >
-                  <div>
-                    <div
-                      style="
-                        font-size: 9px;
-                        letter-spacing: 2px;
-                        color: #10b981;
-                        text-transform: uppercase;
-                        margin-bottom: 2px;
-                      "
-                    >
-                      Luxembourg · EU Customs
-                    </div>
-                    <div style="font-size: 13px; font-weight: 700; color: var(--text)">Import Duty Calculation</div>
-                  </div>
-                  <div style="font-size: 9px; color: #9ca3af; text-align: right">Laptop shipment<br />03.03.2026</div>
-                </div>
-                <div style="padding: 0 14px">
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      border-bottom: 1px solid #f1f5f9;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>CIF Value</span><span style="font-weight: 600; color: var(--text)">€ 12,400.00</span>
-                  </div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      border-bottom: 1px solid #f1f5f9;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>Customs Duty</span><span style="font-weight: 600; color: var(--text)">€ 0.00</span>
-                  </div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      font-size: 12px;
-                      padding: 7px 0;
-                      color: var(--muted);
-                    "
-                  >
-                    <span>Import VAT (17%)</span><span style="font-weight: 600; color: var(--text)">€ 2,108.00</span>
-                  </div>
-                </div>
-                <div
-                  style="
-                    padding: 10px 14px;
-                    background: #ecfdf5;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: #059669;
-                  "
-                >
-                  <span>Total Landed Cost</span><span>€ 14,508.00</span>
-                </div>
-              </div>
-              <div style="margin-top: 12px">
-                <div
-                  style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    background: #10b981;
-                    color: white;
-                    border-radius: 8px;
-                    padding: 8px 16px;
-                    font-size: 13px;
-                    font-weight: 600;
-                  "
-                >
-                  ⬇ Download PDF
-                </div>
-              </div>
-            </div>
-
-            <!-- 5: CBAM -->
-            <div class="fp" data-fp="5">
-              <div class="fp-label">Carbon border adjustment</div>
-              <div class="fp-card">
-                <div class="fp-row"><span>Sector</span><span class="fp-val">Steel (BF/BOF)</span></div>
-                <div class="fp-row"><span>Origin</span><span class="fp-val">🇨🇳 China</span></div>
-                <div class="fp-row"><span>Embedded CO₂</span><span class="fp-val">1.54 tCO₂e/t</span></div>
-                <div class="fp-row"><span>ETS carbon price</span><span class="fp-val">€ 68.40 / t</span></div>
-                <div class="fp-row"><span>2026 phase-in factor</span><span class="fp-val">2.5 %</span></div>
-              </div>
-              <div class="fp-total"><span>CBAM cost (2026)</span><span>€ 2.63</span></div>
-            </div>
-          </div>
-          <!-- /feature-preview-panel -->
-        </div>
-        <!-- /feature-tabs-layout -->
-      </div>
-    </section>
-
-    <section
-      id="how"
-      class="section"
-      style="background: transparent; margin: 0 -100vw; padding-left: 100vw; padding-right: 100vw"
-    >
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">From product to cost<br />in four simple steps</h2>
-        </div>
-        <div class="steps-container">
-          <div class="steps-grid">
-            <div class="step-card">
-              <div class="step-num">1</div>
-              <h3 class="step-title">Describe product</h3>
-              <p class="step-body">Use AI to find the right HS code from a plain description.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">2</div>
-              <h3 class="step-title">Enter details</h3>
-              <p class="step-body">Add origin, incoterm, value, and select your currency.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">3</div>
-              <h3 class="step-title">Get breakdown</h3>
-              <p class="step-body">See full cost with FTA logic and Luxembourg 17% VAT.</p>
-            </div>
-            <div class="step-card">
-              <div class="step-num">4</div>
-              <h3 class="step-title">Export & share</h3>
-              <p class="step-body">Download PDF report and share with your team.</p>
-            </div>
-          </div>
-
-          <!-- Progress rail (replaces buggy plane) -->
-          <div class="steps-rail" aria-hidden="true">
-            <div class="steps-rail-track"></div>
-            <div class="steps-rail-fill" id="steps-rail-fill"></div>
-            <div class="steps-rail-head" id="steps-rail-head"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="cta">
-      <div class="container">
-        <div class="cta-card">
-          <h2 class="cta-title">Ready to know your<br />landed costs?</h2>
-          <p class="cta-sub">Join companies in Luxembourg using Dutify to import smarter.</p>
-          <div class="cta-actions">
-            <a href="/register" class="btn btn-cta">Start here →</a>
-            <a href="mailto:hello@dutify.eu" class="btn btn-cta-ghost">Contact us</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <div id="trust">
-      <div class="container">
-        <div class="trust-inner">
-          <div class="trust-item"><span class="trust-icon">📊</span> TARIC Database</div>
-          <div class="trust-item"><span class="trust-icon">💱</span> ECB Rates</div>
-          <div class="trust-item"><span class="trust-icon">🇱🇺</span> Luxembourg Ready</div>
-          <div class="trust-item"><span class="trust-icon">🤖</span> AI-Powered</div>
-        </div>
-      </div>
-    </div>
-
-    <footer>
-      <div class="container">
-        <div class="footer-inner">
-          <div>
-            <div class="footer-logo">
-              <svg width="24" height="24" viewBox="0 0 56 56" fill="none">
-                <rect width="56" height="56" rx="14" fill="#10b981" />
-                <rect x="25" y="10" width="6" height="16" rx="3" fill="#10b981" />
-                <path
-                  d="M14 22L28 38L42 22"
-                  stroke="#10b981"
-                  stroke-width="5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <rect x="12" y="42" width="32" height="4" rx="2" fill="#10b981" />
+    <!-- ═══════════════════════════════════════════════════════════════
+         LETTERHEAD
+         ═══════════════════════════════════════════════════════════════ -->
+    <header class="letterhead">
+      <div class="wrap">
+        <div class="letterhead__inner">
+          <a class="brand" href="/">
+            <span class="brand__mark">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#9CA88A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6h16M4 12h12M4 18h8" />
               </svg>
-              Dutify
+            </span>
+            <span>
+              <span class="brand__name">Dutify<span class="dot"></span></span>
+              <span class="brand__sub">EU Customs Declaration Engine</span>
+            </span>
+          </a>
+
+          <div class="formref">
+            <div class="row"><em>Form №</em> <strong>DTY-2026 / 01</strong></div>
+            <div class="row"><em>Edition</em> 04 · <em>Issued</em> <strong>Luxembourg</strong></div>
+            <div class="row"><em>Sheet</em> 01 / 04 · <em>Status</em> <strong>LIVE</strong></div>
+          </div>
+        </div>
+
+        <nav class="topnav" aria-label="Primary">
+          <a href="#capabilities">Capabilities</a>
+          <a href="#wire">The Wire</a>
+          <a href="#procedure">Procedure</a>
+          <a href="#authorisation">Authorisation</a>
+          <span class="spacer"></span>
+          <a href="/login">Sign in →</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         HERO
+         ═══════════════════════════════════════════════════════════════ -->
+    <section class="hero">
+      <div class="wrap">
+        <div class="hero__grid">
+          <div>
+            <span class="hero__eyebrow reveal">Box A · Statement of purpose</span>
+            <h1 class="hero__title reveal" data-stagger="1">
+              Customs duty.<br/>
+              Worked the way<br/>
+              <span class="underline">customs</span> <span class="em">would</span> work it.
+            </h1>
+            <p class="hero__lede reveal" data-stagger="2">
+              Dutify is the customs landed-cost engine for importers and brokers across the EU.
+              <strong>AI-classified HS codes</strong> verified against TARIC.
+              <strong>Incoterms 2020</strong>-aware customs value per UCC Article 70.
+              <strong>VAT for all 27 member states</strong> from the live DG TAXUD reference.
+              Preference detection for GSP, EFTA, EPA, customs unions.
+              Audit trail you can hand to a broker.
+            </p>
+            <div class="hero__actions reveal" data-stagger="3">
+              <a class="btn btn--primary" href="/login">
+                Sign in <span class="arrow">→</span>
+              </a>
+              <a class="btn btn--ghost" href="/register">
+                Request access <span class="arrow">↗</span>
+              </a>
             </div>
-            <p class="footer-note">Luxembourg customs duty calculator</p>
+            <div class="hero__meta reveal" data-stagger="4">
+              <span><span class="pip"></span> Passwordless · email OTP</span>
+              <span><span class="pip"></span> Built in Luxembourg · serves the EU</span>
+              <span><span class="pip"></span> No card required</span>
+            </div>
           </div>
-          <div class="footer-links">
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-            <a href="#">GDPR</a>
-            <a href="mailto:hello@dutify.eu">Contact</a>
+
+          <!-- ── SPECIMEN form card ─────────────────────────────── -->
+          <aside class="specimen reveal" data-stagger="2" aria-label="Specimen calculation">
+            <div class="specimen__head">
+              <div class="specimen__title">Specimen · <em>Declaration extract</em></div>
+              <span class="specimen__chip">LIVE</span>
+            </div>
+            <div class="specimen__rows">
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">33</span>HS code</span>
+                <span class="specimen__value">8518.30.95 — <em>Headphones, with microphone</em></span>
+                <span class="specimen__amount">CN10 ✓</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">15</span>Origin</span>
+                <span class="specimen__value">CN — Shenzhen <em>(via Antwerp)</em></span>
+                <span class="specimen__amount">→ LU</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">31</span>Incoterm</span>
+                <span class="specimen__value">FOB Shanghai · <em>add freight + insurance</em></span>
+                <span class="specimen__amount">FOB</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">42</span>Invoice</span>
+                <span class="specimen__value">Goods <em>+</em> freight <em>+</em> insurance</span>
+                <span class="specimen__amount">€&nbsp;12,400.00</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">46</span>CIF (UCC 70)</span>
+                <span class="specimen__value">Customs value at EU border</span>
+                <span class="specimen__amount">€&nbsp;13,180.00</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">36</span>Preference</span>
+                <span class="specimen__value">No FTA · MFN applies (4.7%)</span>
+                <span class="specimen__amount">MFN</span>
+              </div>
+              <div class="specimen__row">
+                <span class="specimen__label"><span class="box">47</span>Duty &amp; VAT</span>
+                <span class="specimen__value">Duty 4.7% · VAT 17.0% (LU)</span>
+                <span class="specimen__amount">€&nbsp;2,964.51</span>
+              </div>
+            </div>
+            <div class="specimen__total">
+              <div>
+                <div class="lbl">Total landed cost</div>
+                <div style="margin-top:6px; font-family:var(--font-mono); font-size:11px; color:var(--ink-3); letter-spacing:.06em;">
+                  CIF + duty + VAT + brokerage
+                </div>
+              </div>
+              <div class="val"><span class="cur">EUR</span><span id="specimen-total">16,144</span><span style="font-size:18px;color:var(--ink-3);">.51</span></div>
+            </div>
+            <div class="specimen__foot">
+              <span>Generated 14:32 · 2026.04.25</span>
+              <span>Δ vs MFN: <strong style="color:var(--sage-bright);">— ø</strong></span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         CAPABILITIES — BOX 31 / 33 / 36 / 47
+         ═══════════════════════════════════════════════════════════════ -->
+    <section class="boxes" id="capabilities">
+      <div class="wrap">
+        <div class="section__head">
+          <div class="section__num">§ 02 · Capabilities</div>
+          <div>
+            <h2 class="section__title">Four boxes <em>that matter</em></h2>
           </div>
+          <div></div>
+          <div class="section__sub">
+            Mapped to SAD fields<br/>
+            (Single Administrative Document)
+          </div>
+        </div>
+
+        <div class="boxes__grid">
+          <div class="box reveal" data-stagger="1">
+            <div class="box__head">
+              <span class="box__num">BOX 33</span>
+              <h3 class="box__h">HS Classification</h3>
+            </div>
+            <p class="box__body">
+              Describe the goods in plain English or French. Claude returns a CN10 candidate, then we round-trip it
+              against the TARIC SOAP service for verification — including a 3-level disambiguation probe when the
+              fourth digit is ambiguous. <strong>No silent guesses, no fabricated codes.</strong>
+            </p>
+            <div class="box__details">
+              <div class="leader"><span class="leader__lbl">CN10 hierarchy fetched</span><span class="leader__val">EN + FR</span></div>
+              <div class="leader"><span class="leader__lbl">USITC 4-digit gate</span><span class="leader__val">enabled</span></div>
+              <div class="leader"><span class="leader__lbl">Cache hit-rate (90d)</span><span class="leader__val">82.4%</span></div>
+            </div>
+          </div>
+
+          <div class="box reveal" data-stagger="2">
+            <div class="box__head">
+              <span class="box__num">BOX 31</span>
+              <h3 class="box__h">Incoterms 2020</h3>
+            </div>
+            <p class="box__body">
+              All 11 terms, modelled correctly. The wizard knows that <strong>CIF</strong> already covers freight and
+              insurance, that <strong>EXW</strong> means you pay everything, and that <strong>DDP</strong> lets you
+              subtract post-importation costs from the customs value per UCC Article 70(2)(b).
+            </p>
+            <div class="box__details">
+              <div class="leader"><span class="leader__lbl">Terms supported</span><span class="leader__val">11 · 2020 ed.</span></div>
+              <div class="leader"><span class="leader__lbl">Auto CIF derivation</span><span class="leader__val">on</span></div>
+              <div class="leader"><span class="leader__lbl">Named-place capture</span><span class="leader__val">on</span></div>
+            </div>
+          </div>
+
+          <div class="box reveal" data-stagger="3">
+            <div class="box__head">
+              <span class="box__num">BOX 47</span>
+              <h3 class="box__h">EU27 VAT Lookup</h3>
+            </div>
+            <p class="box__body">
+              Standard, reduced, super-reduced, parking and zero rates for every EU member state — sourced from the
+              <strong>DG TAXUD VAT rates database</strong>. We hint at likely reduced-rate eligibility per HS chapter
+              (foodstuffs, books, pharmaceuticals) and surface the country's domestic notes inside the picker.
+            </p>
+            <div class="box__details">
+              <div class="leader"><span class="leader__lbl">Member states covered</span><span class="leader__val">27 / 27</span></div>
+              <div class="leader"><span class="leader__lbl">Source</span><span class="leader__val">EU TEDB</span></div>
+              <div class="leader"><span class="leader__lbl">Reduced-rate hints</span><span class="leader__val">42 chapters</span></div>
+            </div>
+          </div>
+
+          <div class="box reveal" data-stagger="4">
+            <div class="box__head">
+              <span class="box__num">BOX 36</span>
+              <h3 class="box__h">Preference Detection</h3>
+            </div>
+            <p class="box__body">
+              We pull the live preference measures from TARIC and check the origin against every multilateral scheme:
+              <strong>GSP, GSP+, EFTA, EEA, EPA, Pan-Euro cumulation</strong> — plus the customs unions
+              (TR · A.TR, AD, SM). The wizard surfaces it as a one-tap toggle with the certificate you'll need.
+            </p>
+            <div class="box__details">
+              <div class="leader"><span class="leader__lbl">Multilateral schemes</span><span class="leader__val">12 + bilateral</span></div>
+              <div class="leader"><span class="leader__lbl">Customs unions</span><span class="leader__val">TR · AD · SM</span></div>
+              <div class="leader"><span class="leader__lbl">Refresh cadence</span><span class="leader__val">monthly</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         WIRE — live mono panel
+         ═══════════════════════════════════════════════════════════════ -->
+    <section class="wire" id="wire">
+      <div class="wrap">
+        <div class="section__head">
+          <div class="section__num">§ 03 · The Wire</div>
+          <div>
+            <h2 class="section__title">A teletype <em>of the EU border</em></h2>
+          </div>
+          <div></div>
+          <div class="section__sub">
+            Realistic excerpt — your live<br/>
+            data appears in the wizard
+          </div>
+        </div>
+
+        <div class="wire__panel reveal">
+          <div class="wire__head">
+            <span>DUTIFY · WIRE · 2026.04.25 14:32:08 GMT+1</span>
+            <span class="pulse">LIVE</span>
+          </div>
+          <div class="wire__body" id="wire-body">
+            <span class="wire__line"><span class="ts">14:32:01</span><span class="tag">[SYNC]</span> <span class="key">TARIC ¦ DG TAXUD pull ok</span> <span class="meta">— 311 zones · 2 621 members</span></span>
+            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
+            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">LU</span> · STD <span class="val">17.0%</span> · reduced <span class="val">8.0%</span> · super <span class="val">3.0%</span></span>
+            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">BE</span> · STD <span class="val">21.0%</span> · reduced <span class="val">6.0% / 12.0%</span></span>
+            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">NL</span> · STD <span class="val">21.0%</span> · reduced <span class="val">9.0%</span></span>
+            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
+            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">CN→EU 8518.30.95</span> · MFN <span class="val">4.7%</span> · PREF <span class="val">— ø</span> <span class="meta">(GSP graduated)</span></span>
+            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">JP→EU 8703.23   </span> · MFN <span class="val">10.0%</span> · PREF <span class="val">0.0%</span> <span class="meta">(EU-Japan EPA)</span></span>
+            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">VN→EU 6109.10   </span> · MFN <span class="val">12.0%</span> · PREF <span class="val">0.0%</span> <span class="meta">(EVFTA)</span></span>
+            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">TR→EU 7308.30   </span> · MFN <span class="val">— ø</span>  · CU   <span class="val">0.0%</span> <span class="meta">(A.TR certificate)</span></span>
+            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
+            <span class="wire__line"><span class="ts">14:32:06</span><span class="tag">[FX  ]</span> <span class="key">ECB ref</span> · EUR/USD <span class="val">1.087</span> · EUR/CNY <span class="val">7.85</span> · EUR/GBP <span class="val">0.852</span></span>
+            <span class="wire__line"><span class="ts">14:32:07</span><span class="tag tag--warn">[CBAM]</span> <span class="key">Q2 filing window opens</span> <span class="meta">— iron, steel, aluminium, fertilisers, cement</span></span>
+            <span class="wire__line"><span class="ts">14:32:08</span><span class="tag">[OK  ]</span> <span class="key">All systems nominal · ready for declaration</span><span class="caret"></span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         PROCEDURE
+         ═══════════════════════════════════════════════════════════════ -->
+    <section class="procedure" id="procedure">
+      <div class="wrap">
+        <div class="section__head">
+          <div class="section__num">§ 04 · Procedure</div>
+          <div>
+            <h2 class="section__title">Four fields. <em>Total in seconds.</em></h2>
+          </div>
+          <div></div>
+          <div class="section__sub">
+            From description to total<br/>
+            landed cost · audit-able
+          </div>
+        </div>
+
+        <div class="procedure__grid">
+          <div class="field reveal" data-stagger="1">
+            <span class="field__letter">A</span>
+            <div class="field__lbl">Field A · Classify</div>
+            <h3 class="field__h">Describe the goods</h3>
+            <p class="field__b">
+              Plain language in EN or FR. Claude returns a candidate <strong>CN10</strong>, we round-trip
+              to TARIC for verification.
+            </p>
+          </div>
+          <div class="field reveal" data-stagger="2">
+            <span class="field__letter">B</span>
+            <div class="field__lbl">Field B · Origin &amp; tax</div>
+            <h3 class="field__h">Pick origin · destination</h3>
+            <p class="field__b">
+              VAT auto-suggests from <strong>EU27 TEDB</strong>. Trade-preference chips (GSP, EFTA, EPA…) appear
+              automatically for the chosen origin.
+            </p>
+          </div>
+          <div class="field reveal" data-stagger="3">
+            <span class="field__letter">C</span>
+            <div class="field__lbl">Field C · Shipping</div>
+            <h3 class="field__h">Set the Incoterm</h3>
+            <p class="field__b">
+              Freight &amp; insurance fields adapt — they <strong>dim when the term already covers them</strong>.
+              CIF is derived per UCC Art 70.
+            </p>
+          </div>
+          <div class="field reveal" data-stagger="4">
+            <span class="field__letter">D</span>
+            <div class="field__lbl">Field D · Export</div>
+            <h3 class="field__h">Sign &amp; hand off</h3>
+            <p class="field__b">
+              Print-friendly summary, JSON snapshot for downstream tooling, compliance reminders that
+              <strong>adapt to the scenario</strong> (REX, A.TR, fiscal rep).
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         AUTHORISATION (sign-in CTA)
+         ═══════════════════════════════════════════════════════════════ -->
+    <section class="auth" id="authorisation">
+      <div class="wrap">
+        <div class="auth__card reveal">
+          <div class="auth__inner">
+            <div>
+              <span class="auth__lbl">§ 05 · Authorisation</span>
+              <h2 class="auth__h">Sign in.<br/>Or <em>request</em><br/>an access code.</h2>
+              <p class="auth__body">
+                Dutify uses passwordless email OTP — enter your address, receive a one-time code,
+                and you're in. New here? Request access and we'll send the code with a short setup walkthrough.
+              </p>
+            </div>
+
+            <form class="authform" action="/login" method="get" autocomplete="off">
+              <span class="auth__lbl" style="margin-bottom:6px;">Box 14 · Agent email</span>
+              <div class="authform__row">
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  spellcheck="false"
+                  placeholder="agent@company.eu"
+                  aria-label="Agent email"
+                />
+                <button type="submit" class="authform__submit">Sign in →</button>
+              </div>
+              <div class="authform__hint">
+                <span>OTP delivered in &lt; 30s</span>
+                <span>·</span>
+                <a href="/register">Don't have an account? Request access</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         FOOTER
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="perforation" aria-hidden="true"></div>
+    <footer class="colophon">
+      <div class="wrap">
+        <div class="colophon__grid">
+          <div class="colophon__col">
+            <div class="colophon__brand">
+              <span class="brand__mark" style="width:32px;height:32px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#9CA88A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+                  <path d="M4 6h16M4 12h12M4 18h8" />
+                </svg>
+              </span>
+              <span class="brand__name">Dutify<span class="dot"></span></span>
+            </div>
+            <p class="colophon__line">
+              <strong>Dutify S.A.R.L</strong> · Luxembourg · Built for importers and customs brokers across the
+              EU27. Reference data from DG TAXUD, ECB, and the Commission's TEDB; classifications are AI-assisted
+              and TARIC-verified — never substitutes for a binding tariff information.
+            </p>
+          </div>
+          <div class="colophon__col">
+            <h4>Engine</h4>
+            <a href="#capabilities">Capabilities</a>
+            <a href="#wire">The Wire</a>
+            <a href="#procedure">Procedure</a>
+            <a href="/login">Sign in</a>
+          </div>
+          <div class="colophon__col">
+            <h4>Contact</h4>
+            <a href="mailto:hello@dutify.lu">hello@dutify.lu</a>
+            <a href="mailto:legal@dutify.lu">legal@dutify.lu</a>
+            <li>Maison Moderne · Luxembourg-Ville</li>
+          </div>
+          <div class="colophon__col">
+            <h4>Compliance</h4>
+            <a href="#">Privacy notice</a>
+            <a href="#">Terms of service</a>
+            <a href="#">GDPR data inventory</a>
+          </div>
+        </div>
+
+        <div class="colophon__bottom">
+          <span>© 2026 Dutify · Form DTY-2026 / 01 · Edition 04</span>
+          <span>Declaration of authenticity on file</span>
         </div>
       </div>
     </footer>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         JS · scroll reveals + auth form handoff
+         ═══════════════════════════════════════════════════════════════ -->
     <script>
       (function () {
-                var cv = document.getElementById("dotwave");
-        var ctx = cv.getContext("2d");
-        var W,
-          H,
-          t = 0;
-
-        // Three wide sweeping wave bands — matching the image reference
-        var WAVES = [
-          { y: 0.18, amp: 0.22, freq: 1.4, speed: 0.3, phase: 0.0 },
-          { y: 0.55, amp: 0.2, freq: 1.7, speed: -0.25, phase: 2.2 },
-          { y: 0.86, amp: 0.15, freq: 1.2, speed: 0.2, phase: 4.5 },
-        ];
-        var GAP = 7; // dot grid spacing (px)
-        var R = 0.9; // dot radius (px)
-
-        function resize() {
-          W = cv.width = window.innerWidth;
-          H = cv.height = window.innerHeight;
-        }
-
-        function frame() {
-          ctx.clearRect(0, 0, W, H);
-          ctx.fillStyle = "#0d2b1e"; // dark forest-green dots
-
-          var cols = Math.ceil(W / GAP) + 1;
-          var rows = Math.ceil(H / GAP) + 1;
-          var band = H * 0.13; // soft band half-width
-
-          // Single beginPath per frame — one fill() call for all dots.
-          // Dot radius varies with density so we still get the gradient look.
-          ctx.beginPath();
-          for (var ri = 0; ri < rows; ri++) {
-            var y = ri * GAP;
-            for (var ci = 0; ci < cols; ci++) {
-              var x = ci * GAP;
-              var nx = x / W;
-              var a = 0;
-
-              for (var wi = 0; wi < WAVES.length; wi++) {
-                var wv = WAVES[wi];
-                var wy = (wv.y + Math.sin(nx * Math.PI * wv.freq + wv.phase + t * wv.speed) * wv.amp) * H;
-                var d = Math.abs(y - wy) / band;
-                if (d < 1) {
-                  // smooth-step falloff
-                  var s = 1 - d;
-                  s = s * s * (3 - 2 * s);
-                  if (s > a) a = s;
-                }
+        // Scroll-triggered reveals via IntersectionObserver — single
+        // observer handles every .reveal element. Each enters once.
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add('in');
+                io.unobserve(e.target);
               }
-
-              if (a > 0.05) {
-                var r = R * (0.3 + 0.7 * a); // smaller dots fade at edges
-                ctx.moveTo(x + r, y);
-                ctx.arc(x, y, r, 0, 6.2832);
-              }
-            }
-          }
-          ctx.fill();
-
-          t += 0.006;
-          requestAnimationFrame(frame);
-        }
-
-        window.addEventListener("resize", resize);
-        resize();
-        frame();
-      })();
-    </script>
-    <script>
-      /* ── Parallax ── */
-      (function () {
-        if (window.innerWidth < 768) return; /* skip on mobile */
-        var scrollY = 0;
-
-        /* Blob definitions: parallax rate, float freq, float amps, phase offset */
-        var blobDefs = [
-          { sel: ".blob-1", px: 0.22, fs: 0.38, fa: [55, 35], fp: 0.0 },
-          { sel: ".blob-2", px: -0.14, fs: 0.31, fa: [-48, 50], fp: 1.1 },
-          { sel: ".blob-3", px: 0.1, fs: 0.35, fa: [50, -46], fp: 2.3 },
-          { sel: ".blob-4", px: -0.18, fs: 0.27, fa: [-38, 32], fp: 3.5 },
-          { sel: ".blob-5", px: 0.15, fs: 0.42, fa: [60, -44], fp: 4.7 },
-          { sel: ".blob-6", px: -0.08, fs: 0.23, fa: [-30, 52], fp: 5.9 },
-        ];
-        var blobs = blobDefs.map(function (d) {
-          return { el: document.querySelector(d.sel), px: d.px, fs: d.fs, fa: d.fa, fp: d.fp };
-        });
-
-        /* Blob animation loop: float (sin/cos) + scroll parallax */
-        function tickBlobs(now) {
-          var t = now * 0.001;
-          blobs.forEach(function (b) {
-            if (!b.el) return;
-            var fx = Math.sin(t * b.fs + b.fp) * b.fa[0];
-            var fy = Math.cos(t * b.fs * 0.75 + b.fp) * b.fa[1];
-            var py = scrollY * b.px;
-            b.el.style.transform = "translate(" + fx.toFixed(1) + "px," + (fy + py).toFixed(1) + "px)";
-          });
-          requestAnimationFrame(tickBlobs);
-        }
-        requestAnimationFrame(tickBlobs);
-
-        /* Section parallax on scroll */
-        var heroContent = document.querySelector(".hero-content");
-        var carouselWrap = document.querySelector(".carousel-wrapper");
-        var scrollHint = document.querySelector(".scroll-hint");
-        var sectionHeaders = document.querySelectorAll(".section-header");
-        var stepCards = document.querySelectorAll(".step-card");
-        var ctaCard = document.querySelector(".cta-card");
-
-        function updateParallax() {
-          var vy = window.innerHeight;
-
-          /* Hide scroll hint once user scrolls */
-          if (scrollHint) scrollHint.classList.toggle("hidden", scrollY > 40);
-
-          /* Hero: both sides drift at the same rate */
-          if (heroContent) heroContent.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
-          if (carouselWrap) carouselWrap.style.transform = "translateY(" + (scrollY * 0.13).toFixed(1) + "px)";
-
-          /* Section elements: subtle offset relative to viewport centre */
-          function vpParallax(el, factor) {
-            if (!el) return;
-            var r = el.getBoundingClientRect();
-            var off = (r.top + r.height * 0.5 - vy * 0.5) * factor;
-            el.style.transform = "translateY(" + off.toFixed(1) + "px)";
-          }
-
-          sectionHeaders.forEach(function (h) {
-            vpParallax(h, 0.07);
-          });
-          stepCards.forEach(function (s, i) {
-            vpParallax(s, 0.05 + i * 0.015);
-          });
-          vpParallax(ctaCard, 0.06);
-        }
-
-        var ticking = false;
-        window.addEventListener(
-          "scroll",
-          function () {
-            scrollY = window.scrollY;
-            if (!ticking) {
-              requestAnimationFrame(function () {
-                updateParallax();
-                ticking = false;
-              });
-              ticking = true;
-            }
-          },
-          { passive: true },
-        );
-
-        updateParallax();
-      })();
-    </script>
-    <script>
-      (function () {
-        var DURATION = 4200;
-        var slides = document.querySelectorAll(".c-slide");
-        var dots = document.querySelectorAll(".c-dot");
-        var progressBar = document.getElementById("c-progress");
-        var current = 0;
-        var autoTimer = null;
-        var progressRaf = null;
-        var progressStart = null;
-
-        function showSlide(n) {
-          slides[current].classList.remove("active");
-          dots[current].classList.remove("active");
-          current = ((n % slides.length) + slides.length) % slides.length;
-          slides[current].classList.add("active");
-          dots[current].classList.add("active");
-          startProgress();
-        }
-
-        function startProgress() {
-          cancelAnimationFrame(progressRaf);
-          if (progressBar) progressBar.style.width = "0%";
-          progressStart = performance.now();
-          function tick(now) {
-            var pct = Math.min(((now - progressStart) / DURATION) * 100, 100);
-            if (progressBar) progressBar.style.width = pct + "%";
-            if (pct < 100) progressRaf = requestAnimationFrame(tick);
-          }
-          progressRaf = requestAnimationFrame(tick);
-        }
-
-        function startAuto() {
-          clearInterval(autoTimer);
-          autoTimer = setInterval(function () {
-            showSlide(current + 1);
-          }, DURATION);
-        }
-
-        if (slides.length) {
-          slides[0].classList.add("active");
-          dots[0].classList.add("active");
-          startProgress();
-          startAuto();
-        }
-
-        dots.forEach(function (dot, i) {
-          dot.addEventListener("click", function () {
-            clearInterval(autoTimer);
-            showSlide(i);
-            startAuto();
-          });
-        });
-      })();
-    </script>
-    <script>
-      /* ── Feature tabs ── */
-      (function () {
-        var tabs = Array.from(document.querySelectorAll(".feature-tab-btn"));
-        var previews = Array.from(document.querySelectorAll(".fp"));
-        var cur = 0;
-
-        function activate(idx) {
-          if (idx === cur) return;
-          previews[cur].classList.remove("f-active");
-          tabs[cur].classList.remove("f-active");
-          cur = idx;
-          previews[cur].classList.add("f-active");
-          tabs[cur].classList.add("f-active");
-        }
-
-        tabs.forEach(function (btn, i) {
-          btn.addEventListener("click", function () {
-            activate(i);
-          });
-        });
-
-        if (tabs.length) {
-          tabs[0].classList.add("f-active");
-          previews[0].classList.add("f-active");
-        }
-      })();
-
-      /* ── Step-cards progress rail: hover-triggered, step by step ── */
-      (function () {
-        if (window.innerWidth < 640) return;
-        var container = document.querySelector(".steps-container");
-        var fill = document.getElementById("steps-rail-fill");
-        var head = document.getElementById("steps-rail-head");
-        var stepNums = document.querySelectorAll(".step-num");
-        if (!container || !fill || !head) return;
-
-        var MOVE_MS  = 520;
-        var PULSE_MS = 750;
-        var playing  = false;
-
-        /* Compute actual circle-center positions as % of rail width using real layout */
-        function getPositions() {
-          var railEl   = container.querySelector('.steps-rail');
-          var railRect = railEl.getBoundingClientRect();
-          return Array.from(stepNums).map(function (n) {
-            var r = n.getBoundingClientRect();
-            return (r.left + r.width / 2 - railRect.left) / railRect.width * 100;
-          });
-        }
-
-        function setInstant(pos) {
-          head.style.transition = 'none';
-          fill.style.transition = 'none';
-          head.style.left  = pos + '%';
-          fill.style.width = pos + '%';
-        }
-
-        function animateTo(pos, ms, callback) {
-          head.style.transition = 'left '  + ms + 'ms cubic-bezier(.4,0,.2,1)';
-          fill.style.transition = 'width ' + ms + 'ms cubic-bezier(.4,0,.2,1)';
-          head.style.left  = pos + '%';
-          fill.style.width = pos + '%';
-          setTimeout(callback, ms);
-        }
-
-        function pulseStep(i, callback) {
-          head.classList.remove('pulsing');
-          void head.offsetWidth;
-          head.classList.add('pulsing');
-          var n = stepNums[i];
-          if (n) {
-            n.classList.add('ping');
-            setTimeout(function () { n.classList.remove('ping'); }, 700);
-          }
-          setTimeout(callback, PULSE_MS);
-        }
-
-        /* Init: head at step 1 */
-        requestAnimationFrame(function () {
-          var pos = getPositions();
-          setInstant(pos[0]);
-        });
-
-        function play() {
-          if (playing) return;
-          playing = true;
-          var pos = getPositions();
-          setInstant(pos[0]);
-
-          setTimeout(function () {
-            animateTo(pos[1], MOVE_MS, function () {
-              pulseStep(1, function () {
-                animateTo(pos[2], MOVE_MS, function () {
-                  pulseStep(2, function () {
-                    animateTo(pos[3], MOVE_MS, function () {
-                      pulseStep(3, function () {
-                        head.classList.remove('pulsing');
-                        playing = false;
-                      });
-                    });
-                  });
-                });
-              });
             });
-          }, 80);
-        }
+          },
+          { rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
+        );
+        document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
 
-        container.addEventListener('mouseenter', play);
+        // Auth form: pre-fill the /login redirect with the typed email
+        // so the OTP form lands ready to submit.
+        var form = document.querySelector('.authform');
+        if (form) {
+          form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var email = form.querySelector('input[name="email"]').value.trim();
+            var url = '/login' + (email ? ('?email=' + encodeURIComponent(email)) : '');
+            window.location.href = url;
+          });
+        }
       })();
     </script>
   </body>

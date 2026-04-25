@@ -180,6 +180,18 @@ body {
 }
 
 button, input, select, textarea { font: inherit; color: inherit; }
+
+/* Force white-on-dark for native select dropdown options across the app */
+option, optgroup {
+  color: #F5F5F5 !important;
+  background-color: #252A35 !important;
+  -webkit-text-fill-color: #F5F5F5 !important;
+}
+option:checked {
+  background-color: #2C3040 !important;
+  color: #F5F5F5 !important;
+  -webkit-text-fill-color: #F5F5F5 !important;
+}
 img, svg { display: block; max-width: 100%; }
 a { color: var(--sage); text-decoration: underline; text-decoration-color: var(--sage-dim); text-underline-offset: 3px; text-decoration-thickness: 1px; transition: color var(--dur-fast) var(--ease-out); }
 a:hover { color: var(--sage-light); text-decoration-color: var(--sage); }

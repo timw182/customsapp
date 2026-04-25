@@ -37,6 +37,17 @@ export async function POST(req) {
 
   const { code, deviceName } = parsed.data;
 
+  // Account creation is iOS-only via /api/auth/register-mobile. If the email
+  // isn't on file, fall through with the same generic error a wrong code
+  // produces — no enumeration leak.
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, role: true },
+  });
+  if (!user) {
+    return NextResponse.json({ error: "Invalid or expired code" }, { status: 400 });
+  }
+
   const row = await latestActiveCode(email);
   if (!row) {
     // Either no code was ever sent, or the most recent one already expired /
@@ -61,20 +72,6 @@ export async function POST(req) {
 
   // Code is valid — burn it first so a duplicate submit can't reuse it.
   await consumeCode(row.id);
-
-  // Upsert the user. Passwordless sign-up: the `passwordHash` column is
-  // non-nullable in the schema, so store a disabled sentinel for new rows.
-  // Existing rows keep whatever hash they already have.
-  const user = await prisma.user.upsert({
-    where: { email },
-    create: {
-      email,
-      // Sentinel — not a valid bcrypt hash, so password login is impossible.
-      passwordHash: "!otp-only",
-    },
-    update: {},
-    select: { id: true, email: true, name: true, role: true },
-  });
 
   const { plaintext, row: tokenRow } = await issueToken({
     userId: user.id,

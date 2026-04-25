@@ -4,13 +4,58 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const [mode, setMode] = useState("otp"); // 'otp' | 'password'
+  const [step, setStep] = useState("email"); // 'email' | 'code'  (otp mode)
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleSubmit(e) {
+  async function requestCode(e) {
+    e?.preventDefault?.();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError("");
+    setInfo("");
+    try {
+      const res = await fetch("/api/auth/request-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (res.status === 429) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error || "Too many requests. Try again later.");
+      } else if (!res.ok) {
+        setError("Could not send code. Try again.");
+      } else {
+        setStep("code");
+        setInfo(`We sent a 6-digit code to ${email.trim()}.`);
+      }
+    } catch {
+      setError("Network error.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyOtp(e) {
+    e?.preventDefault?.();
+    setLoading(true);
+    setError("");
+    const res = await signIn("otp", { email: email.trim(), code: code.trim(), redirect: false });
+    if (res?.error || !res?.ok) {
+      setError("Invalid or expired code");
+      setLoading(false);
+    } else {
+      router.push("/dashboard");
+    }
+  }
+
+  async function handlePassword(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -19,7 +64,7 @@ export default function LoginPage() {
       setError("Invalid email or password");
       setLoading(false);
     } else {
-      router.push("/calculator");
+      router.push("/dashboard");
     }
   }
 
@@ -32,49 +77,112 @@ export default function LoginPage() {
         </div>
 
         <h1 className="auth-title">Welcome back</h1>
-        <p className="auth-sub">Sign in to your EU customs workspace.</p>
+        <p className="auth-sub">
+          {mode === "otp"
+            ? "Sign in with a 6-digit code — same inbox as the mobile app."
+            : "Sign in with your password."}
+        </p>
 
         {error && (
           <div className="auth-error">
             <strong>Refused.</strong> {error}
           </div>
         )}
+        {info && !error && <div className="auth-info">{info}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label className="auth-field">
-            <span>Email</span>
-            <input
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              placeholder="you@example.com"
-              required
-            />
-          </label>
+        {mode === "otp" && step === "email" && (
+          <form onSubmit={requestCode} className="auth-form">
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <button type="submit" disabled={loading || !email.trim()} className="auth-submit">
+              {loading ? "Sending…" : "Send code"}
+              <span aria-hidden>→</span>
+            </button>
+          </form>
+        )}
 
-          <label className="auth-field">
-            <span>Password</span>
-            <input
-              type="password"
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              required
-            />
-          </label>
+        {mode === "otp" && step === "code" && (
+          <form onSubmit={verifyOtp} className="auth-form">
+            <label className="auth-field">
+              <span>6-digit code</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="123456"
+                autoFocus
+                required
+              />
+            </label>
+            <button type="submit" disabled={loading || code.length !== 6} className="auth-submit">
+              {loading ? "Verifying…" : "Verify & sign in"}
+              <span aria-hidden>→</span>
+            </button>
+            <button
+              type="button"
+              className="auth-linkbtn"
+              onClick={() => { setStep("email"); setCode(""); setError(""); setInfo(""); }}
+            >
+              ← Use a different email
+            </button>
+          </form>
+        )}
 
-          <button type="submit" disabled={loading} className="auth-submit">
-            {loading ? "Signing in…" : "Sign in"}
-            <span aria-hidden>→</span>
-          </button>
-        </form>
+        {mode === "password" && (
+          <form onSubmit={handlePassword} className="auth-form">
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
+            </label>
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                required
+              />
+            </label>
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? "Signing in…" : "Sign in"}
+              <span aria-hidden>→</span>
+            </button>
+          </form>
+        )}
 
         <div className="auth-foot">
-          Invited to join? <a href="/register">Register with your invite code →</a>
+          {mode === "otp" ? (
+            <button type="button" className="auth-linkbtn" onClick={() => { setMode("password"); setError(""); setInfo(""); }}>
+              Use password instead
+            </button>
+          ) : (
+            <button type="button" className="auth-linkbtn" onClick={() => { setMode("otp"); setStep("email"); setError(""); setInfo(""); }}>
+              Use email code instead
+            </button>
+          )}
+          <span className="auth-sep">·</span>
+          <a href="/register">Invite code →</a>
         </div>
       </div>
 
@@ -157,6 +265,27 @@ export default function LoginPage() {
           border-radius: var(--radius-md);
           font-size: 13.5px;
         }
+        .auth-info {
+          background: rgba(156,168,138,0.12);
+          border: 1px solid rgba(156,168,138,0.3);
+          color: var(--sage-light);
+          padding: 10px 14px;
+          border-radius: var(--radius-md);
+          font-size: 13px;
+        }
+        .auth-linkbtn {
+          background: none;
+          border: none;
+          padding: 0;
+          color: var(--sage-light);
+          font-family: inherit;
+          font-size: 13px;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .auth-linkbtn:hover { color: var(--sage); }
+        .auth-sep { color: var(--text-muted); margin: 0 8px; }
         .auth-form {
           display: flex;
           flex-direction: column;

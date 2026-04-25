@@ -56,15 +56,16 @@ model HsLookupCache {
 
 // Per-user search history (references cache row; also stores result for instant replay)
 model HsSearchHistory {
-  id          String   @id @default(cuid())
-  userId      String
-  description String
-  hs6         String?
-  cn8         String?
-  dutyRate    Float?
-  fromCache   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String
+  description   String
+  hs6           String?
+  cn8           String?
+  dutyRate      Float?
+  confidencePct Int?
+  fromCache     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
 }
@@ -189,6 +190,38 @@ model NotificationPrefs {
 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+// TARIC geographical area — either a country (code = ISO2, e.g. "JP")
+// or a country-group / agreement zone (code = numeric id, e.g. "1008",
+// "2020"). Populated monthly from the CIRCABC "TARIC and Quota data"
+// library via scripts/ingest-taric-zones.js. Used to resolve the
+// geographical_area field on preferential measures returned by TARIC
+// SOAP into a human-readable agreement name (e.g. "EPA Japan").
+model TaricGeoArea {
+  code        String            @id
+  acronym     String?
+  description String
+  startDate   DateTime?
+  endDate     DateTime?
+  isCountry   Boolean           @default(false)
+  updatedAt   DateTime          @updatedAt
+  members     TaricZoneMember[]
+}
+
+// Membership edge from a country-group zone to a member country.
+// One row per (zoneCode, memberCode, membershipStart) since a country
+// can join and leave a group multiple times over the years.
+model TaricZoneMember {
+  id              String       @id @default(cuid())
+  zoneCode        String
+  memberCode      String
+  membershipStart DateTime?
+  membershipEnd   DateTime?
+  zone            TaricGeoArea @relation(fields: [zoneCode], references: [code], onDelete: Cascade)
+
+  @@unique([zoneCode, memberCode, membershipStart])
+  @@index([memberCode])
 }
 
 // Durable inbox entry — one row per push we dispatched (or would have

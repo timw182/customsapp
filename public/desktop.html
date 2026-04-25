@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Dutify Pocket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font-family:inherit;cursor:pointer}
+a{text-decoration:none;color:inherit}
+input,textarea,select{cursor:text}
+
+:root{
+  --bg:            #1C1F26;
+  --bg-sidebar:    #20242D;
+  --bg-card:       #262B38;
+  --bg-raised:     #2D3244;
+  --bg-input:      #191C25;
+  --bg-hover:      rgba(255,255,255,.04);
+
+  --text-1:        #F0F0EE;
+  --text-2:        #9AA2B4;
+  --text-3:        #4E5768;
+
+  --sage:          #8F9E7F;
+  --sage-light:    #ABBF97;
+  --sage-pale:     #C8D6BA;
+  --sage-bg:       rgba(143,158,127,.12);
+  --sage-bg-mid:   rgba(143,158,127,.18);
+  --sage-border:   rgba(143,158,127,.22);
+
+  --navy:          #13294B;
+  --navy-mid:      #1A3360;
+  --navy-light:    #1E3D72;
+
+  --border:        #292E3E;
+  --border-light:  #343C52;
+
+  --r-xs:   4px;
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-2xl:  28px;
+  --r-pill: 999px;
+}
+
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--bg);
+  color:var(--text-1);
+  display:flex;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px}
+
+/* ── SIDEBAR ───────────────────────────── */
+.sidebar{
+  width:232px;
+  flex-shrink:0;
+  background:var(--bg-sidebar);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  padding:0 10px 24px;
+  overflow-y:auto;
+}
+
+.sidebar-logo{
+  display:flex;align-items:center;gap:10px;
+  padding:20px 10px;
+}
+
+.logo-icon{
+  display:flex;align-items:flex-end;gap:2.5px;height:18px;flex-shrink:0;
+}
+.logo-icon span{
+  display:block;width:3px;border-radius:2px;background:var(--sage);
+}
+
+.logo-text{font-size:14.5px;font-weight:700;color:var(--text-1);letter-spacing:-.1px}
+
+.sidebar-nav{display:flex;flex-direction:column;gap:1px;flex:1}
+
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 12px;
+  border-radius:var(--r-md);
+  color:var(--text-2);
+  font-size:13.5px;font-weight:500;
+  cursor:pointer;
+  transition:background .12s,color .12s;
+  user-select:none;
+  white-space:nowrap;
+}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-1)}
+.nav-item.active{background:var(--sage-bg);color:var(--text-1)}
+.nav-item svg{flex-shrink:0;opacity:.55;transition:opacity .12s}
+.nav-item:hover svg,.nav-item.active svg{opacity:1}
+
+.nav-sep{height:1px;background:var(--border);margin:8px 4px}
+
+/* ── MAIN ──────────────────────────────── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 32px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;min-height:54px;
+}
+
+.topbar-crumb{
+  font-size:12px;font-weight:600;letter-spacing:.3px;
+  color:var(--text-3);text-transform:uppercase;
+}
+
+.topbar-right{display:flex;align-items:center;gap:6px}
+
+.tb-btn{
+  width:32px;height:32px;
+  border-radius:var(--r-pill);
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-2);cursor:pointer;
+  transition:background .12s,color .12s;
+}
+.tb-btn:hover{background:var(--bg-raised);color:var(--text-1)}
+
+.avatar{
+  width:32px;height:32px;
+  border-radius:var(--r-pill);
+  background:var(--sage-bg);
+  border:2px solid var(--sage-border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:var(--sage-pale);
+  cursor:default;flex-shrink:0;letter-spacing:.3px;
+}
+
+.content{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border-light) transparent}
+
+/* ── PAGES ─────────────────────────────── */
+.page{display:none;padding:36px 40px 80px;animation:pageIn .18s ease}
+.page.active{display:block}
+
+@keyframes pageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.page-title{
+  font-size:27px;font-weight:800;letter-spacing:-.6px;
+  color:var(--text-1);margin-bottom:30px;
+}
+
+/* ── SEARCH PAGE ───────────────────────── */
+.search-wrap{max-width:660px}
+
+.camera-zone{
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;margin-bottom:28px;
+}
+
+.camera-ring{
+  width:108px;height:108px;border-radius:50%;
+  background:var(--sage-bg);
+  border:1.5px solid var(--sage-border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;margin-bottom:9px;
+  transition:background .2s,transform .18s,box-shadow .2s;
+}
+.camera-ring:hover{
+  background:var(--sage-bg-mid);
+  transform:scale(1.05);
+  box-shadow:0 0 0 10px rgba(143,158,127,.05);
+}
+
+.cam-label{font-size:12.5px;font-weight:500;color:var(--text-2)}
+
+.voice-zone{
+  position:absolute;right:0;bottom:0;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+}
+.voice-label{font-size:12.5px;font-weight:500;color:var(--text-2)}
+
+.mic-btn{
+  width:46px;height:46px;border-radius:var(--r-lg);
+  background:var(--sage);border:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,transform .1s;
+}
+.mic-btn:hover{background:var(--sage-light)}
+.mic-btn:active{transform:scale(.93)}
+.mic-btn.recording{background:#C4634A;animation:pulse 1.2s ease-in-out infinite}
+
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(196,99,74,.35)}50%{box-shadow:0 0 0 8px rgba(196,99,74,0)}}
+
+.input-wrap{position:relative;margin-bottom:10px}
+
+.input-search-icon{
+  position:absolute;left:15px;top:50%;transform:translateY(-50%);
+  color:var(--text-3);pointer-events:none;
+}
+
+.desc-input{
+  width:100%;height:56px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--r-xl);
+  padding:0 16px 0 44px;
+  font-size:15px;font-weight:400;color:var(--text-1);
+  outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.desc-input::placeholder{color:var(--text-3)}
+.desc-input:focus{border-color:var(--sage-border);box-shadow:0 0 0 3px rgba(143,158,127,.07)}
+
+.classify-btn{
+  width:100%;height:54px;
+  background:linear-gradient(150deg,var(--navy-light) 0%,var(--navy) 100%);
+  border:1px solid rgba(30,61,114,.35);
+  border-radius:var(--r-xl);
+  font-family:'Outfit',sans-serif;
+  font-size:16px;font-weight:700;color:var(--text-1);
+  letter-spacing:.1px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:40px;cursor:pointer;
+  transition:opacity .15s,transform .1s,box-shadow .15s;
+}
+.classify-btn:hover{opacity:.9;box-shadow:0 4px 20px rgba(19,41,75,.45)}
+.classify-btn:active{transform:scale(.99)}
+.classify-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.btn-spinner{
+  width:15px;height:15px;
+  border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .55s linear infinite;display:none;
+}
+.classify-btn.loading .btn-spinner{display:block}
+.classify-btn.loading .btn-lbl::after{content:'ing'}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* result card */
+.result-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:22px;
+  margin-bottom:36px;display:none;
+  animation:pageIn .2s ease;
+}
+.result-card.show{display:block}
+
+.result-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+
+.result-hs{
+  font-family:'JetBrains Mono',monospace;
+  font-size:24px;font-weight:600;color:var(--text-1);letter-spacing:1.5px;
+}
+.result-name{font-size:13px;color:var(--text-2);margin-top:5px;max-width:380px;line-height:1.4}
+
+.conf-badge{
+  padding:5px 12px;border-radius:var(--r-pill);
+  font-size:11px;font-weight:700;letter-spacing:.3px;
+  background:var(--sage-bg);border:1px solid var(--sage-border);
+  color:var(--sage-pale);white-space:nowrap;
+}
+
+.result-meta{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:12px;padding-top:16px;
+  border-top:1px solid var(--border);
+}
+.meta-item{display:flex;flex-direction:column;gap:3px}
+.meta-lbl{font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
+.meta-val{font-size:14px;font-weight:600;color:var(--text-1)}
+.meta-val.mono{font-family:'JetBrains Mono',monospace;font-size:13px}
+
+/* recent */
+.recent-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.recent-title{font-size:15.5px;font-weight:700;color:var(--text-1)}
+.recent-more{
+  display:flex;align-items:center;gap:3px;
+  font-size:12.5px;color:var(--text-2);cursor:pointer;
+  transition:color .12s;
+}
+.recent-more:hover{color:var(--text-1)}
+
+.chips-grid{display:flex;gap:8px;flex-wrap:wrap}
+
+.chip{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 14px 9px 10px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r-xl);cursor:pointer;
+  transition:background .12s,border-color .12s,transform .1s;
+}
+.chip:hover{background:var(--bg-raised);border-color:var(--sage-border);transform:translateY(-1px)}
+
+.chip-ico{
+  width:28px;height:28px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.chip-name{font-size:13px;font-weight:600;color:var(--text-1);white-space:nowrap}
+.chip-code{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-3);letter-spacing:.4px;margin-top:1px}
+
+/* ── HISTORY PAGE ──────────────────────── */
+.history-list{display:flex;flex-direction:column;gap:7px;max-width:840px}
+
+.hist-item{
+  display:flex;align-items:center;gap:13px;
+  padding:13px 16px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r-lg);cursor:pointer;
+  transition:background .12s,border-color .12s,transform .1s;
+}
+.hist-item:hover{background:var(--bg-raised);border-color:var(--border-light);transform:translateX(2px)}
+
+.hist-thumb{
+  width:36px;height:36px;border-radius:var(--r-sm);
+  background:var(--bg-raised);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;color:var(--text-3);
+}
+.hist-body{flex:1;min-width:0}
+.hist-name{font-size:14px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-desc{font-size:12px;color:var(--text-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.hist-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hist-code{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3)}
+
+.badge{
+  padding:4px 10px;border-radius:var(--r-pill);
+  font-size:10.5px;font-weight:700;letter-spacing:.2px;white-space:nowrap;
+}
+.badge-sage{background:var(--sage-bg);border:1px solid var(--sage-border);color:var(--sage-pale)}
+.badge-navy{background:rgba(19,41,75,.4);border:1px solid rgba(30,61,114,.3);color:#7EA4D8}
+.badge-cache{background:rgba(196,99,74,.1);border:1px solid rgba(196,99,74,.2);color:#D4896A}
+
+/* ── CALCULATOR PAGE ───────────────────── */
+.calc-layout{display:flex;gap:20px;align-items:flex-start;max-width:1080px}
+.calc-form{flex:1;min-width:0}
+.calc-panel{width:268px;flex-shrink:0;position:sticky;top:0}
+
+.section-card{
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:18px 20px;
+  margin-bottom:10px;
+}
+.section-head{
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;user-select:none;
+}
+.section-head-left{display:flex;align-items:center;gap:9px}
+.section-title{font-size:14.5px;font-weight:700;color:var(--text-1)}
+.section-toggle{color:var(--text-3);transition:transform .2s}
+.section-card.collapsed .section-toggle{transform:rotate(-90deg)}
+.section-body{margin-top:16px}
+.section-card.collapsed .section-body{display:none}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group.tri{grid-column:span 1}
+
+.f-label{
+  font-size:11.5px;font-weight:600;color:var(--text-2);
+  display:flex;align-items:center;gap:4px;
+}
+.f-hint{
+  width:13px;height:13px;border-radius:50%;
+  background:var(--bg-raised);border:1px solid var(--border-light);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:8px;font-weight:700;color:var(--text-3);cursor:help;
+}
+
+.f-input,.f-select{
+  height:40px;
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:0 11px;
+  font-family:'Outfit',sans-serif;font-size:13.5px;color:var(--text-1);
+  outline:none;transition:border-color .15s;width:100%;
+  -webkit-appearance:none;
+}
+.f-input::placeholder{color:var(--text-3)}
+.f-input:focus,.f-select:focus{border-color:var(--sage-border)}
+.f-select{
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234E5768' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;
+  padding-right:30px;
+}
+
+/* live results */
+.live-panel{
+  background:var(--sage-bg);border:1px solid var(--sage-border);
+  border-radius:var(--r-xl);padding:20px;
+}
+.lp-title{font-size:15px;font-weight:700;color:var(--text-1);margin-bottom:16px}
+
+.lp-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid rgba(143,158,127,.12);
+  font-size:13px;
+}
+.lp-row:last-of-type{border-bottom:none}
+.lp-key{color:var(--text-2)}
+.lp-val{font-weight:600;color:var(--text-1);font-variant-numeric:tabular-nums}
+
+.lp-total{
+  margin-top:14px;padding:14px;
+  background:rgba(143,158,127,.1);
+  border-radius:var(--r-lg);text-align:center;
+}
+.lp-total-lbl{font-size:11px;font-weight:700;color:var(--sage-light);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.lp-total-val{font-size:22px;font-weight:800;color:var(--text-1)}
+
+/* hs badge in topbar for calc page */
+.hs-topbar-badge{
+  display:none;align-items:center;gap:8px;
+  padding:0 14px;height:34px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--r-pill);
+}
+.hs-topbar-badge.visible{display:flex}
+.hs-topbar-lbl{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.3px}
+.hs-topbar-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--text-1)}
+
+/* ── SETTINGS PAGE ─────────────────────── */
+.settings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:880px}
+
+.settings-card{
+  background:var(--sage-bg);border:1px solid var(--sage-border);
+  border-radius:var(--r-xl);padding:20px;cursor:pointer;
+  transition:background .15s,transform .12s,box-shadow .15s;
+}
+.settings-card:hover{
+  background:var(--sage-bg-mid);
+  transform:translateY(-2px);
+  box-shadow:0 6px 24px rgba(0,0,0,.3);
+}
+.settings-card-icon{
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(0,0,0,.28);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:13px;color:var(--text-1);
+}
+.settings-card-title{font-size:16px;font-weight:700;color:var(--text-1);margin-bottom:5px}
+.settings-card-desc{font-size:12.5px;color:var(--sage-light);line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- ════════ SIDEBAR ════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">
+      <span style="height:7px"></span>
+      <span style="height:13px"></span>
+      <span style="height:18px"></span>
+      <span style="height:11px"></span>
+      <span style="height:6px"></span>
+    </div>
+    <span class="logo-text">Dutify Pocket</span>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <div class="nav-item active" data-page="search" data-crumb="Search">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search
+    </div>
+
+    <div class="nav-item" data-page="history" data-crumb="History">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      History
+    </div>
+
+    <div class="nav-item" data-page="saved" data-crumb="Saved">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      Saved
+    </div>
+
+    <div class="nav-item" data-page="calculator" data-crumb="Landed Cost Calculator">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" x2="16" y1="8" y2="8"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="8" x2="12" y1="16" y2="16"/></svg>
+      Calculator
+    </div>
+
+    <div class="nav-item" data-page="reductions" data-crumb="Reductions">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      Reductions
+    </div>
+
+    <div class="nav-item" data-page="goods" data-crumb="Goods Index">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      Goods Index
+    </div>
+
+    <div class="nav-item" data-page="rulings" data-crumb="Rulings">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Rulings
+    </div>
+
+    <div class="nav-sep"></div>
+
+    <div class="nav-item" data-page="notifications" data-crumb="Notifications">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Notifications
+    </div>
+
+    <div class="nav-item" data-page="settings" data-crumb="Settings">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </div>
+
+  </nav>
+</aside>
+
+<!-- ════════ MAIN ════════ -->
+<main class="main">
+
+  <header class="topbar">
+    <span class="topbar-crumb" id="topbar-crumb">Search</span>
+    <div class="topbar-right">
+      <div class="hs-topbar-badge" id="hs-badge">
+        <span class="hs-topbar-lbl">HS Code</span>
+        <span class="hs-topbar-val" id="hs-badge-val">—</span>
+      </div>
+      <div class="tb-btn" title="Notifications">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="tb-btn" title="Refresh" id="refresh-btn">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </div>
+      <div class="avatar">TW</div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ── SEARCH ── -->
+    <div class="page active" id="page-search">
+      <div class="search-wrap">
+        <h1 class="page-title">Dutify HS Code Lookup</h1>
+
+        <div class="camera-zone">
+          <div class="camera-ring" id="cam-ring" title="Upload product image">
+            <svg width="34" height="34" fill="none" stroke="var(--sage)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <input type="file" id="img-upload" accept="image/*" style="display:none"/>
+          </div>
+          <span class="cam-label">Camera Upload</span>
+
+          <div class="voice-zone">
+            <span class="voice-label">Voice</span>
+            <button class="mic-btn" id="mic-btn" title="Voice input">
+              <svg width="20" height="20" fill="none" stroke="#1C1F26" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-wrap">
+          <span class="input-search-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input
+            id="desc-input"
+            class="desc-input"
+            type="text"
+            placeholder="Describe the product or enter keywords..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <button class="classify-btn" id="classify-btn" onclick="handleClassify()">
+          <div class="btn-spinner"></div>
+          <span class="btn-lbl">Classify</span>
+        </button>
+
+        <!-- result -->
+        <div class="result-card" id="result-card">
+          <div class="result-top">
+            <div>
+              <div class="result-hs" id="result-hs">8518.30.95</div>
+              <div class="result-name" id="result-name">Headphones; over-ear, wireless, with noise cancellation</div>
+            </div>
+            <span class="conf-badge" id="result-conf">High Confidence</span>
+          </div>
+          <div class="result-meta">
+            <div class="meta-item">
+              <span class="meta-lbl">Duty Rate</span>
+              <span class="meta-val" id="result-duty">3.7%</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-lbl">CN10</span>
+              <span class="meta-val mono" id="result-cn10">8518 30 95 00</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-lbl">Source</span>
+              <span class="meta-val" id="result-source">TARIC Verified</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- recent searches -->
+        <div class="recent-head">
+          <span class="recent-title">Recent searches</span>
+          <span class="recent-more" onclick="showPage('history')">
+            Check all
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </div>
+        <div class="chips-grid">
+          <div class="chip" onclick="fillSearch('Headphones, over-ear, wireless')">
+            <div class="chip-ico" style="background:rgba(143,158,127,.14)">🎧</div>
+            <div><div class="chip-name">Headphones</div><div class="chip-code">8518.30</div></div>
+          </div>
+          <div class="chip" onclick="fillSearch('Laptop computer, 15 inch')">
+            <div class="chip-ico" style="background:rgba(30,61,114,.2)">💻</div>
+            <div><div class="chip-name">Laptop</div><div class="chip-code">8471.30</div></div>
+          </div>
+          <div class="chip" onclick="fillSearch('Monitor, LCD display screen')">
+            <div class="chip-ico" style="background:rgba(30,61,114,.2)">🖥️</div>
+            <div><div class="chip-name">Monitor</div><div class="chip-code">8528.52</div></div>
+          </div>
+          <div class="chip" onclick="fillSearch('Leather handbag, women\'s')">
+            <div class="chip-ico" style="background:rgba(196,99,74,.13)">👜</div>
+            <div><div class="chip-name">Leather Bag</div><div class="chip-code">4202.21</div></div>
+          </div>
+          <div class="chip" onclick="fillSearch('Wireless keyboard, USB receiver')">
+            <div class="chip-ico" style="background:rgba(143,158,127,.14)">⌨️</div>
+            <div><div class="chip-name">Keyboard</div><div class="chip-code">8471.60</div></div>
+          </div>
+          <div class="chip" onclick="fillSearch('Running shoes, athletic footwear')">
+            <div class="chip-ico" style="background:rgba(196,99,74,.1)">👟</div>
+            <div><div class="chip-name">Running Shoes</div><div class="chip-code">6404.11</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HISTORY ── -->
+    <div class="page" id="page-history">
+      <h1 class="page-title">History</h1>
+      <div style="font-size:14px;font-weight:600;color:var(--text-2);margin-bottom:14px;letter-spacing:.1px;">Recent Searches</div>
+      <div class="history-list" id="history-list">
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">Wireless Noise-Cancelling Headphones</div>
+            <div class="hist-desc">Over-ear, Bluetooth 5.0, foldable — classified via AI + TARIC</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">8518.30.95</span>
+            <span class="badge badge-sage">High Confidence</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">15-inch Laptop Computer</div>
+            <div class="hist-desc">Intel Core i7, 16 GB RAM, SSD, general purpose</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">8471.30.00</span>
+            <span class="badge badge-sage">High Confidence</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">Women's Leather Handbag</div>
+            <div class="hist-desc">Full-grain calf leather, gold hardware, shoulder strap</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">4202.21.00</span>
+            <span class="badge badge-sage">High Confidence</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">Stainless Steel Water Bottle</div>
+            <div class="hist-desc">Double-walled, vacuum insulated, 500 ml — from cache</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">7323.93.90</span>
+            <span class="badge badge-navy">Accuracy</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">Athletic Running Shoes</div>
+            <div class="hist-desc">Textile upper, rubber sole, men's size 42 EU</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">6404.11.00</span>
+            <span class="badge badge-navy">Accuracy</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">Wireless USB Keyboard</div>
+            <div class="hist-desc">Compact layout, 2.4 GHz receiver, backlit keys — cached</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">8471.60.90</span>
+            <span class="badge badge-cache">From Cache</span>
+          </div>
+        </div>
+
+        <div class="hist-item">
+          <div class="hist-thumb">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="hist-body">
+            <div class="hist-name">27" 4K LCD Monitor</div>
+            <div class="hist-desc">IPS panel, HDMI + DisplayPort, colour-accurate</div>
+          </div>
+          <div class="hist-right">
+            <span class="hist-code">8528.52.91</span>
+            <span class="badge badge-sage">High Confidence</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SAVED (placeholder) ── -->
+    <div class="page" id="page-saved">
+      <h1 class="page-title">Saved</h1>
+      <div style="color:var(--text-3);font-size:14px;padding-top:20px">No saved codes yet. Star a result to save it here.</div>
+    </div>
+
+    <!-- ── CALCULATOR ── -->
+    <div class="page" id="page-calculator">
+      <h1 class="page-title">Landed Cost Calculator</h1>
+      <div class="calc-layout">
+
+        <div class="calc-form">
+
+          <!-- Product Basics -->
+          <div class="section-card" id="sec-basics">
+            <div class="section-head" onclick="toggleSection('sec-basics')">
+              <div class="section-head-left">
+                <svg width="15" height="15" fill="none" stroke="var(--sage)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                <span class="section-title">Product Basics</span>
+              </div>
+              <span class="section-toggle">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="section-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="f-label">HS Code <span class="f-hint">?</span></label>
+                  <input class="f-input" id="calc-hs" type="text" placeholder="e.g. 8518.30.95" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Description <span class="f-hint">?</span></label>
+                  <input class="f-input" type="text" placeholder="Short product description"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Quantity</label>
+                  <input class="f-input" id="calc-qty" type="number" placeholder="1" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Unit Value (€) <span class="f-hint">?</span></label>
+                  <input class="f-input" id="calc-value" type="number" placeholder="0.00" oninput="updateLive()"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shipping & Logistics -->
+          <div class="section-card" id="sec-shipping">
+            <div class="section-head" onclick="toggleSection('sec-shipping')">
+              <div class="section-head-left">
+                <svg width="15" height="15" fill="none" stroke="var(--sage)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                <span class="section-title">Shipping & Logistics</span>
+              </div>
+              <span class="section-toggle">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="section-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="f-label">Shipping Cost (€)</label>
+                  <input class="f-input" id="calc-shipping" type="number" placeholder="0.00" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Incoterms</label>
+                  <select class="f-select" id="calc-incoterms">
+                    <option>EXW</option><option>FOB</option><option selected>CIF</option>
+                    <option>DDP</option><option>DAP</option><option>FCA</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Insurance (€)</label>
+                  <input class="f-input" id="calc-insurance" type="number" placeholder="0.00" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Brokerage Fee (€)</label>
+                  <input class="f-input" id="calc-brokerage" type="number" placeholder="0.00" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Preferential Tariff (%) <span class="f-hint">?</span></label>
+                  <input class="f-input" id="calc-tariff" type="number" placeholder="0.0" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Additional Duties (%)</label>
+                  <select class="f-select" id="calc-add-duties">
+                    <option value="0">None</option>
+                    <option value="3.7">3.7% (Standard)</option>
+                    <option value="6.5">6.5%</option>
+                    <option value="12">12%</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Origin & Taxes (collapsed) -->
+          <div class="section-card collapsed" id="sec-origin">
+            <div class="section-head" onclick="toggleSection('sec-origin')">
+              <div class="section-head-left">
+                <svg width="15" height="15" fill="none" stroke="var(--sage)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span class="section-title">Origin & Taxes</span>
+              </div>
+              <span class="section-toggle">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="section-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="f-label">Country of Origin</label>
+                  <select class="f-select">
+                    <option>China (CN)</option><option>United States (US)</option>
+                    <option>Vietnam (VN)</option><option>India (IN)</option>
+                    <option>Bangladesh (BD)</option><option>Turkey (TR)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">VAT Rate (%)</label>
+                  <input class="f-input" id="calc-vat" type="number" placeholder="21" oninput="updateLive()"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Preference Scheme <span class="f-hint">?</span></label>
+                  <select class="f-select">
+                    <option>None (MFN)</option><option>GSP</option>
+                    <option>EBA</option><option>PEM</option><option>REX</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Destination Country</label>
+                  <select class="f-select">
+                    <option>Luxembourg (LU)</option><option>Germany (DE)</option>
+                    <option>France (FR)</option><option>Belgium (BE)</option>
+                    <option>Netherlands (NL)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advanced Options (collapsed) -->
+          <div class="section-card collapsed" id="sec-advanced">
+            <div class="section-head" onclick="toggleSection('sec-advanced')">
+              <div class="section-head-left">
+                <svg width="15" height="15" fill="none" stroke="var(--sage)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span class="section-title">Advanced Options</span>
+              </div>
+              <span class="section-toggle">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+            <div class="section-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="f-label">Custom Duty Override (%)</label>
+                  <input class="f-input" type="number" placeholder="Leave blank for auto"/>
+                </div>
+                <div class="form-group">
+                  <label class="f-label">Anti-Dumping Duty (%)</label>
+                  <input class="f-input" type="number" placeholder="0.0"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /calc-form -->
+
+        <!-- Live Results -->
+        <div class="calc-panel">
+          <div class="live-panel">
+            <div class="lp-title">Live Results</div>
+            <div class="lp-row"><span class="lp-key">Item Value</span><span class="lp-val" id="lp-item-val">€ —</span></div>
+            <div class="lp-row"><span class="lp-key">Shipping Cost</span><span class="lp-val" id="lp-ship">€ —</span></div>
+            <div class="lp-row"><span class="lp-key">Customs Duties</span><span class="lp-val" id="lp-duty">€ —</span></div>
+            <div class="lp-row"><span class="lp-key">VAT</span><span class="lp-val" id="lp-vat">€ —</span></div>
+            <div class="lp-row"><span class="lp-key">Taxable Value</span><span class="lp-val" id="lp-taxable">€ —</span></div>
+            <div class="lp-row"><span class="lp-key">Brokerage</span><span class="lp-val" id="lp-broker">€ —</span></div>
+            <div class="lp-total">
+              <div class="lp-total-lbl">Total Landed Cost</div>
+              <div class="lp-total-val" id="lp-total">€ —</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── REDUCTIONS (placeholder) ── -->
+    <div class="page" id="page-reductions">
+      <h1 class="page-title">Reductions</h1>
+      <div style="color:var(--text-3);font-size:14px;padding-top:20px">Tariff preference schemes and suspensions — coming soon.</div>
+    </div>
+
+    <!-- ── GOODS INDEX (placeholder) ── -->
+    <div class="page" id="page-goods">
+      <h1 class="page-title">Goods Index</h1>
+      <div style="color:var(--text-3);font-size:14px;padding-top:20px">Browse the TARIC goods nomenclature — coming soon.</div>
+    </div>
+
+    <!-- ── RULINGS (placeholder) ── -->
+    <div class="page" id="page-rulings">
+      <h1 class="page-title">Rulings</h1>
+      <div style="color:var(--text-3);font-size:14px;padding-top:20px">Binding tariff information rulings — coming soon.</div>
+    </div>
+
+    <!-- ── NOTIFICATIONS (placeholder) ── -->
+    <div class="page" id="page-notifications">
+      <h1 class="page-title">Notifications</h1>
+      <div style="color:var(--text-3);font-size:14px;padding-top:20px">No notifications.</div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div class="page" id="page-settings">
+      <h1 class="page-title">Settings</h1>
+      <div class="settings-grid">
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <div class="settings-card-title">Account</div>
+          <div class="settings-card-desc">Manage your profile, email address, and account preferences.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          </div>
+          <div class="settings-card-title">Preferences</div>
+          <div class="settings-card-desc">Adjust display settings, default currency, and interface preferences.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <div class="settings-card-title">AI Settings</div>
+          <div class="settings-card-desc">Configure Dutify AI classification model and confidence thresholds.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div class="settings-card-title">Data & Privacy</div>
+          <div class="settings-card-desc">Manage your search history, data retention, and privacy controls.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </div>
+          <div class="settings-card-title">Export & Reports</div>
+          <div class="settings-card-desc">Configure PDF templates, default export formats, and report settings.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
+          <div class="settings-card-title">Notifications</div>
+          <div class="settings-card-desc">Set up tariff change alerts, ruling updates, and push notification preferences.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <div class="settings-card-title">Integrations</div>
+          <div class="settings-card-desc">Connect to customs brokers, ERP systems, and third-party logistics platforms.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="settings-card-title">Security</div>
+          <div class="settings-card-desc">Two-factor authentication, active sessions, and API key management.</div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </div>
+          <div class="settings-card-title">Advanced</div>
+          <div class="settings-card-desc">Developer options, beta features, and advanced classification settings.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+
+<script>
+/* ── Navigation ── */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const page = document.getElementById('page-' + id);
+  const nav  = document.querySelector('[data-page="' + id + '"]');
+  if (page) page.classList.add('active');
+  if (nav)  nav.classList.add('active');
+
+  const crumb = nav ? nav.dataset.crumb : id;
+  document.getElementById('topbar-crumb').textContent = crumb;
+
+  const hsBadge = document.getElementById('hs-badge');
+  hsBadge.classList.toggle('visible', id === 'calculator');
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+/* ── Search / Classify ── */
+const descInput  = document.getElementById('desc-input');
+const classifyBtn = document.getElementById('classify-btn');
+const resultCard  = document.getElementById('result-card');
+
+function fillSearch(text) {
+  descInput.value = text;
+  descInput.focus();
+}
+
+function handleClassify() {
+  if (!descInput.value.trim()) { descInput.focus(); return; }
+  classifyBtn.classList.add('loading');
+  classifyBtn.disabled = true;
+  resultCard.classList.remove('show');
+
+  /* In production this calls /api/hs-lookup — stubbed for mockup */
+  setTimeout(() => {
+    classifyBtn.classList.remove('loading');
+    classifyBtn.disabled = false;
+
+    const text = descInput.value.toLowerCase();
+    let hs = '8471.30.00', name = 'Automatic data processing machine', duty = '0%', cn10 = '8471 30 00 00';
+    if (text.includes('headphone') || text.includes('audio')) {
+      hs = '8518.30.95'; name = 'Headphones; over-ear, wireless, noise-cancelling'; duty = '3.7%'; cn10 = '8518 30 95 00';
+    } else if (text.includes('shoe') || text.includes('footwear')) {
+      hs = '6404.11.00'; name = 'Footwear with outer soles of rubber; textile uppers'; duty = '12%'; cn10 = '6404 11 00 00';
+    } else if (text.includes('bag') || text.includes('handbag')) {
+      hs = '4202.21.00'; name = 'Handbags of leather or composition leather'; duty = '3.7%'; cn10 = '4202 21 00 00';
+    } else if (text.includes('keyboard')) {
+      hs = '8471.60.90'; name = 'Input units for computers; keyboard'; duty = '0%'; cn10 = '8471 60 90 00';
+    } else if (text.includes('monitor') || text.includes('display')) {
+      hs = '8528.52.91'; name = 'Monitors; LCD, capable of directly connecting to ADP machines'; duty = '0%'; cn10 = '8528 52 91 00';
+    }
+
+    document.getElementById('result-hs').textContent   = hs;
+    document.getElementById('result-name').textContent = name;
+    document.getElementById('result-duty').textContent = duty;
+    document.getElementById('result-cn10').textContent = cn10;
+
+    resultCard.classList.add('show');
+
+    document.getElementById('calc-hs').value = hs;
+    document.getElementById('hs-badge-val').textContent = hs;
+    updateLive();
+  }, 1800);
+}
+
+descInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleClassify(); });
+
+/* ── Camera / Voice ── */
+const camRing = document.getElementById('cam-ring');
+const imgUpload = document.getElementById('img-upload');
+camRing.addEventListener('click', () => imgUpload.click());
+
+const micBtn = document.getElementById('mic-btn');
+let recognition = null;
+micBtn.addEventListener('click', () => {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+  if (recognition) { recognition.stop(); return; }
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'en-US';
+  recognition.interimResults = false;
+  micBtn.classList.add('recording');
+  recognition.onresult  = e => { descInput.value = e.results[0][0].transcript; recognition = null; micBtn.classList.remove('recording'); };
+  recognition.onend     = () => { recognition = null; micBtn.classList.remove('recording'); };
+  recognition.start();
+});
+
+/* ── Section collapse ── */
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+/* ── Live calculator ── */
+function n(id, fallback = 0) {
+  return parseFloat(document.getElementById(id)?.value) || fallback;
+}
+
+function fmt(v) {
+  return v > 0 ? '€\u202F' + v.toFixed(2) : '€ —';
+}
+
+function updateLive() {
+  const qty      = n('calc-qty', 1) || 1;
+  const unitVal  = n('calc-value');
+  const shipping = n('calc-shipping');
+  const insurance= n('calc-insurance');
+  const brokerage= n('calc-brokerage');
+  const tariff   = n('calc-tariff', 3.7);
+  const vat      = n('calc-vat', 21);
+
+  const itemVal   = qty * unitVal;
+  const cifVal    = itemVal + shipping + insurance;
+  const dutyAmt   = cifVal * (tariff / 100);
+  const taxable   = cifVal + dutyAmt;
+  const vatAmt    = taxable * (vat / 100);
+  const total     = taxable + vatAmt + brokerage;
+
+  document.getElementById('lp-item-val').textContent = fmt(itemVal);
+  document.getElementById('lp-ship').textContent     = fmt(shipping);
+  document.getElementById('lp-duty').textContent     = fmt(dutyAmt);
+  document.getElementById('lp-vat').textContent      = fmt(vatAmt);
+  document.getElementById('lp-taxable').textContent  = fmt(taxable);
+  document.getElementById('lp-broker').textContent   = fmt(brokerage);
+  document.getElementById('lp-total').textContent    = total > 0 ? '€\u202F' + total.toFixed(2) : '€ —';
+}
+
+/* ── Refresh btn ── */
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  resultCard.classList.remove('show');
+  descInput.value = '';
+});
+</script>
+
+</body>
+</html>

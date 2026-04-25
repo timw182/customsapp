@@ -14,9 +14,13 @@ out/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/*.bak*
+data/*.db.bak*
 
 # scripts
 create-admin.mjs
 
 # misc
 .DS_Store
+public/landing.old.html
+public/mockup/
