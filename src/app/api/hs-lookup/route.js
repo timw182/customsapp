@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { requireUser } from "@/lib/apiAuth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -57,7 +59,22 @@ const rateSchema = z.object({
   code: z.string().min(4).max(14),
 });
 
-const bodySchema = z.discriminatedUnion("type", [classifySchema, rateSchema]);
+// Pro-only image classification. Mobile sends a base64 JPEG/PNG/WEBP
+// (resized to ≤1568 px on the longest edge by expo-image-manipulator) plus
+// an optional hint string. Server runs Sonnet vision to derive a structured
+// product description, then funnels into the existing classification flow so
+// cache + TARIC + sensitive-goods checks stay uniform with text-based runs.
+const imageSchema = z.object({
+  type: z.literal("classify-image"),
+  // Cap at ~7 MB base64 (~5 MB binary) — Anthropic vision hard limit.
+  imageBase64: z.string().min(100).max(7_500_000),
+  imageMediaType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  hint: z.string().max(500).optional(),
+  explanationLevel: z.enum(["short", "medium", "detailed"]).optional(),
+  autoTaricValidation: z.boolean().optional(),
+});
+
+const bodySchema = z.discriminatedUnion("type", [classifySchema, rateSchema, imageSchema]);
 
 // ── TARIC SOAP helpers ────────────────────────────────────────────────────────
 
@@ -556,9 +573,132 @@ async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
   }
 }
 
+// ── Heading-keyword index (deterministic narrowing) ──────────────────────────
+//
+// Loaded once at module init from data/heading-index.json (built by
+// scripts/build-heading-index.mjs from the EU TARIC nomenclature tree files).
+// Shape: { headings: { "8407": { description, keywords: [...] }, ... } }
+//
+// Used by narrowHeadings() to score every 4-digit HS heading against the
+// product description + Haiku-extracted attributes, returning the top N
+// candidates so the Sonnet pick stage doesn't have to consider all 1300+
+// headings cold.
+
+let HEADING_INDEX = { headings: {} };
+try {
+  const indexPath = path.join(process.cwd(), "data", "heading-index.json");
+  HEADING_INDEX = JSON.parse(readFileSync(indexPath, "utf8"));
+  console.log(
+    `[hs-lookup] Loaded heading index: ${Object.keys(HEADING_INDEX.headings).length} headings`,
+  );
+} catch (e) {
+  console.warn(
+    `[hs-lookup] heading-index.json missing — narrowing disabled (run scripts/build-heading-index.mjs):`,
+    e?.message,
+  );
+}
+
+const INDEX_STOPWORDS = new Set([
+  "and","or","of","the","for","with","without","to","in","on","by","from",
+  "a","an","as","at","be","is","it","its","not","that","this","other","any",
+  "all","more","less","than","etc","containing","made","having","used",
+  "product","item","items","goods","type","kind","form","new","used",
+  "small","large","high","low",
+]);
+
+function indexTokens(text) {
+  if (!text) return [];
+  return String(text)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .split(/\s+/)
+    .map((t) => t.trim().replace(/^-+|-+$/g, ""))
+    .filter((t) => t.length >= 3 && !INDEX_STOPWORDS.has(t) && !/^\d+$/.test(t));
+}
+
+/**
+ * Score every heading in the index against the product attributes + raw
+ * description and return the top N candidates. Returns [] if the index is
+ * missing — the caller falls back to letting Sonnet pick from full HS.
+ *
+ *   - +3 per query token that appears in the heading's canonical description
+ *   - +1 per query token that appears in the heading's keyword bag
+ *   - ×1.5 multiplier if the heading's chapter is in attrs.likelyChapters
+ *   - +5 flat bonus if the heading's chapter == attrs.likelyChapters[0]
+ *
+ * Always seeds the top of `likelyChapters` so the model still sees Haiku's
+ * preferred chapters even when keyword scoring misses (e.g. specs-heavy
+ * descriptions with little prose).
+ */
+function narrowHeadings(attrs, description, limit = 12) {
+  const headings = HEADING_INDEX?.headings;
+  if (!headings || Object.keys(headings).length === 0) return [];
+
+  const queryParts = [
+    description,
+    attrs?.kind,
+    attrs?.material,
+    attrs?.function,
+    attrs?.endUse,
+    attrs?.attributes?.form,
+    attrs?.attributes?.processing,
+    attrs?.attributes?.specs,
+    ...(Array.isArray(attrs?.keywords) ? attrs.keywords : []),
+  ].filter(Boolean).join(" ");
+  const queryTokens = new Set(indexTokens(queryParts));
+  if (queryTokens.size === 0) return [];
+
+  const likely = Array.isArray(attrs?.likelyChapters)
+    ? attrs.likelyChapters.map((c) => String(c).padStart(2, "0").slice(0, 2))
+    : [];
+  const likelySet = new Set(likely);
+  const primaryChapter = likely[0] || null;
+
+  const scored = [];
+  for (const [h4, entry] of Object.entries(headings)) {
+    // Skip chapter-umbrella rows (e.g. "8800") — not real HS headings.
+    if (h4.endsWith("00")) continue;
+    const chapter = h4.slice(0, 2);
+    const descTokens = new Set(indexTokens(entry.description));
+    const kwSet = new Set(entry.keywords || []);
+
+    let score = 0;
+    for (const tok of queryTokens) {
+      if (descTokens.has(tok)) score += 3;
+      else if (kwSet.has(tok)) score += 1;
+    }
+    if (score === 0 && !likelySet.has(chapter)) continue;
+
+    if (likelySet.has(chapter)) score *= 1.5;
+    if (chapter === primaryChapter) score += 5;
+    scored.push({ heading: h4, description: entry.description, score });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  const top = scored.slice(0, limit);
+
+  // Always include at least one heading from each likelyChapter so Haiku's
+  // chapter hint is represented even when keyword scoring misses entirely.
+  const includedChapters = new Set(top.map((c) => c.heading.slice(0, 2)));
+  for (const ch of likely) {
+    if (includedChapters.has(ch)) continue;
+    const fallback = Object.entries(headings)
+      .filter(([h]) => h.startsWith(ch) && !h.endsWith("00"))
+      .map(([h, e]) => ({ heading: h, description: e.description, score: 0 }))
+      .slice(0, 2);
+    top.push(...fallback);
+    if (top.length >= limit + 4) break;
+  }
+
+  return top.slice(0, limit + 4);
+}
+
 // ── Claude call helper ────────────────────────────────────────────────────────
 
 async function callClaude(system, userMsg, model = "claude-sonnet-4-6", maxTokens = 2500) {
+  // userMsg may be a plain string (text-only) OR an array of content blocks
+  // for multimodal input (e.g. [{type:"image",source:{...}}, {type:"text",text:"..."}]).
+  // Anthropic's API accepts both shapes; pass through unchanged.
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -588,46 +728,77 @@ async function callClaude(system, userMsg, model = "claude-sonnet-4-6", maxToken
   }
 }
 
-// Lightweight system prompt for Haiku — no WCO/BTI citation required, just correct heading.
-const HAIKU_SYSTEM = `You are an EU customs classification expert. Classify products into the correct HS subheading (6-digit) for EU import.
+// Sonnet vision call — derives a structured, classifier-ready product
+// description from a photo. Output is intentionally compact and factual so
+// the downstream HS pipeline (cache + Haiku + Sonnet + TARIC) can treat it
+// like any user-typed description.
+const VISION_SYSTEM = `You are a product identification expert. Look at the image and produce a single concise product description suitable for HS/CN customs classification.
 
-NOMENCLATURE: CN 2026 (Reg EU 2025/1926, from 1 Jan 2026). HS 6-digit level is HS 2022.
-Key changes your training may not have:
-- Chapter 95 Additional Note 1 DELETED (1 Nov 2025): classify festive goods by material (GRI 1), NOT as 9505
-- 8803 abolished → 8807 (aircraft parts); 8806 = UAVs
-- New CN8 subheadings (TARIC resolves 8–10 digits, you only return 6): NMC oxide 2841 90, LFP 2842 90, artificial graphite 3801 10, PV wafers 3818 00, wind tower 7308 20, turbine rotors/blades 8410 90/8412 90, H2 fuel cell gen 8501 33, MPPT inverter 8504 40, battery separator 8507 90, electrolysis cell stack 8543 90
-
-Output raw JSON only. Two options:
-
-OPTION A — confident (clear single heading):
-{"status":"classified","hs6":"6-digit","heading":"4-digit","confidence":"high","confidencePct":<integer 70-99>,"reasoning":"1-2 sentence justification citing the key GRI or chapter note","alternatives":[{"hs6":"6-digit","heading":"4-digit","confidence_pct":<integer 1-69>,"label":"short product label for this alternative","reasoning":"1 short sentence: why this was considered and why it was rejected in favour of the primary"},{"hs6":"6-digit","heading":"4-digit","confidence_pct":<integer 1-69>,"label":"short product label","reasoning":"1 short sentence"}]}
-
-OPTION B — not confident (ambiguous, needs info, multiple options, or unusual product):
-{"status":"escalate","reason":"why you are not confident"}
-
-Rules for alternatives in OPTION A:
-- ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings you considered and ruled out.
-- Each alternative's confidence_pct must be LESS than the primary confidencePct, and must sum with the primary to ≤100.
-- Ordered by confidence_pct descending.
-- Use real HS 2022 subheadings — do not invent codes.
-
-The confidencePct field must reflect a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI 1 — be honest, not optimistic:
-- 95–99: textbook case, the description unambiguously lands on one subheading with no competing headings
-- 85–94: clear classification but one secondary heading you ruled out
-- 75–84: reasonable confidence, multiple plausible headings, you picked one based on the dominant characteristic
-- 70–74: borderline — consider returning escalate instead
+Output raw JSON only:
+{"description":"<≤200 char factual description>","confidence":"high"|"medium"|"low","notes":"<one sentence noting any visible material/composition/use cues>"}
 
 Rules:
-- Return OPTION A only when you are genuinely certain of the 6-digit subheading
-- Return OPTION B for anything ambiguous, multi-material, dual-use, specialty chemical, or where you would normally ask a follow-up question
-- Never refuse to classify — if completely unsure return OPTION B
-- Output raw JSON, no markdown`;
+- Focus on material composition, function, and physical form — these drive HS classification.
+- Be specific: "white silicone phone case for iPhone 15" beats "phone accessory".
+- If the image is unclear, low-quality, or shows multiple unrelated items, set confidence:"low" and describe only what is clearly visible.
+- If you cannot identify a product at all (blank, blurry, unrelated scene), output {"description":"","confidence":"low","notes":"unable to identify a product in the image"}.
+- Do not invent details that aren't visible. No marketing language. No brand names unless clearly readable on a label.`;
 
-const CLASSIFY_SYSTEM = `You are a customs classification expert specializing in EU Combined Nomenclature (CN) and TARIC.
+async function describeImage(base64, mediaType, hint) {
+  const userParts = [
+    {
+      type: "image",
+      source: { type: "base64", media_type: mediaType, data: base64 },
+    },
+    {
+      type: "text",
+      text: hint
+        ? `User-provided hint: ${hint}\n\nDescribe the product in this image.`
+        : "Describe the product in this image.",
+    },
+  ];
+  return callClaude(VISION_SYSTEM, userParts, "claude-sonnet-4-6", 400);
+}
 
-Your task: classify products into the correct HS HEADING (4-digit) and SUBHEADING (6-digit) based on a description.
+// Haiku no longer classifies — it extracts structured attributes that drive
+// the deterministic narrowing step. Removing Haiku from the classification
+// decision eliminated a class of confident-but-wrong outputs that were
+// previously accepted on the fast path.
+const HAIKU_EXTRACT_SYSTEM = `You are a product attribute extractor for EU customs classification (CN 2026 / HS 2022). Read the product description and output the structural attributes that determine HS classification. You do NOT pick an HS code — that is the next stage's job.
+
+Output raw JSON only, no markdown:
+{
+  "kind": "<short noun phrase: what is this thing? e.g. 'turbojet engine', 'cotton t-shirt', 'lithium iron phosphate cathode powder'>",
+  "material": "<dominant material(s), lowercase, comma-separated for blends — e.g. 'aluminium', '60% cotton, 40% polyester'>",
+  "function": "<what it does or its primary purpose>",
+  "endUse": "<industrial | consumer | automotive | aerospace | medical | military | construction | agricultural | food | textile-apparel | other>",
+  "attributes": {
+    "form": "<solid | liquid | powder | gel | sheet | bulk | finished article | part | component | accessory | ...>",
+    "processing": "<raw | semi-processed | finished | assembled | knocked-down | unknown>",
+    "powered": "<powered | non-powered | unknown>",
+    "specs": "<short string of key numeric specs (e.g. '500 cm³, 75 kW, diesel') or empty>"
+  },
+  "keywords": ["<5-15 lowercase single words or compound nouns most useful for nomenclature lookup>"],
+  "likelyChapters": ["<2-digit HS chapter numbers you'd consider, ordered by likelihood, max 4 e.g. ['85','84']>"]
+}
+
+Rules:
+- DO NOT output an HS code, heading number, or subheading. Your job is attribute extraction.
+- Be specific and discriminating. "alloy steel structural beam" > "metal part". Avoid generic adjectives.
+- For "keywords": pick terms that distinguish this product within the HS nomenclature (materials, forms, technical specs, functional descriptors). Skip generic words like "product", "item", brand names.
+- "likelyChapters" is a hint for the next stage — give your best 1-4 chapter guesses based on the kind/material/function. Never invent chapters.
+- If a field is genuinely unknown from the description, return "" (or [] for arrays). Do not invent.
+- Output raw JSON, no markdown.`;
+
+// Used by Sonnet (and Opus, when escalated) to pick the final 6-digit
+// subheading from a deterministically-narrowed candidate list.
+const PICK_SYSTEM = `You are a customs classification expert specializing in EU Combined Nomenclature (CN) and TARIC.
+
+Your task: given a product description, extracted attributes, and a SHORTLIST of candidate 4-digit headings, pick the correct 6-digit HS SUBHEADING.
 
 CRITICAL: You must ONLY return 6-digit HS codes (subheading level). The 7th–10th digits (CN8/TARIC) will be resolved automatically from the official EU TARIC database. Do NOT guess CN8 or CN10 codes — they change annually and your training data may be outdated.
+
+The candidate headings were generated by a deterministic keyword match against the EU TARIC nomenclature tree. They are STRONG signals — prefer one of them unless none fits, in which case you may pick a different heading and flag it in your reasoning.
 
 NOMENCLATURE IN FORCE: Use CN 2026 (Commission Implementing Regulation (EU) 2025/1926, OJ L 31.10.2025, applicable from 1 January 2026). The 6-digit HS subheadings are still HS 2022 — only the EU's 8–10 digit CN extensions changed. Key restructuring to know:
 - HS 2017: 8803 abolished → 8807; 8806 (UAVs) added
@@ -667,12 +838,13 @@ CLASSIFICATION RULE CHANGES — these affect the correct 6-digit heading, not ju
 When classifying CN 2026 product types in the list above, note in your reasoning that a dedicated CN 2026 subheading exists at the 8-digit level (TARIC will resolve it). Classify to the correct 6-digit HS subheading.
 
 PROCESS:
-1. Extract key classification attributes: material, function/use, product category, level of processing
-2. Check Chapter Notes and Section Notes for exclusions first (GRI 1)
-3. For festive/seasonal goods: apply GRI 1 by material since Chapter 95 Note 1 is deleted
-4. For halogenated hydrocarbons: verify ethylene vs ethane origin before selecting subheading
-5. Map to the most specific 6-digit HS subheading
-6. For clean-energy goods (battery materials, wind/solar, electrolysis), flag CN 2026 subheading in reasoning
+1. Read the product description and the extracted attributes (material, function, end use, form, specs).
+2. Review the candidate headings shortlist. Identify which candidates are plausible based on material + function (GRI 1).
+3. Check Chapter Notes and Section Notes of those candidates for exclusions (GRI 1).
+4. For festive/seasonal goods: apply GRI 1 by material since Chapter 95 Note 1 is deleted.
+5. For halogenated hydrocarbons: verify ethylene vs ethane origin before selecting subheading.
+6. Pick the most specific 6-digit HS subheading under the chosen heading.
+7. For clean-energy goods (battery materials, wind/solar, electrolysis), flag CN 2026 subheading in reasoning.
 
 RESPONSE FORMAT — pick exactly ONE of the four options below. Output raw JSON only, no markdown, no code fences.
 
@@ -693,15 +865,15 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
 }
 
 Rules for alternatives in OPTION 1:
-- ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings that you seriously considered and ruled out.
-- Each alternative's confidence_pct must be LESS than the primary confidencePct, and the three values (primary + 2 alternatives) must sum to ≤100.
+- ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings you considered. They show your work; they need not be credible competitors.
+- Each alternative's confidence_pct must be LESS than the primary confidencePct.
 - Ordered by confidence_pct descending.
 - Alternatives must be real HS 2022 subheadings — do not invent codes. Prefer subheadings in different chapters/headings when the disambiguation hinged on material or function.
 
-The confidencePct field is a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI. Be honest, not rounded:
-- 95–99: unambiguous, one clear heading, no competing notes
-- 85–94: strong case, one secondary heading ruled out by a named note
-- 75–84: reasonable fit, multiple headings considered, picked on dominant characteristic
+The confidencePct field is a calibrated probability that your chosen hs6 is the correct 6-digit subheading under GRI. Be honest, not rounded. Listing alternatives below does NOT lower this score; alternatives are just the next-best subheadings you sanity-checked.
+- 95–99: GRI 1 applies cleanly, the chosen subheading is the obvious answer, alternatives are distant possibilities only
+- 85–94: strong case, at least one alternative is a credible candidate ruled out by a specific note or characteristic
+- 75–84: reasonable fit, multiple headings genuinely competing, picked on dominant characteristic
 - 60–74: weak fit — strongly consider switching to OPTION 2 (needs_info) instead
 
 OPTION 2 — NEED MORE INFO:
@@ -764,6 +936,104 @@ CRITICAL PRIORITY RULES:
 - Priority order: Option 1 > Option 3 > Option 2 > Option 4 (nearly never).
 - When in doubt, provide candidates with percentages (Option 3).`;
 
+// ── Pipeline stage helpers ────────────────────────────────────────────────────
+
+const EMPTY_ATTRS = Object.freeze({
+  kind: "", material: "", function: "", endUse: "",
+  attributes: { form: "", processing: "", powered: "", specs: "" },
+  keywords: [], likelyChapters: [],
+});
+
+/**
+ * Stage 1: Haiku attribute extraction. Returns a normalised attribute
+ * envelope. Never throws — on failure we hand the pipeline EMPTY_ATTRS and
+ * let Sonnet work from the raw description alone.
+ */
+async function extractAttributes(description) {
+  try {
+    const raw = await callClaude(
+      HAIKU_EXTRACT_SYSTEM,
+      `Product description: ${description}`,
+      "claude-haiku-4-5-20251001",
+      500,
+    );
+    return {
+      kind: String(raw?.kind ?? "").slice(0, 200),
+      material: String(raw?.material ?? "").slice(0, 200),
+      function: String(raw?.function ?? "").slice(0, 300),
+      endUse: String(raw?.endUse ?? "").slice(0, 60),
+      attributes: {
+        form: String(raw?.attributes?.form ?? "").slice(0, 60),
+        processing: String(raw?.attributes?.processing ?? "").slice(0, 60),
+        powered: String(raw?.attributes?.powered ?? "").slice(0, 30),
+        specs: String(raw?.attributes?.specs ?? "").slice(0, 200),
+      },
+      keywords: Array.isArray(raw?.keywords)
+        ? raw.keywords.slice(0, 20).map((k) => String(k).toLowerCase().slice(0, 40))
+        : [],
+      likelyChapters: Array.isArray(raw?.likelyChapters)
+        ? raw.likelyChapters.slice(0, 4).map((c) => String(c).padStart(2, "0").slice(0, 2))
+        : [],
+    };
+  } catch {
+    return { ...EMPTY_ATTRS };
+  }
+}
+
+function formatCandidatesBlock(candidates) {
+  if (!candidates || candidates.length === 0) {
+    return "(no narrowed candidates — pick freely from valid HS 2022 headings.)";
+  }
+  return candidates
+    .map((c) => `- ${c.heading}: ${c.description}`)
+    .join("\n");
+}
+
+function formatAttributesBlock(attrs) {
+  if (!attrs) return "(none)";
+  const lines = [
+    attrs.kind ? `  kind: ${attrs.kind}` : null,
+    attrs.material ? `  material: ${attrs.material}` : null,
+    attrs.function ? `  function: ${attrs.function}` : null,
+    attrs.endUse ? `  endUse: ${attrs.endUse}` : null,
+    attrs.attributes?.form ? `  form: ${attrs.attributes.form}` : null,
+    attrs.attributes?.processing ? `  processing: ${attrs.attributes.processing}` : null,
+    attrs.attributes?.powered && attrs.attributes.powered !== "unknown"
+      ? `  powered: ${attrs.attributes.powered}` : null,
+    attrs.attributes?.specs ? `  specs: ${attrs.attributes.specs}` : null,
+    attrs.likelyChapters?.length ? `  likelyChapters: ${attrs.likelyChapters.join(", ")}` : null,
+  ].filter(Boolean);
+  return lines.length ? lines.join("\n") : "(none)";
+}
+
+/**
+ * Stage 2/3: pick the final 6-digit subheading. Used by Sonnet and Opus.
+ * When `prior` is supplied (Opus escalation), Sonnet's pick + reasoning are
+ * shown so Opus can confirm or override with deeper analysis.
+ */
+async function pickFromCandidates({
+  description,
+  attrs,
+  candidates,
+  model,
+  level,
+  prior = null,
+}) {
+  const priorBlock = prior
+    ? `\nPreliminary pick by a lighter model (re-evaluate rigorously — confirm or override):\n  hs6: ${prior.hs6 ?? "—"}\n  confidence: ${prior.confidencePct ?? "—"}%\n  reasoning: ${prior.reasoning ?? "—"}\n`
+    : "";
+  const userMsg =
+    `Product: ${description}\n\n` +
+    `Extracted attributes:\n${formatAttributesBlock(attrs)}\n\n` +
+    `Candidate 4-digit headings (deterministic narrowing — strongly prefer one of these):\n${formatCandidatesBlock(candidates)}\n` +
+    `${priorBlock}\n` +
+    `${rationaleInstruction(level)}\n\n` +
+    `Pick the best 6-digit HS subheading.`;
+  // Opus gets a higher token ceiling — extended reasoning chains run longer.
+  const maxTokens = model.includes("opus") ? 3500 : 2500;
+  return callClaude(PICK_SYSTEM, userMsg, model, maxTokens);
+}
+
 // ── Saturn (Luxembourg ADA) verification URL ──────────────────────────────────
 // The Saturn API backend is WAF-restricted (server-to-server requests return 403).
 // We generate a direct deep-link so users can verify in one click.
@@ -783,11 +1053,11 @@ const CONFIDENCE_PCT = { high: 92, medium: 72, low: 45 };
 // consumes. We intentionally don't TARIC-probe alternatives — cost + latency.
 // Each entry is the model's ranked next-best 6-digit subheading with a short
 // label and its self-calibrated confidence. Returned as [] when missing.
-function normalizeAlternatives(raw, primaryHs6) {
+function normalizeAlternatives(raw, primaryHs6, primaryPct) {
   if (!Array.isArray(raw)) return [];
   const seen = new Set();
   if (primaryHs6) seen.add(primaryHs6);
-  return raw
+  const cleaned = raw
     .map((a) => {
       const hs6 = String(a?.hs6 || "").replace(/\D/g, "").slice(0, 6);
       const heading = String(a?.heading || hs6).replace(/\D/g, "").slice(0, 4);
@@ -805,6 +1075,30 @@ function normalizeAlternatives(raw, primaryHs6) {
     })
     .filter((a) => a.hs6.length === 6 && !seen.has(a.hs6) && (seen.add(a.hs6) || true))
     .slice(0, 2);
+
+  // Probability-coherence: primary + alternatives represent mutually exclusive
+  // outcomes over the space of HS codes, so they must sum to ≤100. Models
+  // routinely overshoot (e.g. 97 + 6 + 2 = 105). Scale alternatives down
+  // proportionally so the totals add up cleanly without touching the primary.
+  // When the primary claims so much probability mass that an alternative would
+  // round to 0%, drop it rather than floor at 1% — flooring is what pushes the
+  // top-3 total over 100.
+  if (Number.isFinite(primaryPct) && cleaned.length > 0) {
+    const headroom = Math.max(0, 100 - primaryPct);
+    const altSum = cleaned.reduce((s, a) => s + (a.confidencePct ?? 0), 0);
+    if (altSum > headroom) {
+      if (headroom === 0) return [];
+      const scale = headroom / altSum;
+      let used = 0;
+      for (let i = 0; i < cleaned.length - 1; i++) {
+        const scaled = Math.max(0, Math.round((cleaned[i].confidencePct ?? 0) * scale));
+        cleaned[i].confidencePct = scaled;
+        used += scaled;
+      }
+      cleaned[cleaned.length - 1].confidencePct = Math.max(0, headroom - used);
+    }
+  }
+  return cleaned.filter((a) => (a.confidencePct ?? 0) > 0);
 }
 
 // Map the client's chosen verbosity onto a rationale instruction injected
@@ -832,13 +1126,23 @@ async function runClassification(data, userId, isPro, emit) {
   const requestedLevel = data.explanationLevel ?? "medium";
   const effectiveLevel =
     requestedLevel === "detailed" && !isPro ? "medium" : requestedLevel;
-  const userMessage = `Product: ${data.description}\n\n${rationaleInstruction(effectiveLevel)}`;
 
   // Cache check
   emit({ type: "thinking", text: "Checking cache…" });
   const cached = await prisma.hsLookupCache.findUnique({ where: { descriptionNorm: descNorm } });
   if (cached && cached.updatedAt > staleThreshold) {
     const result = JSON.parse(cached.resultJson);
+    // Re-run alternatives normalisation on cache hits. Older entries (pre-
+    // normaliser, or written by an earlier version of this code) can have raw
+    // model probabilities that sum to >100% with the primary — we don't want
+    // those leaking through to the UI just because they're cached.
+    if (Number.isFinite(result?.confidencePct) && Array.isArray(result?.alternatives)) {
+      result.alternatives = normalizeAlternatives(
+        result.alternatives,
+        result.hs6,
+        result.confidencePct,
+      );
+    }
     emit({ type: "thinking", text: "Cache hit — returning saved result ⚡" });
     prisma.$transaction([
       prisma.hsLookupCache.update({ where: { id: cached.id }, data: { hitCount: { increment: 1 } } }),
@@ -856,41 +1160,77 @@ async function runClassification(data, userId, isPro, emit) {
   }
   emit({ type: "thinking", text: "Cache miss — starting AI classification" });
 
-  // Step 1: Haiku triage
+  // Step 1: Haiku — extract structured attributes (no classification).
+  // Haiku no longer picks an HS code; it produces material/function/end-use
+  // signals that the deterministic narrowing step uses to shortlist headings.
+  emit({ type: "thinking", text: "Haiku: extracting product attributes…" });
+  const attrs = await extractAttributes(data.description);
+  const attrSummary = [
+    attrs.kind && `kind=${attrs.kind}`,
+    attrs.material && `material=${attrs.material}`,
+    attrs.likelyChapters?.length && `chapters≈${attrs.likelyChapters.join("/")}`,
+  ].filter(Boolean).join(", ");
+  emit({ type: "thinking", text: `Haiku → ${attrSummary || "(extraction empty — Sonnet will work from description)"}` });
+
+  // Step 2: deterministic narrowing — score every heading in the index
+  // against the description + extracted attributes; keep the top N.
+  const candidates = narrowHeadings(attrs, data.description, 12);
+  if (candidates.length > 0) {
+    const preview = candidates.slice(0, 5).map((c) => c.heading).join(", ");
+    emit({ type: "thinking", text: `Narrowed to ${candidates.length} candidate heading${candidates.length !== 1 ? "s" : ""} (${preview}${candidates.length > 5 ? "…" : ""})` });
+  } else {
+    emit({ type: "thinking", text: "Narrowing produced no candidates — Sonnet will pick from full HS" });
+  }
+
+  // Step 3: Sonnet — pick the 6-digit subheading from the narrowed list.
   let claudeResult;
-  let modelUsed = "haiku";
-  emit({ type: "thinking", text: "Haiku: fast-path analysis…" });
+  let modelUsed = "sonnet";
+  emit({ type: "thinking", text: "Sonnet: GRI / chapter-notes pick…" });
   try {
-    const haiku = await callClaude(HAIKU_SYSTEM, userMessage, "claude-haiku-4-5-20251001", 600);
-    if (haiku.status === "classified" && haiku.confidence === "high" && haiku.hs6?.length >= 6) {
-      emit({ type: "thinking", text: `Haiku → ${haiku.hs6} (high confidence)` });
-      claudeResult = {
-        status: "classified",
-        hs6: haiku.hs6,
-        heading: haiku.heading || haiku.hs6.slice(0, 4),
-        confidence: "high",
-        reasoning: haiku.reasoning || "",
-        chapter: "",
-        notes: "Classified by Haiku (fast path)",
-        alternatives: haiku.alternatives,
-      };
-    } else {
-      emit({ type: "thinking", text: `Haiku uncertain (${haiku.status ?? "—"}) → escalating to Sonnet` });
-      modelUsed = "sonnet";
-      emit({ type: "thinking", text: "Sonnet: full GRI / WCO / CN 2026 analysis…" });
-      claudeResult = await callClaude(CLASSIFY_SYSTEM, userMessage);
-      emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidence ?? "—"})` });
-    }
+    claudeResult = await pickFromCandidates({
+      description: data.description,
+      attrs,
+      candidates,
+      model: "claude-sonnet-4-6",
+      level: effectiveLevel,
+    });
+    emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidencePct ?? "—"}%)` });
   } catch {
-    emit({ type: "thinking", text: "Haiku failed → falling back to Sonnet" });
-    modelUsed = "sonnet";
-    emit({ type: "thinking", text: "Sonnet: full GRI / WCO / CN 2026 analysis…" });
+    emit({ type: "error", message: "Classification service error", status: 502 });
+    return;
+  }
+
+  // Step 4: Opus escalation — only fire on genuinely low-confidence results
+  // (Sonnet pct < 75). Borderline cases (75–94) stay with Sonnet; Opus is
+  // reserved for the cases where Sonnet itself signalled it's unsure.
+  if (
+    claudeResult?.status === "classified" &&
+    Number.isFinite(Number(claudeResult.confidencePct)) &&
+    Number(claudeResult.confidencePct) < 75
+  ) {
+    emit({ type: "thinking", text: `Sonnet confidence ${claudeResult.confidencePct}% < 75% — escalating to Opus…` });
     try {
-      claudeResult = await callClaude(CLASSIFY_SYSTEM, userMessage);
-      emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidence ?? "—"})` });
+      const opus = await pickFromCandidates({
+        description: data.description,
+        attrs,
+        candidates,
+        model: "claude-opus-4-7",
+        level: effectiveLevel,
+        prior: { hs6: claudeResult.hs6, confidencePct: claudeResult.confidencePct, reasoning: claudeResult.reasoning },
+      });
+      if (opus?.status) {
+        modelUsed = "opus";
+        const sameAsSonnet = opus.status === "classified" && opus.hs6 === claudeResult.hs6;
+        emit({
+          type: "thinking",
+          text: sameAsSonnet
+            ? `Opus confirms ${opus.hs6} (${opus.confidencePct ?? "—"}%)`
+            : `Opus → ${opus.hs6 ?? opus.status} (${opus.confidencePct ?? "—"}%)`,
+        });
+        claudeResult = opus;
+      }
     } catch {
-      emit({ type: "error", message: "Classification service error", status: 502 });
-      return;
+      emit({ type: "thinking", text: "Opus escalation failed — keeping Sonnet result" });
     }
   }
 
@@ -974,7 +1314,7 @@ async function runClassification(data, userId, isPro, emit) {
     rationale: claudeResult.reasoning,
     confidencePct: resolvedPct,
     _model: modelUsed,
-    alternatives: normalizeAlternatives(claudeResult.alternatives, hs6),
+    alternatives: normalizeAlternatives(claudeResult.alternatives, hs6, resolvedPct),
   };
 
   // ── Cross-jurisdiction existence gate (USITC HTS) ────────────────────────
@@ -986,27 +1326,35 @@ async function runClassification(data, userId, isPro, emit) {
   emit({ type: "thinking", text: "Cross-checking heading against USITC…" });
   let usitcStatus = await usitcHs6Exists(hs6);
   if (usitcStatus === "missing") {
-    emit({ type: "thinking", text: `USITC: heading ${heading} not found — likely abolished. Retrying with Sonnet…` });
+    emit({ type: "thinking", text: `USITC: heading ${heading} not found — likely abolished. Retrying with Opus…` });
     try {
-      const retryMessage =
-        `${userMessage}\n\n` +
-        `CRITICAL: The heading ${heading} does NOT exist in the current 2026 nomenclature. ` +
-        `It was almost certainly abolished or renumbered (e.g. HS 2017 moved 8803 → 8807, ` +
-        `HS 2022 restructured Ch 28/29 battery precursors). Pick a different, currently ` +
-        `valid 6-digit subheading. If unsure, return status=escalate or needs_info.`;
-      const retry = await callClaude(CLASSIFY_SYSTEM, retryMessage);
+      // Drop the rejected heading from the candidate set so Opus is forced
+      // to pick something else. Opus also sees the bad pick via `prior` so it
+      // knows what was just rejected and why.
+      const retryCandidates = candidates.filter((c) => c.heading !== heading);
+      const retry = await pickFromCandidates({
+        description: data.description,
+        attrs,
+        candidates: retryCandidates,
+        model: "claude-opus-4-7",
+        level: effectiveLevel,
+        prior: {
+          hs6,
+          confidencePct: claudeResult.confidencePct,
+          reasoning: `Heading ${heading} was rejected: it does NOT exist in the current 2026 nomenclature (likely abolished or renumbered, e.g. 8803 → 8807, Ch 28/29 battery precursors restructured). Pick a different, currently valid 6-digit subheading.`,
+        },
+      });
       const retryHs6 = String(retry.hs6 || "").replace(/\D/g, "").slice(0, 6);
       if (retryHs6.length === 6 && retryHs6 !== hs6) {
         const retryStatus = await usitcHs6Exists(retryHs6);
         if (retryStatus !== "missing") {
-          emit({ type: "thinking", text: `Sonnet retry → ${retryHs6} (${retry.confidence ?? "—"}) — accepting` });
-          // Swap to the retry result and continue normal TARIC processing below.
+          emit({ type: "thinking", text: `Opus retry → ${retryHs6} (${retry.confidencePct ?? "—"}%) — accepting` });
           claudeResult = retry;
-          modelUsed = "sonnet";
+          modelUsed = "opus";
           hs6 = retryHs6;
           heading = retryHs6.slice(0, 4);
-          const retryPct = Number.isFinite(retry.confidencePct)
-            ? Math.max(0, Math.min(99, Math.round(retry.confidencePct)))
+          const retryPct = Number.isFinite(Number(retry.confidencePct))
+            ? Math.max(0, Math.min(99, Math.round(Number(retry.confidencePct))))
             : CONFIDENCE_PCT[retry.confidence] ?? 72;
           finalResult = {
             ...retry,
@@ -1015,17 +1363,17 @@ async function runClassification(data, userId, isPro, emit) {
             rationale: retry.reasoning,
             confidencePct: retryPct,
             _model: modelUsed,
-            alternatives: normalizeAlternatives(retry.alternatives, hs6),
+            alternatives: normalizeAlternatives(retry.alternatives, hs6, retryPct),
           };
-          usitcStatus = retryStatus; // update for the downstream success path
+          usitcStatus = retryStatus;
         } else {
-          emit({ type: "thinking", text: `Sonnet retry also missing in USITC — giving up` });
+          emit({ type: "thinking", text: `Opus retry also missing in USITC — giving up` });
         }
       } else {
-        emit({ type: "thinking", text: `Sonnet retry returned no fresh code — giving up` });
+        emit({ type: "thinking", text: `Opus retry returned no fresh code — giving up` });
       }
-    } catch (e) {
-      emit({ type: "thinking", text: "Sonnet retry failed — giving up" });
+    } catch {
+      emit({ type: "thinking", text: "Opus retry failed — giving up" });
     }
 
     // If retry didn't rescue us, emit a low-confidence warning result.
@@ -1033,7 +1381,7 @@ async function runClassification(data, userId, isPro, emit) {
       finalResult.taricVerified = false;
       finalResult.confidence = "low";
       finalResult.confidencePct = 20;
-      finalResult.taricWarning = `Heading ${heading} could not be verified in either EU TARIC or US HTS — even after a Sonnet retry. Please re-classify with more detail.`;
+      finalResult.taricWarning = `Heading ${heading} could not be verified in either EU TARIC or US HTS — even after an Opus retry. Please re-classify with more detail.`;
       finalResult.saturnUrl = saturnUrl(hs6);
       // No cache write — don't poison other users' lookups.
       prisma.hsSearchHistory.create({ data: {
@@ -1096,7 +1444,10 @@ async function runClassification(data, userId, isPro, emit) {
       // not "unprepared pasta", but the description alone reads like a match).
       const matching = siblings.filter((s) => s.cn8.startsWith(hs6));
       let exactMatch;
-      const pickModel = modelUsed === "sonnet" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
+      // CN10 sibling disambiguation is a small lookup-style pick — Sonnet is
+      // sufficient (and faster than Opus). Always use Sonnet here regardless
+      // of which model picked the parent subheading.
+      const pickModel = "claude-sonnet-4-6";
       if (matching.length > 1) {
         // Multiple CN10s under Claude's preferred subheading — disambiguate.
         const pickedCn10 = await pickCn8FromSiblings(
@@ -1234,6 +1585,89 @@ export async function POST(req) {
     }
     result.saturnUrl = saturnUrl(result.cn10 || result.cn8);
     return NextResponse.json(result);
+  }
+
+  // ── Image classification — derive description, then run text path ────────
+  // The vision step only changes the input source; downstream caching + TARIC
+  // verification + sensitive-goods handling reuse the existing pipeline so
+  // results are consistent with text classification of the same product.
+  if (data.type === "classify-image") {
+    if (!isPro) {
+      return NextResponse.json(
+        { error: "Image classification is a Pro feature" },
+        { status: 403 },
+      );
+    }
+
+    const wantsStreamImg = req.headers.get("accept")?.includes("text/event-stream");
+
+    const runImageFlow = async (emit) => {
+      emit({ type: "thinking", text: "Vision: analysing image…" });
+      let vis;
+      try {
+        vis = await describeImage(data.imageBase64, data.imageMediaType, data.hint);
+      } catch (e) {
+        console.error("[hs-lookup] Vision call failed:", e?.message || e);
+        emit({ type: "error", message: "Vision service error", status: 502 });
+        return;
+      }
+      const desc = (vis?.description || "").trim();
+      if (!desc || (vis?.confidence === "low" && desc.length < 10)) {
+        emit({
+          type: "error",
+          message: vis?.notes || "Could not identify a product in the image. Try again with a clearer photo.",
+          status: 422,
+        });
+        return;
+      }
+      emit({ type: "thinking", text: `Vision: identified "${desc.slice(0, 80)}"` });
+      // Hand off to the existing text-classification pipeline. Cache key is
+      // the normalised description so two photos of the same product hit it.
+      const textData = {
+        type: "classify",
+        description: desc,
+        explanationLevel: data.explanationLevel,
+        autoTaricValidation: data.autoTaricValidation,
+      };
+      await runClassification(textData, userId, isPro, emit);
+    };
+
+    if (!wantsStreamImg) {
+      let payload = null;
+      let errPayload = null;
+      try {
+        await runImageFlow((event) => {
+          if (event.type === "result") payload = event.payload;
+          if (event.type === "error") errPayload = event;
+        });
+      } catch (e) {
+        return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 502 });
+      }
+      if (errPayload) return NextResponse.json({ error: errPayload.message }, { status: errPayload.status || 502 });
+      return NextResponse.json(payload);
+    }
+
+    const enc2 = new TextEncoder();
+    const stream2 = new ReadableStream({
+      async start(controller) {
+        const emit = (event) => {
+          try { controller.enqueue(enc2.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch {}
+        };
+        try {
+          await runImageFlow(emit);
+        } catch (e) {
+          emit({ type: "error", message: e?.message ?? "Unknown error", status: 502 });
+        }
+        controller.close();
+      },
+    });
+    return new Response(stream2, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+      },
+    });
   }
 
   // ── Classification — streaming or JSON ───────────────────────────────────
