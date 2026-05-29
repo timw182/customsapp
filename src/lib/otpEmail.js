@@ -1,4 +1,4 @@
-// Sends the OTP sign-in email via Resend.
+// Sends an email-verification or password-reset code via Resend.
 // Template matches the Dutify Pocket mobile app: deep charcoal canvas,
 // sage accents, DM Sans / JetBrains Mono, minimal layout.
 //
@@ -9,8 +9,13 @@
 // - Outlook gets degraded font stacks (no DM Sans) via system sans.
 
 import { Resend } from "resend";
+import { CODE_PURPOSES } from "@/lib/otp";
 
-const FROM = process.env.RESEND_FROM ?? "Dutify <codes@dutify.lu>";
+// Verification + password-reset codes are sent from the main hello@ address
+// (not the shared RESEND_FROM env, which targets transactional notification
+// emails). Keeping the From: line consistent with the reply-to means users
+// who reply to a code email land in the same inbox they'd expect.
+const FROM = process.env.RESEND_FROM_OTP ?? "Dutify <hello@dutify.lu>";
 const REPLY_TO = process.env.RESEND_REPLY_TO ?? "hello@dutify.lu";
 
 // App palette (theme/tokens.ts mirror)
@@ -28,7 +33,28 @@ const SAGE_DIM = "#7A8A6A";
 const BODY_FONT = "'DM Sans','Helvetica Neue',Arial,sans-serif";
 const MONO_FONT = "'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace";
 
-function buildHtml(code, ttlMinutes) {
+const COPY = {
+  [CODE_PURPOSES.VERIFY_EMAIL]: {
+    eyebrow: "Dutify Pocket · Verify email",
+    headline: "Verify your email",
+    body: "Enter this code in the Dutify app to finish creating your account. If you didn't sign up, you can ignore this email — the code expires on its own.",
+    cardLabel: "Verification Code",
+    subject: (code) => `Your Dutify verification code: ${code}`,
+    textTitle: "Your Dutify verification code",
+    textHint: (ttl) => `Enter this code in the Dutify app within ${ttl} minutes to verify your email.`,
+  },
+  [CODE_PURPOSES.RESET_PASSWORD]: {
+    eyebrow: "Dutify Pocket · Reset password",
+    headline: "Reset your password",
+    body: "Enter this code in the Dutify app to set a new password. If you didn't request a reset, you can ignore this email — the code expires on its own.",
+    cardLabel: "Reset Code",
+    subject: (code) => `Your Dutify password reset code: ${code}`,
+    textTitle: "Your Dutify password reset code",
+    textHint: (ttl) => `Enter this code in the Dutify app within ${ttl} minutes to reset your password.`,
+  },
+};
+
+function buildHtml(code, ttlMinutes, copy) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,7 +62,7 @@ function buildHtml(code, ttlMinutes) {
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark" />
   <meta name="supported-color-schemes" content="dark" />
-  <title>Your Dutify sign-in code</title>
+  <title>${copy.headline}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -56,7 +82,7 @@ function buildHtml(code, ttlMinutes) {
           <tr>
             <td style="padding:36px 40px 28px;border-bottom:1px solid ${BORDER};">
               <p style="margin:0 0 12px;font-family:${MONO_FONT};font-size:10px;font-weight:500;letter-spacing:2.4px;text-transform:uppercase;color:${SAGE};">
-                Dutify Pocket · Sign-in
+                ${copy.eyebrow}
               </p>
               <h1 style="margin:0;font-family:${BODY_FONT};font-size:28px;font-weight:700;color:${TEXT};letter-spacing:-0.4px;line-height:1.1;">
                 Dutify<span style="color:${SAGE};">.</span>
@@ -68,11 +94,10 @@ function buildHtml(code, ttlMinutes) {
           <tr>
             <td style="padding:36px 40px 8px;">
               <h2 style="margin:0 0 14px;font-family:${BODY_FONT};font-size:22px;font-weight:700;color:${TEXT};letter-spacing:-0.3px;line-height:1.25;">
-                Your sign-in code
+                ${copy.headline}
               </h2>
               <p style="margin:0 0 28px;color:${TEXT_MUTED};font-size:15px;line-height:1.6;font-family:${BODY_FONT};">
-                Enter this code in the Dutify app to finish signing in. If you didn't
-                request it, you can ignore the email — the code expires on its own.
+                ${copy.body}
               </p>
 
               <!-- Code card -->
@@ -80,7 +105,7 @@ function buildHtml(code, ttlMinutes) {
                 <tr>
                   <td style="background:${INPUT};border:1px solid ${SAGE_DIM};border-radius:12px;padding:28px 20px;text-align:center;">
                     <p style="margin:0 0 12px;font-family:${MONO_FONT};font-size:10px;font-weight:500;letter-spacing:2.4px;text-transform:uppercase;color:${SAGE};">
-                      Sign-in Code
+                      ${copy.cardLabel}
                     </p>
                     <p style="margin:0;font-family:${MONO_FONT};font-size:34px;letter-spacing:10px;color:${TEXT};font-weight:600;line-height:1;">
                       ${code}
@@ -126,13 +151,13 @@ function buildHtml(code, ttlMinutes) {
 </html>`;
 }
 
-function buildText(code, ttlMinutes) {
+function buildText(code, ttlMinutes, copy) {
   return [
-    "Your Dutify sign-in code",
+    copy.textTitle,
     "",
     `    ${code}`,
     "",
-    `Enter this code in the Dutify app within ${ttlMinutes} minutes to finish signing in.`,
+    copy.textHint(ttlMinutes),
     "",
     "If you didn't request this, ignore the email — the code expires on its own.",
     "Dutify staff will never ask you for this code.",
@@ -142,22 +167,25 @@ function buildText(code, ttlMinutes) {
 }
 
 /**
- * Send a one-time sign-in code to the given email.
+ * Send a one-time email-verification or password-reset code.
  * Returns { ok: true } on success, { ok: false, error } on Resend failure.
- * Throws only on programmer error (missing API key).
+ * Throws only on programmer error (missing API key or unknown purpose).
  */
-export async function sendOtpEmail({ to, code, ttlMinutes }) {
+export async function sendOtpEmail({ to, code, ttlMinutes, purpose = CODE_PURPOSES.VERIFY_EMAIL }) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not configured");
   }
+  const copy = COPY[purpose];
+  if (!copy) throw new Error(`Unknown OTP email purpose: ${purpose}`);
+
   const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: FROM,
     to,
     replyTo: REPLY_TO,
-    subject: `Your Dutify sign-in code: ${code}`,
-    html: buildHtml(code, ttlMinutes),
-    text: buildText(code, ttlMinutes),
+    subject: copy.subject(code),
+    html: buildHtml(code, ttlMinutes, copy),
+    text: buildText(code, ttlMinutes, copy),
   });
   if (error) return { ok: false, error: error.message ?? "Resend failure" };
   return { ok: true };

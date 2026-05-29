@@ -8,13 +8,28 @@ datasource db {
 }
 
 model User {
-  id            String          @id @default(cuid())
-  email         String          @unique
-  name          String?
-  passwordHash  String
-  role          String          @default("USER")
-  plan          String          @default("free")   // "free" | "pro"
-  createdAt     DateTime        @default(now())
+  id              String          @id @default(cuid())
+  email           String          @unique
+  name            String?
+  passwordHash    String
+  role            String          @default("USER")
+  plan            String          @default("free") // "free" | "pro"
+  prefsJson       String?                          // JSON blob — display, AI, privacy prefs
+  emailVerifiedAt DateTime?                        // null = signed up but hasn't verified email yet
+  // Account-wide profile fields. Mobile + web both read/write via /api/me/profile.
+  // avatarData is the raw base64 string (no data: prefix); the API returns it
+  // wrapped in a data URL the client can drop into <img> / <Image> directly.
+  company         String?
+  phone           String?
+  avatarMime      String?                          // "image/jpeg" | "image/png" | "image/webp"
+  avatarData      String?                          // base64-encoded image; capped server-side
+  // Pro entitlement bookkeeping. Source of truth lives in RevenueCat;
+  // the webhook at /api/billing/revenuecat keeps `plan` in sync.
+  sonnetUsesUsed   Int       @default(0)             // lifetime cascade escalations to Sonnet (free users capped at 15)
+  proSince         DateTime?                         // set when plan flipped to "pro"
+  proSource        String?                           // "revenuecat" | "admin" | null
+  revenueCatUserId String?   @unique                 // RC app_user_id; equals our User.id by convention
+  createdAt       DateTime        @default(now())
   shipments     Shipment[]
   favourites    HSFavourite[]
   accounts      Account[]
@@ -59,6 +74,7 @@ model HsSearchHistory {
   id            String   @id @default(cuid())
   userId        String
   description   String
+  shortLabel    String?
   hs6           String?
   cn8           String?
   dutyRate      Float?
@@ -120,6 +136,7 @@ model HSFavourite {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hsCode         String
   description    String
+  shortLabel     String?
   dutyRate       Float
   notes          String?
   reasoning      String?
@@ -140,20 +157,23 @@ model InviteCode {
   sentTo    String?
 }
 
-// Short-lived email verification codes for passwordless sign-in.
-// Plaintext code is never stored — only the bcrypt hash. Row is consumed
-// on successful verify (consumedAt set) and can no longer be used.
+// Short-lived 6-digit codes for email verification (after signup) and password
+// reset. Plaintext code is never stored — only the bcrypt hash. Row is consumed
+// on successful verify (consumedAt set) and can no longer be used. The `purpose`
+// column scopes a code to one flow, so a signup-verification code can't be
+// replayed against the password-reset endpoint and vice-versa.
 model OtpCode {
   id         String    @id @default(cuid())
   email      String                        // normalised: trimmed + lowercased
   codeHash   String                        // bcrypt hash of the 6-digit code
+  purpose    String    @default("verify_email") // "verify_email" | "reset_password"
   attempts   Int       @default(0)         // failed verify attempts; cap at 5
   createdAt  DateTime  @default(now())
   expiresAt  DateTime                      // typically createdAt + 10 minutes
   consumedAt DateTime?                     // set on successful verify
   ip         String?                       // requester IP for rate-limit forensics
 
-  @@index([email, createdAt])
+  @@index([email, purpose, createdAt])
   @@index([createdAt])
 }
 

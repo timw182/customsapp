@@ -10,7 +10,7 @@ export async function GET(req) {
     where: { userId: a.userId },
     orderBy: { createdAt: "desc" },
     take: 12,
-    select: { id: true, description: true, hs6: true, cn8: true, dutyRate: true, confidencePct: true, fromCache: true, createdAt: true },
+    select: { id: true, description: true, shortLabel: true, hs6: true, cn8: true, dutyRate: true, confidencePct: true, fromCache: true, createdAt: true },
   });
 
   return NextResponse.json(history);

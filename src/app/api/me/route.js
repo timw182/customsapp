@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { FREE_SONNET_LIMIT, FREE_SAVED_LIMIT } from "@/lib/limits";
 
 export async function GET(req) {
   const auth = await requireUser(req);
@@ -19,23 +20,41 @@ export async function GET(req) {
   }
   const user = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { id: true, email: true, name: true, role: true, plan: true, createdAt: true },
+    select: {
+      id: true, email: true, name: true, role: true, plan: true, createdAt: true,
+      sonnetUsesUsed: true,
+    },
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Classifications the user has run this calendar month. Counts both cached
-  // and fresh results — a "lookup" the user deliberately invoked is the
-  // billable unit, regardless of whether we had to call Claude for it.
+  // Classifications the user has run this calendar month. Kept for legacy
+  // mobile builds that still surface it; the live paywall does not gate on it.
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
-  const usageThisMonth = await prisma.hsSearchHistory.count({
-    where: { userId: auth.userId, createdAt: { gte: startOfMonth } },
-  });
+  const [usageThisMonth, savedCount] = await Promise.all([
+    prisma.hsSearchHistory.count({
+      where: { userId: auth.userId, createdAt: { gte: startOfMonth } },
+    }),
+    prisma.hSFavourite.count({ where: { userId: auth.userId } }),
+  ]);
 
-  return NextResponse.json({ user: { ...user, usageThisMonth } });
+  const isPro = user.plan === "pro";
+  const sonnetUsesRemaining = isPro
+    ? null
+    : Math.max(0, FREE_SONNET_LIMIT - (user.sonnetUsesUsed ?? 0));
+
+  return NextResponse.json({
+    user: {
+      ...user,
+      usageThisMonth,
+      sonnetUsesRemaining,
+      savedCount,
+      savedLimit: isPro ? null : FREE_SAVED_LIMIT,
+    },
+  });
 }
 
 export async function DELETE(req) {

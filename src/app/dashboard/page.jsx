@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import s from './dashboard.module.css'
 import CalcWizard from '@/components/CalcWizard'
 
@@ -48,8 +48,7 @@ function NavIcon({ name, size = 15 }) {
 /* ── Nav config ─────────────────────────────────────────────────── */
 const NAV = [
   { id: 'search',       label: 'Search',       icon: 'search'   },
-  { id: 'history',      label: 'History',      icon: 'history'  },
-  { id: 'saved',        label: 'Saved',        icon: 'bookmark' },
+  { id: 'records',      label: 'Records',      icon: 'bookmark' },
   { id: 'calculator',   label: 'Calculator',   icon: 'calc'     },
   { id: 'reductions',   label: 'Reductions',   icon: 'tag'      },
   { id: 'goods',        label: 'Goods Index',  icon: 'package'  },
@@ -60,14 +59,14 @@ const NAV = [
 ]
 
 const PAGE_CRUMBS = {
-  search: 'Search', history: 'History', saved: 'Saved',
+  search: 'Search', records: 'Records',
   calculator: 'Landed Cost Calculator', reductions: 'Reductions',
   goods: 'Goods Index', rulings: 'Rulings',
   notifications: 'Notifications', settings: 'Settings',
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────── */
-function Sidebar({ current, onNav, user }) {
+function Sidebar({ current, onNav, user, unread }) {
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'U'
@@ -90,6 +89,9 @@ function Sidebar({ current, onNav, user }) {
               >
                 <NavIcon name={item.icon} />
                 {item.label}
+                {item.id === 'notifications' && unread > 0 && (
+                  <span className={s.navItemBadge}>{unread > 99 ? '99+' : unread}</span>
+                )}
               </button>
             )
         )}
@@ -108,7 +110,7 @@ function Sidebar({ current, onNav, user }) {
 }
 
 /* ── Topbar ──────────────────────────────────────────────────────── */
-function Topbar({ page, user, calcHs }) {
+function Topbar({ page, user, calcHs, unread, onBell }) {
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'U'
@@ -124,8 +126,11 @@ function Topbar({ page, user, calcHs }) {
             <span className={s.hsBadgeVal}>{calcHs}</span>
           </div>
         )}
-        <button className={s.topbarBtn} title="Notifications">
+        <button className={s.topbarBtn} title="Notifications" onClick={onBell} style={{ position: 'relative' }}>
           <NavIcon name="bell" size={18} />
+          {unread > 0 && (
+            <span className={s.notifCount}>{unread > 9 ? '9+' : unread}</span>
+          )}
         </button>
       </div>
     </header>
@@ -1092,31 +1097,880 @@ function CalculatorPage({ onHsFound }) {
   )
 }
 
+/* ── Goods Index page ────────────────────────────────────────────── */
+const GIX_ORIGINS = [
+  { code: 'US', name: 'United States', pref: false, type: 'mfn' },
+  { code: 'CN', name: 'China', pref: false, type: 'mfn' },
+  { code: 'GB', name: 'United Kingdom', pref: true, type: 'fta' },
+  { code: 'TR', name: 'Turkey', pref: true, type: 'cu' },
+  { code: 'CH', name: 'Switzerland', pref: true, type: 'fta' },
+  { code: 'JP', name: 'Japan', pref: true, type: 'fta' },
+  { code: 'KR', name: 'South Korea', pref: true, type: 'fta' },
+  { code: 'CA', name: 'Canada', pref: true, type: 'fta' },
+  { code: 'SG', name: 'Singapore', pref: true, type: 'fta' },
+  { code: 'VN', name: 'Vietnam', pref: true, type: 'fta' },
+  { code: 'IN', name: 'India', pref: true, type: 'gsp' },
+  { code: 'TH', name: 'Thailand', pref: true, type: 'gsp' },
+  { code: 'ID', name: 'Indonesia', pref: true, type: 'gsp' },
+  { code: 'MY', name: 'Malaysia', pref: true, type: 'gsp' },
+  { code: 'TW', name: 'Taiwan', pref: false, type: 'mfn' },
+  { code: 'HK', name: 'Hong Kong', pref: false, type: 'mfn' },
+  { code: 'AU', name: 'Australia', pref: true, type: 'fta' },
+  { code: 'NZ', name: 'New Zealand', pref: true, type: 'fta' },
+  { code: 'MX', name: 'Mexico', pref: true, type: 'fta' },
+  { code: 'BR', name: 'Brazil', pref: false, type: 'mfn' },
+  { code: 'AR', name: 'Argentina', pref: false, type: 'mfn' },
+  { code: 'ZA', name: 'South Africa', pref: true, type: 'epa' },
+  { code: 'MA', name: 'Morocco', pref: true, type: 'fta' },
+  { code: 'TN', name: 'Tunisia', pref: true, type: 'fta' },
+  { code: 'EG', name: 'Egypt', pref: true, type: 'fta' },
+  { code: 'IL', name: 'Israel', pref: true, type: 'fta' },
+  { code: 'JO', name: 'Jordan', pref: true, type: 'fta' },
+  { code: 'LB', name: 'Lebanon', pref: true, type: 'fta' },
+  { code: 'UA', name: 'Ukraine', pref: true, type: 'fta' },
+  { code: 'GE', name: 'Georgia', pref: true, type: 'fta' },
+  { code: 'MD', name: 'Moldova', pref: true, type: 'fta' },
+  { code: 'RS', name: 'Serbia', pref: true, type: 'atp' },
+  { code: 'AL', name: 'Albania', pref: true, type: 'atp' },
+  { code: 'ME', name: 'Montenegro', pref: true, type: 'atp' },
+  { code: 'MK', name: 'North Macedonia', pref: true, type: 'atp' },
+  { code: 'BA', name: 'Bosnia & Herzegovina', pref: true, type: 'atp' },
+  { code: 'NO', name: 'Norway', pref: true, type: 'eea' },
+  { code: 'IS', name: 'Iceland', pref: true, type: 'eea' },
+  { code: 'AE', name: 'UAE', pref: false, type: 'mfn' },
+  { code: 'SA', name: 'Saudi Arabia', pref: false, type: 'mfn' },
+  { code: 'PK', name: 'Pakistan', pref: true, type: 'gsp+' },
+  { code: 'BD', name: 'Bangladesh', pref: true, type: 'eba' },
+  { code: 'LK', name: 'Sri Lanka', pref: true, type: 'gsp+' },
+  { code: 'RU', name: 'Russia', pref: false, type: 'sanctioned' },
+  { code: 'BY', name: 'Belarus', pref: false, type: 'sanctioned' },
+].sort((a, b) => a.name.localeCompare(b.name))
+
+function GixTree({ parts }) {
+  if (!parts?.length) return null
+  return (
+    <div className={s.gixTree}>
+      {parts.map((text, i) => {
+        const isLeaf = i === parts.length - 1
+        return (
+          <div key={i} className={s.gixTreeNode} style={{ paddingLeft: i * 14 }}>
+            <span className={`${s.gixTreeIcon}${isLeaf ? ' ' + s.gixTreeLeafIcon : ''}`}>
+              {isLeaf ? '◆' : '└'}
+            </span>
+            <span className={isLeaf ? s.gixTreeLeafText : s.gixTreeText}>{text}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const GIX_EXAMPLES = ['0901.21', '8471.30', '6403.10', '2204.21']
+
+function GoodsIndexPage() {
+  const [input, setInput] = useState('')
+  const [origin, setOrigin] = useState('US')
+  const [describe, setDescribe] = useState(null)
+  const [rate, setRate] = useState(null)
+  const abortRef = useRef(null)
+  const rateAbortRef = useRef(null)
+
+  const digits = input.replace(/\D/g, '').slice(0, 10)
+  const isValid = digits.length >= 6
+
+  function fetchRate(clean, countryCode) {
+    rateAbortRef.current?.abort()
+    const rateCtrl = new AbortController()
+    rateAbortRef.current = rateCtrl
+    setRate('loading')
+    fetch('/api/taric', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cn8: clean, countryCode }),
+      signal: rateCtrl.signal,
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => setRate(d))
+      .catch(e => { if (e?.name !== 'AbortError') setRate({ error: true }) })
+  }
+
+  function lookup(code, countryCode) {
+    const clean = code.replace(/\D/g, '').slice(0, 10)
+    if (clean.length < 6) return
+    const country = countryCode ?? origin
+
+    abortRef.current?.abort()
+    rateAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    setDescribe('loading')
+    setRate(null)
+
+    fetch(`/api/taric-describe?code=${clean}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => setDescribe(d))
+      .catch(e => { if (e?.name !== 'AbortError') setDescribe({ error: 'TARIC lookup failed' }) })
+
+    if (clean.length === 10) fetchRate(clean, country)
+  }
+
+  const handleSubmit = (e) => { e?.preventDefault(); lookup(input) }
+
+  const handleChange = (e) => {
+    setInput(e.target.value)
+    setDescribe(null)
+    setRate(null)
+    abortRef.current?.abort()
+    rateAbortRef.current?.abort()
+  }
+
+  const handleClear = () => {
+    setInput('')
+    setDescribe(null)
+    setRate(null)
+    abortRef.current?.abort()
+    rateAbortRef.current?.abort()
+  }
+
+  const handleOriginChange = (e) => {
+    const newOrigin = e.target.value
+    setOrigin(newOrigin)
+    // Re-fetch rate if we already have a 10-digit result showing
+    const clean = input.replace(/\D/g, '').slice(0, 10)
+    if (clean.length === 10 && describe && describe !== 'loading') {
+      fetchRate(clean, newOrigin)
+    }
+  }
+
+  useEffect(() => () => { abortRef.current?.abort(); rateAbortRef.current?.abort() }, [])
+
+  const hasResult = describe && describe !== 'loading'
+
+  // Split code display: HS-6 in primary, EU extension in sage
+  const hs6Fmt = digits.length >= 6 ? `${digits.slice(0,4)}.${digits.slice(4,6)}` : digits
+  const extFmt = digits.length >= 8
+    ? `.${digits.slice(6,8)}${digits.length >= 10 ? `.${digits.slice(8,10)}` : ''}`
+    : ''
+
+  const codeType = digits.length === 10 ? 'CN10' : digits.length === 8 ? 'CN8' : 'HS-6'
+  const isDeclarable = digits.length === 10
+
+  const originInfo = GIX_ORIGINS.find(c => c.code === origin)
+
+  // Prefer preferential rate when available and country has pref agreement
+  const prefMeasure = rate && rate !== 'loading' && !rate.error
+    ? rate.preferential?.[0]
+    : null
+  const usePref = originInfo?.pref && prefMeasure
+  const rateDisplay = rate && rate !== 'loading' && !rate.error
+    ? usePref
+      ? (prefMeasure.dutyRateRaw ?? (prefMeasure.dutyRate?.adValorem != null ? `${prefMeasure.dutyRate.adValorem}%` : 'Free'))
+      : (rate.mfnRateRaw ?? (rate.mfnRate != null ? `${rate.mfnRate}%` : 'Free'))
+    : null
+  const isFree = rateDisplay === 'Free' || (usePref ? prefMeasure?.dutyRate?.adValorem === 0 : rate?.mfnRate === 0)
+
+  return (
+    <div className={s.gixPage}>
+      <div className={`${s.gixWrap} ${hasResult ? s.gixWrapWide : ''}`}>
+
+      <h1 className={s.pageTitle}>Goods Index</h1>
+
+      {/* Input block */}
+      <div className={s.gixInputBlock}>
+        <div className={s.gixInputLabel}>Code lookup</div>
+        <form onSubmit={handleSubmit}>
+          <div className={s.gixInputRow}>
+            <input
+              className={s.gixInputField}
+              value={input}
+              onChange={handleChange}
+              placeholder="e.g. 6403.10.11.00"
+              inputMode="numeric"
+              autoFocus
+            />
+            <button type="submit" className={s.gixLookupBtn} disabled={!isValid}>
+              Look up →
+            </button>
+            {(input || hasResult) && (
+              <button type="button" className={s.gixClearBtn} onClick={handleClear} aria-label="Clear">
+                ×
+              </button>
+            )}
+          </div>
+        </form>
+        <div className={s.gixOriginRow}>
+          <span className={s.gixOriginLabel}>Origin</span>
+          <select
+            className={s.gixOriginSelect}
+            value={origin}
+            onChange={handleOriginChange}
+          >
+            {GIX_ORIGINS.map(c => (
+              <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
+            ))}
+          </select>
+          {(() => {
+            const o = GIX_ORIGINS.find(c => c.code === origin)
+            if (!o) return null
+            const isSanction = o.type === 'sanctioned'
+            const isPref = o.pref
+            const label = isSanction ? '⚠ Sanctioned'
+              : isPref ? (o.type === 'eea' ? 'EEA' : o.type === 'cu' ? 'Customs Union' : o.type.toUpperCase())
+              : 'MFN'
+            return (
+              <span className={`${s.gixOriginPill} ${isSanction ? s.gixOriginPillSanction : isPref ? s.gixOriginPillPref : s.gixOriginPillMfn}`}>
+                {label}
+              </span>
+            )
+          })()}
+        </div>
+        <div className={s.gixExamples}>
+          Try:
+          {GIX_EXAMPLES.map(ex => (
+            <span
+              key={ex}
+              className={s.gixExCode}
+              onClick={() => { setInput(ex); lookup(ex) }}
+            >{ex}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Loading */}
+      {describe === 'loading' && (
+        <div className={s.gixLoading}>
+          <div className={s.gixLoadingText}>Querying EU TARIC…</div>
+          <div className={s.gixScanTrack}><div className={s.gixScanFill} /></div>
+        </div>
+      )}
+
+      {/* Result */}
+      {hasResult && (
+        <div className={s.gixResult}>
+
+          {/* Code hero */}
+          <div className={s.gixCodeHero}>
+            <div className={s.gixBigCode}>
+              {hs6Fmt}
+              {extFmt && <span className={s.gixBigCodeExt}>{extFmt}</span>}
+            </div>
+            <div className={s.gixBadges}>
+              <span className={`${s.gixBadge} ${isDeclarable ? s.gixBadgeSage : ''}`}>
+                {codeType}{isDeclarable ? ' · Declarable' : ''}
+              </span>
+              <span className={s.gixBadge}>EU TARIC</span>
+              {describe.error && <span className={`${s.gixBadge} ${s.gixBadgeAmber}`}>Lookup failed</span>}
+            </div>
+          </div>
+
+          {/* Main grid */}
+          <div className={s.gixGrid}>
+
+            {/* Left: description panel */}
+            <div className={s.gixDescPanel}>
+
+              {describe.error && (
+                <div className={s.gixDescCard}>
+                  <div className={s.gixEmpty}>{describe.error}</div>
+                </div>
+              )}
+
+              {Array.isArray(describe.en) && describe.en.length === 0 && !describe.error && (
+                <div className={s.gixDescCard}>
+                  <div className={s.gixEmpty}>
+                    No description found — code may not exist or is not declarable in TARIC.
+                  </div>
+                </div>
+              )}
+
+              {Array.isArray(describe.en) && describe.en.length > 0 && (
+                <div className={s.gixDescCard}>
+                  <div className={s.gixLangRow}>
+                    <span className={`${s.gixLangPill} ${s.gixLangPillEn}`}>EN</span>
+                    <div className={s.gixLangRule} />
+                  </div>
+                  <GixTree parts={describe.en} />
+                </div>
+              )}
+
+              {Array.isArray(describe.fr) && describe.fr.length > 0 && (
+                <div className={s.gixDescCard}>
+                  <div className={s.gixLangRow}>
+                    <span className={`${s.gixLangPill} ${s.gixLangPillFr}`}>FR</span>
+                    <div className={s.gixLangRule} />
+                  </div>
+                  <GixTree parts={describe.fr} />
+                </div>
+              )}
+            </div>
+
+            {/* Right: rate + info panel */}
+            <div className={s.gixSidePanel}>
+
+              <div className={s.gixRateCard}>
+                <div className={s.gixRateLabel}>Import Duty Rate</div>
+
+                {!isDeclarable && (
+                  <div className={s.gixRateMuted}>
+                    Requires a full 10-digit CN10 code.
+                  </div>
+                )}
+
+                {isDeclarable && rate === 'loading' && (
+                  <>
+                    <div className={s.gixRateScan} />
+                    <div className={s.gixRateSub} style={{ marginTop: 8 }}>Fetching from TARIC…</div>
+                  </>
+                )}
+
+                {isDeclarable && rateDisplay && (
+                  <>
+                    <div className={`${s.gixRateValue}${isFree ? ' ' + s.gixRateValueFree : ''}`}>
+                      {rateDisplay}
+                    </div>
+                    <div className={s.gixRateSub}>
+                      {usePref
+                        ? `${originInfo?.type?.toUpperCase() ?? 'Pref.'} · ${originInfo?.name ?? origin}`
+                        : `MFN · ${originInfo?.name ?? origin}`
+                      }
+                    </div>
+                  </>
+                )}
+
+                {isDeclarable && rate?.error && (
+                  <div className={s.gixRateMuted}>
+                    Rate unavailable — no TARIC data for this code.
+                  </div>
+                )}
+              </div>
+
+              <div className={s.gixInfoCard}>
+                <div className={s.gixInfoLabel}>Code Details</div>
+                <div className={s.gixInfoRow}>
+                  <span className={s.gixInfoKey}>Format</span>
+                  <span className={s.gixInfoVal}>{codeType}</span>
+                </div>
+                <div className={s.gixInfoRow}>
+                  <span className={s.gixInfoKey}>Digits</span>
+                  <span className={s.gixInfoVal}>{digits.length}</span>
+                </div>
+                <div className={s.gixInfoRow}>
+                  <span className={s.gixInfoKey}>Declarable</span>
+                  <span className={s.gixInfoVal}>{isDeclarable ? 'Yes' : 'No'}</span>
+                </div>
+                <div className={s.gixInfoRow}>
+                  <span className={s.gixInfoKey}>Source</span>
+                  <span className={s.gixInfoVal}>EU TARIC</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Short-code nudge — spans both columns */}
+            {!isDeclarable && !describe.error && Array.isArray(describe.en) && describe.en.length > 0 && (
+              <div className={s.gixNudge}>
+                <div className={s.gixNudgeDot} />
+                Add more digits for a declarable CN10 code and unlock the MFN duty rate.
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+      </div>
+    </div>
+  )
+}
+
 /* ── Settings page ───────────────────────────────────────────────── */
-const SETTINGS_CARDS = [
-  { icon: 'user',    title: 'Account',         desc: 'Manage your profile, email address, and account preferences.' },
-  { icon: 'sliders', title: 'Preferences',     desc: 'Adjust display settings, default currency, and interface preferences.' },
-  { icon: 'brain',   title: 'AI Settings',     desc: 'Configure Dutify AI classification model and confidence thresholds.' },
-  { icon: 'lock',    title: 'Data & Privacy',  desc: 'Manage your search history, data retention, and privacy controls.' },
-  { icon: 'printer', title: 'Export & Reports',desc: 'Configure PDF templates, export formats, and report settings.' },
-  { icon: 'bell',    title: 'Notifications',   desc: 'Set up tariff change alerts, ruling updates, and push notifications.' },
-  { icon: 'globe',   title: 'Integrations',    desc: 'Connect to customs brokers, ERP systems, and logistics platforms.' },
-  { icon: 'shield',  title: 'Security',        desc: 'Two-factor authentication, active sessions, and API key management.' },
-  { icon: 'settings',title: 'Advanced',        desc: 'Developer options, beta features, and advanced classification settings.' },
+const PREFS_KEY = 'dutify.prefs'
+const DEFAULT_PREFS = {
+  currency: 'EUR', language: 'en', dateFormat: 'dmy-slash',
+  defaultOrigin: null, units: 'metric', showConfidenceScores: true,
+  aiModel: 'haiku', confidenceThreshold: 80, autoTaricValidation: true,
+  explanationLevel: 'short', showReasoningSteps: true,
+  emailNotifications: true, dataUsageAnalytics: true,
+}
+
+function loadStoredPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY)
+    if (!raw) return DEFAULT_PREFS
+    return { ...DEFAULT_PREFS, ...JSON.parse(raw) }
+  } catch { return DEFAULT_PREFS }
+}
+
+function StgToggle({ value, onChange, disabled }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={value}
+      onClick={() => !disabled && onChange(!value)}
+      className={`${s.stgToggleSwitch} ${value ? s.stgToggleSwitchOn : ''}`}
+      style={{ opacity: disabled ? 0.4 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+    >
+      <span className={s.stgToggleSwitchThumb} />
+    </button>
+  )
+}
+
+function StgField({ label, children }) {
+  return (
+    <div className={s.stgField}>
+      <label className={s.stgFieldLabel}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function StgSelect({ value, onChange, children }) {
+  return (
+    <select className={s.stgSelect} value={value} onChange={e => onChange(e.target.value)}>
+      {children}
+    </select>
+  )
+}
+
+function StgSegmented({ options, value, onChange, isPro }) {
+  return (
+    <div className={s.stgSegGroup}>
+      {options.map(opt => {
+        const locked = opt.pro && !isPro
+        const active = opt.value === value
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            className={`${s.stgSeg} ${active ? s.stgSegActive : ''}`}
+            onClick={() => onChange(opt.value, locked)}
+          >
+            {locked && <span className={s.stgSegProBadge}>★ Pro</span>}
+            <span className={`${s.stgSegLabel} ${active ? s.stgSegLabelActive : ''}`}>{opt.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function StgToggleRow({ label, sub, value, onChange, disabled, customRight }) {
+  return (
+    <div className={s.stgToggleRow}>
+      <div className={s.stgToggleText}>
+        <div className={s.stgToggleLabel}>{label}</div>
+        {sub && <div className={s.stgToggleSub}>{sub}</div>}
+      </div>
+      {customRight || <StgToggle value={value} onChange={onChange} disabled={disabled} />}
+    </div>
+  )
+}
+
+const STG_SECTIONS = [
+  { id: 'account',       label: 'Account' },
+  { id: 'preferences',   label: 'Preferences' },
+  { id: 'ai',            label: 'AI' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'privacy',       label: 'Privacy' },
 ]
 
 function SettingsPage() {
+  const { data: session } = useSession()
+  const [me, setMe] = useState(null)
+  const [prefs, setPrefs] = useState(DEFAULT_PREFS)
+  const [saveStatus, setSaveStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
+  const [activeSection, setActiveSection] = useState('account')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [proMsg, setProMsg] = useState(null) // null | string (field name)
+  const sectionRefs = useRef({})
+  const saveTimer = useRef(null)
+  const saveStatusTimer = useRef(null)
+  const proMsgTimer = useRef(null)
+
+  // Load from localStorage immediately, then replace with server prefs once fetched
+  useEffect(() => { setPrefs(loadStoredPrefs()) }, [])
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/me', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+      fetch('/api/me/prefs', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+    ]).then(([meData, prefsData]) => {
+      if (meData?.user) setMe(meData.user)
+      if (prefsData?.prefs) {
+        const merged = { ...DEFAULT_PREFS, ...prefsData.prefs }
+        setPrefs(merged)
+        // Keep localStorage in sync as a fast local cache
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(merged)) } catch {}
+      }
+    }).catch(() => {})
+  }, [])
+
+  const persistToServer = useCallback((next) => {
+    clearTimeout(saveTimer.current)
+    clearTimeout(saveStatusTimer.current)
+    setSaveStatus('saving')
+    saveTimer.current = setTimeout(() => {
+      fetch('/api/me/prefs', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      })
+        .then(r => {
+          setSaveStatus(r.ok ? 'saved' : 'error')
+          saveStatusTimer.current = setTimeout(() => setSaveStatus(null), 2000)
+        })
+        .catch(() => {
+          setSaveStatus('error')
+          saveStatusTimer.current = setTimeout(() => setSaveStatus(null), 2000)
+        })
+    }, 600)
+  }, [])
+
+  const updatePref = useCallback((key, value) => {
+    setPrefs(prev => {
+      const next = { ...prev, [key]: value }
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(next)) } catch {}
+      persistToServer(next)
+      return next
+    })
+  }, [persistToServer])
+
+  const tryProPref = useCallback((key, value, locked) => {
+    if (locked) {
+      clearTimeout(proMsgTimer.current)
+      setProMsg(key)
+      proMsgTimer.current = setTimeout(() => setProMsg(null), 2800)
+      return
+    }
+    updatePref(key, value)
+  }, [updatePref])
+
+  const scrollTo = useCallback((id) => {
+    setActiveSection(id)
+    sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const ref = id => el => { sectionRefs.current[id] = el }
+
+  const handleSignOut = () => signOut({ callbackUrl: '/login' })
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true)
+    try {
+      const r = await fetch('/api/me', { method: 'DELETE' })
+      if (r.ok) signOut({ callbackUrl: '/login' })
+    } catch {}
+    setDeleteLoading(false)
+  }
+
+  const FREE_LIMIT = 50
+  const used = me?.usageThisMonth ?? 0
+  const remaining = Math.max(0, FREE_LIMIT - used)
+  const usagePct = Math.min(100, Math.round((used / FREE_LIMIT) * 100))
+  const lowQuota = remaining <= 5
+
+  const displayName = me?.name || session?.user?.name || 'User'
+  const email = me?.email || session?.user?.email || ''
+  const initials = (displayName).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
   return (
     <div className={s.page}>
-      <h1 className={s.pageTitle}>Settings</h1>
-      <div className={s.settingsGrid}>
-        {SETTINGS_CARDS.map(card => (
-          <div key={card.title} className={s.settingsCard}>
-            <div className={s.settingsCardIcon}><NavIcon name={card.icon} size={18} /></div>
-            <div className={s.settingsCardTitle}>{card.title}</div>
-            <div className={s.settingsCardDesc}>{card.desc}</div>
+      <div className={s.stgShell}>
+
+        {/* Left sticky nav */}
+        <nav className={s.stgNav}>
+          <div className={s.stgNavHead}>Settings</div>
+          {STG_SECTIONS.map(sec => (
+            <button
+              key={sec.id}
+              className={`${s.stgNavItem} ${activeSection === sec.id ? s.stgNavItemActive : ''}`}
+              onClick={() => scrollTo(sec.id)}
+            >
+              {sec.label}
+            </button>
+          ))}
+          {saveStatus && (
+            <div className={s.stgSaveStatus} style={{
+              color: saveStatus === 'saved' ? 'var(--sage-light)' : saveStatus === 'error' ? 'var(--terracotta)' : 'var(--text-muted)',
+            }}>
+              {saveStatus === 'saving' ? '↑ Saving…' : saveStatus === 'saved' ? '✓ Saved' : '✕ Error'}
+            </div>
+          )}
+          <div className={s.stgNavFooter}>
+            <span className={`${s.stgNavPlan} ${me?.plan === 'pro' ? s.stgNavPlanPro : ''}`}>
+              {me?.plan === 'pro' ? '★ Pro' : 'Free'}
+            </span>
+            {email && <div className={s.stgNavPlanEmail}>{email}</div>}
           </div>
-        ))}
+        </nav>
+
+        {/* Scrollable content */}
+        <div className={s.stgContent}>
+
+          {/* ── Account ── */}
+          <section ref={ref('account')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>Account</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Profile</div>
+              <div className={s.stgProfileRow}>
+                <div className={s.stgAvatar}>{initials}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className={s.stgProfileName}>{displayName}</div>
+                  <div className={s.stgProfileEmail}>{email}</div>
+                  <span className={`${s.stgPlanBadge} ${me?.plan === 'pro' ? s.stgPlanBadgePro : ''}`}>
+                    {me?.plan === 'pro' ? '★ Pro' : 'Free Plan'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Monthly Usage</div>
+              <div className={s.stgUsageRow}>
+                <span className={s.stgUsageNum} style={{ color: lowQuota ? 'var(--terracotta)' : undefined }}>
+                  {remaining}
+                </span>
+                <span className={s.stgUsageSuffix}>lookups remaining of {FREE_LIMIT} this month</span>
+              </div>
+              <div className={s.stgUsageTrack}>
+                <div
+                  className={s.stgUsageFill}
+                  style={{ width: `${usagePct}%`, background: lowQuota ? 'var(--terracotta)' : 'var(--sage)' }}
+                />
+              </div>
+              {me?.plan !== 'pro' && (
+                <div className={s.stgUpgradeHint}>Upgrade to Pro for unlimited lookups</div>
+              )}
+            </div>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Session</div>
+              <button className={s.stgActionRow} onClick={handleSignOut}>
+                <div>
+                  <div className={s.stgActionLabel}>Sign out</div>
+                  <div className={s.stgActionSub}>Sign out of Dutify on this device</div>
+                </div>
+                <span className={s.stgActionArrow}>→</span>
+              </button>
+            </div>
+          </section>
+
+          {/* ── Preferences ── */}
+          <section ref={ref('preferences')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>Preferences</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Display</div>
+              <StgField label="Currency">
+                <StgSelect value={prefs.currency} onChange={v => updatePref('currency', v)}>
+                  <option value="EUR">EUR — Euro (€)</option>
+                  <option value="USD">USD — US Dollar ($)</option>
+                  <option value="GBP">GBP — British Pound (£)</option>
+                  <option value="CHF">CHF — Swiss Franc</option>
+                  <option value="JPY">JPY — Japanese Yen (¥)</option>
+                </StgSelect>
+              </StgField>
+              <StgField label="Language">
+                <StgSelect value={prefs.language} onChange={v => updatePref('language', v)}>
+                  <option value="en">English</option>
+                  <option value="de">Deutsch</option>
+                  <option value="fr">Français</option>
+                </StgSelect>
+              </StgField>
+              <StgField label="Date Format">
+                <StgSelect value={prefs.dateFormat} onChange={v => updatePref('dateFormat', v)}>
+                  <option value="dmy-slash">DD/MM/YYYY — European</option>
+                  <option value="dmy-dot">DD.MM.YYYY</option>
+                  <option value="mdy">MM/DD/YYYY — US</option>
+                  <option value="iso">YYYY-MM-DD — ISO 8601</option>
+                </StgSelect>
+              </StgField>
+              <StgToggleRow
+                label="Confidence Scores"
+                sub="Show AI confidence percentage on classification results"
+                value={prefs.showConfidenceScores}
+                onChange={v => updatePref('showConfidenceScores', v)}
+              />
+            </div>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Calculations</div>
+              <StgField label="Default Origin Country">
+                <StgSelect value={prefs.defaultOrigin || ''} onChange={v => updatePref('defaultOrigin', v || null)}>
+                  <option value="">Not set</option>
+                  <option value="CN">China (CN)</option>
+                  <option value="US">United States (US)</option>
+                  <option value="IN">India (IN)</option>
+                  <option value="VN">Vietnam (VN)</option>
+                  <option value="GB">United Kingdom (GB)</option>
+                  <option value="CH">Switzerland (CH)</option>
+                  <option value="JP">Japan (JP)</option>
+                  <option value="KR">South Korea (KR)</option>
+                  <option value="TR">Turkey (TR)</option>
+                  <option value="BD">Bangladesh (BD)</option>
+                  <option value="DE">Germany (DE)</option>
+                </StgSelect>
+              </StgField>
+              <StgField label="Units">
+                <StgSelect value={prefs.units} onChange={v => updatePref('units', v)}>
+                  <option value="metric">Metric (kg, cm, L)</option>
+                  <option value="imperial">Imperial (lb, in, gal)</option>
+                </StgSelect>
+              </StgField>
+            </div>
+          </section>
+
+          {/* ── AI Settings ── */}
+          <section ref={ref('ai')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>AI Settings</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Classification</div>
+              <StgField label="AI Model">
+                <StgSegmented
+                  isPro={me?.plan === 'pro'}
+                  value={prefs.aiModel}
+                  onChange={(v, locked) => tryProPref('aiModel', v, locked)}
+                  options={[
+                    { value: 'haiku', label: 'Haiku' },
+                    { value: 'sonnet', label: 'Sonnet', pro: true },
+                  ]}
+                />
+                {proMsg === 'aiModel' && (
+                  <div className={s.stgProMsg}>★ Pro feature — Sonnet is available on Pro plan</div>
+                )}
+              </StgField>
+              <StgField label={`Confidence Threshold — ${prefs.confidenceThreshold}%`}>
+                <input
+                  type="range"
+                  min={50} max={99} step={5}
+                  value={prefs.confidenceThreshold}
+                  onChange={e => updatePref('confidenceThreshold', Number(e.target.value))}
+                  className={s.stgRange}
+                />
+                <div className={s.stgRangeLabels}>
+                  <span>50% — Permissive</span>
+                  <span>99% — Strict</span>
+                </div>
+              </StgField>
+              <StgField label="Explanation Detail">
+                <StgSegmented
+                  isPro={me?.plan === 'pro'}
+                  value={prefs.explanationLevel}
+                  onChange={(v, locked) => tryProPref('explanationLevel', v, locked)}
+                  options={[
+                    { value: 'short',    label: 'Short' },
+                    { value: 'medium',   label: 'Medium' },
+                    { value: 'detailed', label: 'Detailed', pro: true },
+                  ]}
+                />
+                {proMsg === 'explanationLevel' && (
+                  <div className={s.stgProMsg}>★ Pro feature — detailed WCO analysis is available on Pro plan</div>
+                )}
+              </StgField>
+              <StgToggleRow
+                label="Auto TARIC Validation"
+                sub="Automatically verify classifications against EU TARIC database"
+                value={prefs.autoTaricValidation}
+                onChange={v => updatePref('autoTaricValidation', v)}
+              />
+              <StgToggleRow
+                label="Reasoning Steps"
+                sub="Display AI thinking steps during classification"
+                value={prefs.showReasoningSteps}
+                onChange={v => updatePref('showReasoningSteps', v)}
+              />
+            </div>
+          </section>
+
+          {/* ── Notifications ── */}
+          <section ref={ref('notifications')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>Notifications</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Email</div>
+              <StgToggleRow
+                label="Email Notifications"
+                sub={`Receive updates at ${email || 'your registered address'}`}
+                value={prefs.emailNotifications}
+                onChange={v => updatePref('emailNotifications', v)}
+              />
+            </div>
+
+            <div className={s.stgCard} style={{ opacity: 0.65 }}>
+              <div className={s.stgCardLabel}>Push</div>
+              <div className={s.stgPushNote}>
+                Push notifications are available in the Dutify iOS app.
+              </div>
+            </div>
+          </section>
+
+          {/* ── Privacy ── */}
+          <section ref={ref('privacy')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>Privacy & Data</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Analytics</div>
+              <StgToggleRow
+                label="Usage Analytics"
+                sub="Share anonymous usage patterns to help improve Dutify"
+                value={prefs.dataUsageAnalytics}
+                onChange={v => updatePref('dataUsageAnalytics', v)}
+              />
+            </div>
+
+            <div className={s.stgCard} style={{ borderColor: 'rgba(196,99,74,0.3)' }}>
+              <div className={s.stgCardLabel} style={{ color: 'var(--terracotta)' }}>Danger Zone</div>
+              {!deleteConfirm ? (
+                <StgToggleRow
+                  label="Delete Account"
+                  sub="Permanently delete your account and all associated data"
+                  value={false}
+                  onChange={() => {}}
+                  customRight={
+                    <button className={s.stgDangerBtn} onClick={() => setDeleteConfirm(true)}>
+                      Delete
+                    </button>
+                  }
+                />
+              ) : (
+                <div className={s.stgDeleteConfirm}>
+                  <div className={s.stgDeleteWarning}>
+                    This will permanently delete your account, all search history, saved codes, and API tokens. This cannot be undone.
+                  </div>
+                  <div className={s.stgDeleteActions}>
+                    <button className={s.stgCancelBtn} onClick={() => setDeleteConfirm(false)}>Cancel</button>
+                    <button
+                      className={s.stgConfirmDeleteBtn}
+                      onClick={handleDeleteAccount}
+                      disabled={deleteLoading}
+                    >
+                      {deleteLoading ? 'Deleting…' : 'Yes, delete my account'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+        </div>
       </div>
     </div>
   )
@@ -1254,11 +2108,409 @@ function PlaceholderPage({ title, message }) {
   )
 }
 
+/* ── Notifications page ─────────────────────────────────────────── */
+const NOTIF_ICONS = {
+  newResults:     '✦',
+  lowConfidence:  '△',
+  billing:        '◈',
+  productUpdates: '◎',
+}
+
+const NOTIF_COLORS = {
+  newResults:     'var(--sage-light)',
+  lowConfidence:  '#FFB74D',
+  billing:        'var(--terracotta)',
+  productUpdates: '#7EA4D8',
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d}d ago`
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
+function NotificationsPage({ onUnreadChange }) {
+  const [items, setItems] = useState(null)
+  const [clearing, setClearing] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/me/notifications', { headers: { Accept: 'application/json' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setItems(d.notifications)
+          if (d.unread > 0) {
+            fetch('/api/me/notifications/read-all', { method: 'POST' })
+              .then(() => onUnreadChange?.(0))
+          } else {
+            onUnreadChange?.(0)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  async function deleteOne(id) {
+    await fetch(`/api/me/notifications/${id}`, { method: 'DELETE' })
+    setItems(prev => prev.filter(n => n.id !== id))
+  }
+
+  async function clearAll() {
+    setClearing(true)
+    await fetch('/api/me/notifications', { method: 'DELETE' })
+    setItems([])
+    setClearing(false)
+  }
+
+  const loading = items === null
+
+  return (
+    <div className={s.page}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 24 }}>
+        <h1 className={s.pageTitle} style={{ marginBottom: 0 }}>Notifications</h1>
+        {!loading && items.length > 0 && (
+          <button
+            onClick={clearAll}
+            disabled={clearing}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              color: 'var(--text-muted)', padding: '2px 0',
+            }}
+          >
+            {clearing ? 'Clearing…' : 'Clear all'}
+          </button>
+        )}
+      </div>
+
+      {loading && <div className={s.empty}>Loading…</div>}
+
+      {!loading && items.length === 0 && (
+        <div className={s.empty}>No notifications — you're all caught up.</div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 680 }}>
+          {items.map(n => {
+            const icon = NOTIF_ICONS[n.category] ?? '◎'
+            const color = NOTIF_COLORS[n.category] ?? 'var(--sage-light)'
+            return (
+              <div key={n.id} style={{
+                display: 'flex', gap: 14, alignItems: 'flex-start',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '14px 16px',
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 16, color,
+                  flexShrink: 0, lineHeight: 1.4, marginTop: 1,
+                }}>{icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>
+                    {n.title}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {n.body}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.3px' }}>
+                    {timeAgo(n.createdAt)}
+                  </span>
+                  <button
+                    onClick={() => deleteOne(n.id)}
+                    title="Dismiss"
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--text-muted)', fontSize: 16, lineHeight: 1,
+                      padding: '2px 4px', borderRadius: 4,
+                    }}
+                  >×</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Records page ────────────────────────────────────────────────── */
+function chapterHue(hsCode) {
+  const ch = parseInt(String(hsCode || '').replace(/\D/g, '').slice(0, 2) || '0', 10)
+  if (ch <= 5)  return '#5A8B6A'
+  if (ch <= 14) return '#6B8B4A'
+  if (ch <= 24) return '#8B7A4A'
+  if (ch <= 27) return '#4A5A8B'
+  if (ch <= 40) return '#8B5A4A'
+  if (ch <= 49) return '#4A7A8B'
+  if (ch <= 63) return '#7A4A8B'
+  if (ch <= 70) return '#8B6A4A'
+  if (ch <= 83) return '#7A7A3A'
+  if (ch <= 92) return '#3A7A8B'
+  return '#5A6B8B'
+}
+
+function RecordsPage({ onNavigate, onHsFound }) {
+  const [tab, setTab] = useState('saved')
+  const [savedItems, setSavedItems] = useState(null)
+  const [histItems, setHistItems] = useState(null)
+  const [modal, setModal] = useState(null) // { hsCode, description, dutyRate, confidencePct, sensitiveGoods? }
+  const [clearingHistory, setClearingHistory] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/favourites', { headers: { Accept: 'application/json' } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setSavedItems(Array.isArray(data) ? data : []))
+      .catch(() => setSavedItems([]))
+
+    fetch('/api/hs-lookup/history', { headers: { Accept: 'application/json' } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setHistItems(Array.isArray(data) ? data : []))
+      .catch(() => setHistItems([]))
+  }, [])
+
+  async function deleteFav(e, id) {
+    e.stopPropagation()
+    await fetch('/api/favourites', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    setSavedItems(prev => prev.filter(f => f.id !== id))
+    if (modal?.id === id) setModal(null)
+  }
+
+  async function deleteHistItem(id) {
+    await fetch(`/api/hs-lookup/history?id=${id}`, { method: 'DELETE' })
+    setHistItems(prev => prev.filter(h => h.id !== id))
+  }
+
+  async function clearHistory() {
+    setClearingHistory(true)
+    await fetch('/api/hs-lookup/history', { method: 'DELETE' })
+    setHistItems([])
+    setClearingHistory(false)
+  }
+
+  const savedCount = savedItems?.length ?? 0
+  const histCount = histItems?.length ?? 0
+
+  return (
+    <div className={s.page}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h1 className={s.pageTitle} style={{ marginBottom: 0 }}>Records</h1>
+        {tab === 'history' && histItems?.length > 0 && (
+          <button
+            onClick={clearHistory}
+            disabled={clearingHistory}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+            }}
+          >{clearingHistory ? 'Clearing…' : 'Clear all'}</button>
+        )}
+      </div>
+
+      <div className={s.recTabs}>
+        <button
+          className={`${s.recTab} ${tab === 'saved' ? s.recTabActive : ''}`}
+          onClick={() => setTab('saved')}
+        >
+          ★ Saved
+          {savedCount > 0 && <span className={s.recTabCount}>{savedCount}</span>}
+        </button>
+        <button
+          className={`${s.recTab} ${tab === 'history' ? s.recTabActive : ''}`}
+          onClick={() => setTab('history')}
+        >
+          ⏱ History
+          {histCount > 0 && <span className={s.recTabCount}>{histCount}</span>}
+        </button>
+      </div>
+
+      {tab === 'saved' && (
+        <>
+          {savedItems === null && <div className={s.empty}>Loading…</div>}
+          {savedItems?.length === 0 && (
+            <div className={s.empty}>No saved codes yet. Star a result on the Search page to save it here.</div>
+          )}
+          {savedItems?.length > 0 && (
+            <>
+              <div className={s.recGrid}>
+                {savedItems.map(fav => {
+                  const code = formatCn(fav.hsCode)
+                  const isSensitive = !!fav.sensitiveGoods
+                  return (
+                    <div
+                      key={fav.id}
+                      className={`${s.recTile} ${isSensitive ? s.recTileSensitive : ''}`}
+                      onClick={() => setModal({ hsCode: fav.hsCode, description: fav.description, dutyRate: fav.dutyRate, confidencePct: fav.confidencePct, sensitiveGoods: fav.sensitiveGoods })}
+                    >
+                      <button
+                        className={s.recTileDel}
+                        onClick={(e) => deleteFav(e, fav.id)}
+                        title="Remove"
+                        aria-label="Remove"
+                      >×</button>
+                      <div className={s.recTileHs}>{code}</div>
+                      <div className={s.recTileDesc}>{fav.description}</div>
+                      <div className={s.recTileFooter}>
+                        {fav.dutyRate != null && (
+                          <span className={`${s.badge} ${fav.dutyRate === 0 ? s.badgeSage : s.badgeNavy}`}>
+                            {fav.dutyRate === 0 ? 'Free' : `${fav.dutyRate}%`}
+                          </span>
+                        )}
+                        {fav.confidencePct != null && (
+                          <span className={s.badge} style={{
+                            background: fav.confidencePct >= 85 ? 'rgba(76,175,80,0.12)' : fav.confidencePct >= 65 ? 'rgba(255,183,77,0.12)' : 'rgba(239,83,80,0.12)',
+                            border: `1px solid ${fav.confidencePct >= 85 ? 'rgba(76,175,80,0.3)' : fav.confidencePct >= 65 ? 'rgba(255,183,77,0.3)' : 'rgba(239,83,80,0.3)'}`,
+                            color: fav.confidencePct >= 85 ? '#81C784' : fav.confidencePct >= 65 ? '#FFB74D' : '#EF9A9A',
+                          }}>
+                            {fav.confidencePct}%
+                          </span>
+                        )}
+                        {isSensitive && (
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--terracotta)' }}>
+                            ⚠ {fav.sensitiveGoods.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {tab === 'history' && (
+        <>
+          {histItems === null && <div className={s.empty}>Loading…</div>}
+          {histItems?.length === 0 && (
+            <div className={s.empty}>No searches yet. Classify a product on the Search page to build history.</div>
+          )}
+          {histItems?.length > 0 && (
+            <div className={s.recGrid}>
+              {histItems.map(item => {
+                const color = chapterHue(item.hs6 || item.cn8)
+                const code = formatHs(item.hs6, item.cn8)
+                return (
+                  <div
+                    key={item.id}
+                    className={s.recTile}
+                    style={{ borderLeft: `3px solid ${color}66` }}
+                    onClick={() => setModal({ hsCode: item.cn8 || item.hs6, description: item.description, dutyRate: item.dutyRate, confidencePct: item.confidencePct })}
+                  >
+                    <button
+                      className={s.recTileDel}
+                      onClick={(e) => { e.stopPropagation(); deleteHistItem(item.id) }}
+                      title="Remove"
+                      aria-label="Remove"
+                    >×</button>
+                    <div className={s.recTileHs}>{code}</div>
+                    <div className={s.recTileDesc}>{item.description}</div>
+                    <div className={s.recTileFooter}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', flex: 1 }}>
+                        {timeAgo(item.createdAt)}
+                      </span>
+                      {item.dutyRate != null && (
+                        <span className={`${s.badge} ${item.dutyRate === 0 ? s.badgeSage : s.badgeNavy}`}>
+                          {item.dutyRate === 0 ? 'Free' : `${item.dutyRate}%`}
+                        </span>
+                      )}
+                      <span className={`${s.badge} ${item.fromCache ? s.badgeCache : s.badgeSage}`}>
+                        {item.fromCache ? 'Cached' : 'Live'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Calculator overlay */}
+      {modal && (
+        <div className={s.recOverlay} onClick={() => setModal(null)}>
+          <div className={s.recOverlayCard} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div className={s.recOverlayHs}>{formatCn(modal.hsCode)}</div>
+              <button
+                onClick={() => setModal(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: '2px 4px', marginTop: 2, flexShrink: 0 }}
+              >×</button>
+            </div>
+            <div className={s.recOverlayDesc}>{modal.description}</div>
+
+            <div className={s.recOverlayBadges}>
+              {modal.dutyRate != null && (
+                <span className={`${s.badge} ${modal.dutyRate === 0 ? s.badgeSage : s.badgeNavy}`}>
+                  {modal.dutyRate === 0 ? 'Free' : `${modal.dutyRate}%`}
+                </span>
+              )}
+              {modal.confidencePct != null && (
+                <span className={s.badge} style={{
+                  background: modal.confidencePct >= 85 ? 'rgba(76,175,80,0.12)' : modal.confidencePct >= 65 ? 'rgba(255,183,77,0.12)' : 'rgba(239,83,80,0.12)',
+                  border: `1px solid ${modal.confidencePct >= 85 ? 'rgba(76,175,80,0.3)' : modal.confidencePct >= 65 ? 'rgba(255,183,77,0.3)' : 'rgba(239,83,80,0.3)'}`,
+                  color: modal.confidencePct >= 85 ? '#81C784' : modal.confidencePct >= 65 ? '#FFB74D' : '#EF9A9A',
+                }}>
+                  {modal.confidencePct}% confidence
+                </span>
+              )}
+            </div>
+
+            {modal.sensitiveGoods && (
+              <div className={s.recOverlaySensitive}>
+                <strong style={{ color: 'var(--terracotta)' }}>⚠ {modal.sensitiveGoods.category}</strong>
+                {' — '}{modal.sensitiveGoods.warning}
+              </div>
+            )}
+
+            <div className={s.recOverlayActions}>
+              <button
+                className={s.recOverlayUse}
+                onClick={() => { onHsFound?.(modal.hsCode); onNavigate?.('calculator'); setModal(null) }}
+              >
+                Use in Calculator →
+              </button>
+              <button className={s.recOverlayDismiss} onClick={() => setModal(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Root Dashboard ──────────────────────────────────────────────── */
 export default function Dashboard() {
   const { data: session } = useSession()
   const [page, setPage] = useState('search')
   const [calcHs, setCalcHs] = useState('')
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/me/notifications', { headers: { Accept: 'application/json' } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.unread != null) setUnread(d.unread) })
+      .catch(() => {})
+  }, [])
 
   const handleHsFound = useCallback(hs => {
     setCalcHs(hs)
@@ -1267,23 +2519,22 @@ export default function Dashboard() {
   const renderPage = () => {
     switch (page) {
       case 'search':      return <SearchPage onNavigate={setPage} onHsFound={handleHsFound} />
-      case 'history':     return <HistoryPage />
+      case 'records':     return <RecordsPage onNavigate={setPage} onHsFound={setCalcHs} />
       case 'calculator':  return <CalcWizard initialHs={calcHs} onHsFound={setCalcHs} />
       case 'settings':    return <SettingsPage />
-      case 'saved':       return <PlaceholderPage title="Saved" message="No saved codes yet. Star a result to save it here." />
       case 'reductions':  return <PlaceholderPage title="Reductions" message="Tariff preference schemes and suspensions — coming soon." />
-      case 'goods':       return <PlaceholderPage title="Goods Index" message="Browse the TARIC goods nomenclature — coming soon." />
+      case 'goods':       return <GoodsIndexPage />
       case 'rulings':     return <RulingsPage prefillHs={calcHs} onNavigate={setPage} />
-      case 'notifications': return <PlaceholderPage title="Notifications" message="No notifications." />
+      case 'notifications': return <NotificationsPage onUnreadChange={setUnread} />
       default:            return null
     }
   }
 
   return (
     <div className={s.shell}>
-      <Sidebar current={page} onNav={setPage} user={session?.user} />
+      <Sidebar current={page} onNav={setPage} user={session?.user} unread={unread} />
       <main className={s.main}>
-        <Topbar page={page} user={session?.user} calcHs={calcHs} />
+        <Topbar page={page} user={session?.user} calcHs={calcHs} unread={unread} onBell={() => setPage('notifications')} />
         <div className={`${s.content} ${page === 'search' ? s.contentNoScroll : ''}`}>
           {renderPage()}
         </div>

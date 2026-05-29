@@ -3,83 +3,94 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Dutify — EU customs declaration engine. AI-classified HS codes, TARIC verification, Incoterms-aware CIF, EU27 VAT lookup, FTA preference detection. Built in Luxembourg." />
-    <title>Dutify · EU Customs Declaration Engine · Luxembourg</title>
+    <meta name="description" content="Dutify — two engines on dutify.lu. Mobile: AI-classified HS codes, TARIC verification, EU27 VAT, landed cost. Excise: spirits, beer, wine, tobacco, energy. Built in Luxembourg." />
+    <title>Dutify · The Customs Almanac · Luxembourg</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Courier+Prime:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Italiana&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Bricolage+Grotesque:opsz,wght@12..96,300..700&family=Courier+Prime:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
 
     <style>
       /* ════════════════════════════════════════════════════════════════
-         DUTIFY — LANDING · CUSTOMS DECLARATION FORM AESTHETIC
-         Tokens locked to the webapp's dark sage-on-charcoal theme.
+         DUTIFY · THE CUSTOMS ALMANAC
+         Two engines, one bureau. Cream paper, ink black,
+         sage-deep for Mobile, oxblood for Excise.
+         Inspired by 1960s EU customs handbooks, port manifests,
+         and Luxembourg's bureau publications.
          ════════════════════════════════════════════════════════════════ */
       :root {
-        /* Surfaces — slightly warmer than the app charcoal so this reads
-           as "cardstock" rather than "screen". Still in the same family. */
-        --paper:        #1a1d24;
-        --paper-2:      #21252e;
-        --paper-3:      #2a2f3a;
-        --paper-edge:   #14171c;
+        /* ── PAPER · warm cream cardstock ─────────────────────── */
+        --paper:        #f1ead7;
+        --paper-2:      #e8e0c8;
+        --paper-3:      #d8ccb0;
+        --paper-edge:   #c9bc9e;
+        --paper-deep:   #b6a886;
 
-        --ink:          #ece8dc;     /* warm ivory, not pure white */
-        --ink-2:        #b8b3a3;
-        --ink-3:        #6f6c5f;
-        --ink-faint:    #4a4838;
+        /* ── INK · warm near-black ────────────────────────────── */
+        --ink:          #1a1612;
+        --ink-2:        #4a4034;
+        --ink-3:        #7a6f5c;
+        --ink-faint:    #a89c83;
 
-        --sage:         #9ca88a;
-        --sage-deep:    #7a8a6a;
-        --sage-bright:  #c1cdab;
+        /* ── SAGE-DEEP · Mobile pillar accent ─────────────────── */
+        --sage:         #2e4a3b;
+        --sage-2:       #3f6a55;
+        --sage-bright:  #5c8a72;
+        --sage-tint:    #d0d8c5;
 
-        --terracotta:   #c4634a;
-        --terracotta-2: #d8826a;
+        /* ── OXBLOOD · Excise pillar accent ───────────────────── */
+        --ox:           #7a2418;
+        --ox-2:         #a83a25;
+        --ox-bright:    #c4543e;
+        --ox-tint:      #e6d0c4;
 
-        --rule:         rgba(236, 232, 220, 0.12);
-        --rule-strong:  rgba(236, 232, 220, 0.28);
-        --rule-sage:    rgba(156, 168, 138, 0.45);
+        /* ── BRASS · gilded seal accent ───────────────────────── */
+        --brass:        #a8782c;
+        --brass-2:      #c69342;
 
-        --font-display: 'Oswald', 'Bebas Neue', 'Helvetica Neue Condensed', sans-serif;
-        --font-body:    'DM Sans', ui-sans-serif, system-ui, sans-serif;
+        /* ── RULES · ink at varying opacity ───────────────────── */
+        --rule:         rgba(26, 22, 18, 0.22);
+        --rule-soft:    rgba(26, 22, 18, 0.10);
+        --rule-strong:  rgba(26, 22, 18, 0.55);
+
+        --font-display: 'Italiana', 'Bodoni Moda', 'Didot', 'Times New Roman', serif;
+        --font-body:    'Newsreader', 'Source Serif Pro', Georgia, serif;
+        --font-sans:    'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
         --font-mono:    'Courier Prime', ui-monospace, 'Courier New', monospace;
 
-        --max:    1280px;
-        --gutter: clamp(20px, 4vw, 56px);
+        --max:    1320px;
+        --gutter: clamp(20px, 4vw, 64px);
       }
 
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-      html { scroll-behavior: smooth; color-scheme: dark; }
+      html { scroll-behavior: smooth; color-scheme: light; }
       body {
         background: var(--paper);
         color: var(--ink);
         font-family: var(--font-body);
-        font-size: 15px;
+        font-size: 16px;
         line-height: 1.55;
+        font-feature-settings: "ss01", "kern", "lnum";
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: hidden;
-        font-feature-settings: "ss01", "kern";
         position: relative;
       }
 
-      /* ── Atmospheric layers ──────────────────────────────────────
-         A subtle vignette gives the page a printed-on-cardstock feel.
-         The grain layer is an SVG turbulence overlay, fixed-position
-         so it stays steady as the user scrolls — like film grain on
-         a still photograph. */
+      /* ── ATMOSPHERE · cardstock vignette + paper grain ────── */
       body::before {
         content: "";
         position: fixed;
         inset: 0;
         background:
-          radial-gradient(120% 80% at 50% -10%, rgba(156,168,138,0.08), transparent 55%),
-          radial-gradient(80% 60% at 0% 100%, rgba(196,99,74,0.05), transparent 60%),
-          radial-gradient(70% 60% at 100% 80%, rgba(156,168,138,0.04), transparent 60%);
+          radial-gradient(120% 80% at 50% -10%, rgba(122,36,24,0.05), transparent 55%),
+          radial-gradient(80% 60% at 0% 100%, rgba(46,74,59,0.06), transparent 60%),
+          radial-gradient(70% 60% at 100% 80%, rgba(168,120,44,0.05), transparent 60%);
         pointer-events: none;
         z-index: 0;
       }
@@ -87,9 +98,9 @@
         content: "";
         position: fixed;
         inset: 0;
-        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.2 0 0 0 0 0.2 0 0 0 0 0.18 0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
-        opacity: 0.32;
-        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.16 0 0 0 0 0.12 0 0 0 0.45 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+        opacity: 0.22;
+        mix-blend-mode: multiply;
         pointer-events: none;
         z-index: 1;
       }
@@ -102,1320 +113,1738 @@
         padding: 0 var(--gutter);
       }
 
-      /* ════════════════════════════════════════════════════════════════
-         LETTERHEAD · top of the document
-         ════════════════════════════════════════════════════════════════ */
-      header.letterhead {
+      /* ════════════════════════════════════════════════════════
+         MASTHEAD · newspaper-style
+         ════════════════════════════════════════════════════════ */
+      .masthead {
         position: relative;
-        z-index: 4;
-        padding: 28px 0 18px;
+        z-index: 5;
+        padding: 22px 0 0;
+      }
+      .masthead__top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        font-family: var(--font-sans);
+        font-size: 10.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 10px;
+        gap: 18px;
+      }
+      .masthead__top span { white-space: nowrap; }
+      .masthead__top .sep { color: var(--paper-deep); padding: 0 2px; }
+      .masthead__top em { font-style: normal; color: var(--ox); font-weight: 600; }
+
+      .masthead__wordmark {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 14px 0 16px;
+        gap: 28px;
+        border-bottom: 4px double var(--ink);
+      }
+      .wordmark {
+        font-family: var(--font-display);
+        font-size: clamp(56px, 10vw, 132px);
+        line-height: 0.85;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+        display: flex;
+        align-items: flex-end;
+        gap: 0;
+      }
+      .wordmark .dot {
+        width: 10px;
+        height: 10px;
+        background: var(--ox);
+        border-radius: 50%;
+        margin: 0 0 12px 4px;
+        display: inline-block;
+      }
+      .wordmark__sub {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: clamp(18px, 2vw, 26px);
+        color: var(--ink-2);
+        padding-bottom: 14px;
+        max-width: 340px;
+        line-height: 1.15;
+        text-align: right;
+        letter-spacing: 0;
+      }
+      .wordmark__sub em {
+        font-style: italic;
+        color: var(--ox);
+      }
+
+      .masthead__nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: var(--font-sans);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        padding: 14px 0 12px;
         border-bottom: 1px solid var(--rule);
       }
-      .letterhead__inner {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: end;
-        gap: 32px;
-      }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        text-decoration: none;
-        color: inherit;
-      }
-      .brand__mark {
-        width: 38px; height: 38px;
-        border: 1.5px solid var(--sage);
-        border-radius: 4px;
-        display: grid; place-items: center;
-        background:
-          repeating-linear-gradient(45deg, transparent 0 6px, rgba(156,168,138,0.08) 6px 7px);
-        position: relative;
-      }
-      .brand__mark::after {
-        content: "";
-        position: absolute;
-        inset: 4px;
-        border: 1px dashed rgba(156,168,138,0.45);
-        border-radius: 2px;
-      }
-      .brand__mark svg { width: 18px; height: 18px; position: relative; z-index: 1; }
-      .brand__name {
-        font-family: var(--font-display);
-        font-weight: 600;
-        font-size: 26px;
-        letter-spacing: 0.02em;
-        line-height: 1;
-        text-transform: uppercase;
-      }
-      .brand__name .dot {
-        display: inline-block;
-        width: 7px; height: 7px;
-        background: var(--sage);
-        margin-left: 3px;
-        vertical-align: 4px;
-      }
-      .brand__sub {
-        display: block;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.18em;
-        color: var(--ink-3);
-        text-transform: uppercase;
-        margin-top: 3px;
-      }
-
-      .formref {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.12em;
-        color: var(--ink-2);
-        text-align: right;
-        line-height: 1.55;
-        text-transform: uppercase;
-      }
-      .formref strong { color: var(--sage-bright); font-weight: 700; }
-      .formref .row { display: flex; gap: 18px; justify-content: flex-end; }
-      .formref .row + .row { margin-top: 3px; }
-      .formref em { color: var(--ink-3); font-style: normal; }
-
-      /* Top nav row, right-aligned secondary links */
-      .topnav {
-        display: flex;
-        gap: 18px;
-        padding: 14px 0 0;
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-      }
-      .topnav a {
+      .masthead__nav nav { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+      .masthead__nav a {
         color: var(--ink-2);
         text-decoration: none;
-        padding-bottom: 2px;
-        border-bottom: 1px solid transparent;
-        transition: color 180ms, border-color 180ms;
-      }
-      .topnav a:hover { color: var(--sage); border-bottom-color: var(--sage); }
-      .topnav .spacer { flex: 1; }
-
-      /* ════════════════════════════════════════════════════════════════
-         HERO · two-column document layout
-         Left: claim + sub + actions.
-         Right: a "specimen" filled-out form card.
-         ════════════════════════════════════════════════════════════════ */
-      section.hero {
         position: relative;
-        padding: 64px 0 88px;
-        overflow: hidden;
+        transition: color .2s;
       }
-
-      /* SPECIMEN watermark behind the hero */
-      .hero::before {
-        content: "SPECIMEN";
-        position: absolute;
-        top: 30%;
-        left: 50%;
-        transform: translate(-50%, -50%) rotate(-12deg);
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: clamp(180px, 26vw, 380px);
-        color: var(--ink);
-        opacity: 0.025;
-        letter-spacing: 0.06em;
-        pointer-events: none;
-        white-space: nowrap;
-        z-index: 0;
-      }
-
-      .hero__grid {
-        display: grid;
-        grid-template-columns: 1.05fr 0.95fr;
-        gap: 64px;
-        position: relative;
-        z-index: 2;
-      }
-      @media (max-width: 1020px) {
-        .hero__grid { grid-template-columns: 1fr; gap: 56px; }
-      }
-
-      .hero__eyebrow {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.22em;
-        color: var(--sage);
-        text-transform: uppercase;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .hero__eyebrow::before {
-        content: ""; width: 28px; height: 1px; background: var(--sage);
-      }
-
-      .hero__title {
-        font-family: var(--font-display);
-        font-weight: 600;
-        font-size: clamp(48px, 6.6vw, 96px);
-        line-height: 0.92;
-        letter-spacing: -0.012em;
-        text-transform: uppercase;
-        margin-top: 22px;
-        color: var(--ink);
-      }
-      .hero__title .em {
-        color: var(--sage);
-        font-style: italic;
-        font-weight: 500;
-      }
-      .hero__title .underline {
-        display: inline-block;
-        position: relative;
-      }
-      .hero__title .underline::after {
+      .masthead__nav a:hover { color: var(--ox); }
+      .masthead__nav a::after {
         content: "";
         position: absolute;
         left: 0; right: 0;
-        bottom: 0.06em;
-        height: 6px;
-        background: var(--sage);
-        opacity: 0.35;
+        bottom: -3px;
+        height: 1px;
+        background: var(--ox);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform .25s ease;
       }
-
-      .hero__lede {
-        font-size: 17.5px;
-        line-height: 1.55;
-        color: var(--ink-2);
-        max-width: 56ch;
-        margin-top: 28px;
-        font-weight: 400;
+      .masthead__nav a:hover::after { transform: scaleX(1); }
+      .masthead__nav .signin {
+        color: var(--ink);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        border: 1px solid var(--ink);
+        padding: 6px 14px;
       }
-      .hero__lede strong { color: var(--ink); font-weight: 600; }
-
-      .hero__actions {
-        display: flex;
-        gap: 14px;
-        margin-top: 36px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        font-family: var(--font-display);
-        font-size: 14.5px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        padding: 16px 24px;
-        text-decoration: none;
-        border-radius: 0;
-        cursor: pointer;
-        border: none;
-        transition: transform 180ms, background 180ms, color 180ms, border-color 180ms;
-      }
-      .btn--primary {
-        background: var(--sage);
+      .masthead__nav .signin:hover {
+        background: var(--ink);
         color: var(--paper);
-        position: relative;
       }
-      .btn--primary::before {
-        content: "";
-        position: absolute;
-        inset: -4px;
-        border: 1px solid var(--sage);
-        opacity: 0.35;
-        pointer-events: none;
-      }
-      .btn--primary:hover { background: var(--sage-bright); transform: translate(-1px, -1px); }
-      .btn--ghost {
-        background: transparent;
-        color: var(--ink);
-        border: 1px solid var(--rule-strong);
-      }
-      .btn--ghost:hover { border-color: var(--sage); color: var(--sage); }
-      .btn .arrow {
-        display: inline-block;
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 16px;
-        transform: translateY(-1px);
-      }
+      .masthead__nav .signin::after { display: none; }
 
-      .hero__meta {
-        margin-top: 40px;
-        display: flex;
-        gap: 28px;
-        flex-wrap: wrap;
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        color: var(--ink-3);
-        text-transform: uppercase;
-        letter-spacing: 0.14em;
-      }
-      .hero__meta span { display: inline-flex; align-items: center; gap: 7px; }
-      .hero__meta .pip { width: 5px; height: 5px; background: var(--sage-deep); border-radius: 50%; }
-
-      /* ── SPECIMEN form card (right-side of hero) ─────────────────── */
-      .specimen {
-        background: var(--paper-2);
-        border: 1px solid var(--rule);
-        position: relative;
-        padding: 0;
-        font-family: var(--font-mono);
-        font-size: 12.5px;
-        line-height: 1.55;
-        box-shadow:
-          0 1px 0 rgba(0,0,0,0.4),
-          0 24px 60px -20px rgba(0,0,0,0.65);
-      }
-      /* Cut corners on the card — a subtle nod to security paper */
-      .specimen::before, .specimen::after {
-        content: "";
-        position: absolute;
-        width: 14px; height: 14px;
-        border: 1px solid var(--sage);
-        opacity: 0.5;
-      }
-      .specimen::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
-      .specimen::after  { top: -1px; right: -1px; border-left: none; border-bottom: none; }
-
-      .specimen__head {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 18px;
-        border-bottom: 1px solid var(--rule);
-        background: var(--paper-edge);
-      }
-      .specimen__title {
-        font-family: var(--font-display);
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--ink);
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-      }
-      .specimen__title em { color: var(--sage); font-style: normal; }
-      .specimen__chip {
-        font-size: 10px;
-        letter-spacing: 0.16em;
-        color: var(--sage);
-        border: 1px solid var(--rule-sage);
-        padding: 3px 8px;
-        text-transform: uppercase;
-        display: inline-flex; align-items: center; gap: 6px;
-      }
-      .specimen__chip::before {
-        content: ""; width: 5px; height: 5px; background: var(--sage); border-radius: 50%;
-        box-shadow: 0 0 0 2px rgba(156,168,138,0.2);
-        animation: livePulse 1.7s ease-in-out infinite;
-      }
-      @keyframes livePulse {
-        0%, 100% { opacity: 1; }
-        50%      { opacity: 0.4; }
-      }
-
-      .specimen__rows { padding: 6px 0; }
-      .specimen__row {
-        display: grid;
-        grid-template-columns: 110px 1fr auto;
-        align-items: baseline;
-        gap: 16px;
-        padding: 9px 18px;
-        border-bottom: 1px dotted var(--rule);
-      }
-      .specimen__row:last-child { border-bottom: none; }
-      .specimen__label {
-        font-size: 9.5px;
-        text-transform: uppercase;
-        letter-spacing: 0.18em;
-        color: var(--ink-3);
-      }
-      .specimen__label .box {
-        display: inline-block;
-        font-family: var(--font-display);
-        background: var(--paper-3);
-        color: var(--sage);
-        padding: 1px 6px;
-        margin-right: 6px;
-        font-weight: 500;
-        font-size: 10px;
-      }
-      .specimen__value { color: var(--ink); font-size: 13px; line-height: 1.4; }
-      .specimen__value em { color: var(--ink-2); font-style: normal; }
-      .specimen__amount {
-        font-weight: 700;
-        color: var(--sage-bright);
-        font-variant-numeric: tabular-nums;
-        font-size: 14px;
-      }
-      .specimen__amount .neg { color: var(--terracotta-2); }
-
-      .specimen__total {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: end;
-        gap: 16px;
-        padding: 18px 18px 20px;
-        border-top: 2px solid var(--rule-strong);
-        background: linear-gradient(180deg, transparent, rgba(156,168,138,0.05));
-      }
-      .specimen__total .lbl {
-        font-size: 10px;
-        letter-spacing: 0.22em;
-        color: var(--sage);
-        text-transform: uppercase;
-        font-family: var(--font-mono);
-      }
-      .specimen__total .val {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 38px;
-        color: var(--ink);
-        line-height: 1;
-        font-variant-numeric: tabular-nums;
-        letter-spacing: -0.01em;
-      }
-      .specimen__total .val .cur {
-        font-size: 16px;
-        color: var(--ink-3);
-        margin-right: 8px;
-        font-weight: 400;
-      }
-
-      .specimen__foot {
-        padding: 10px 18px;
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--ink-3);
-        border-top: 1px solid var(--rule);
-        background: var(--paper-edge);
-        display: flex;
-        gap: 16px;
-        justify-content: space-between;
-      }
-
-      /* Caret blink for the typing simulation */
-      .caret {
-        display: inline-block;
-        width: 7px;
-        height: 1em;
-        background: var(--sage);
-        vertical-align: -2px;
-        animation: caret 1s steps(1) infinite;
-        margin-left: 2px;
-      }
-      @keyframes caret { 50% { opacity: 0; } }
-
-      /* ════════════════════════════════════════════════════════════════
-         BOXES · capabilities formatted like SAD form sections
-         ════════════════════════════════════════════════════════════════ */
-      section.boxes { padding: 96px 0 56px; }
-      .section__head {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 24px;
-        align-items: end;
-        margin-bottom: 48px;
-        padding-bottom: 18px;
-        border-bottom: 1px solid var(--rule);
-      }
-      .section__num {
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        letter-spacing: 0.18em;
-        color: var(--sage);
-        text-transform: uppercase;
-        padding: 5px 10px;
-        border: 1px solid var(--rule-sage);
-      }
-      .section__title {
-        font-family: var(--font-display);
-        font-weight: 500;
-        font-size: clamp(34px, 4.4vw, 56px);
-        line-height: 1;
-        letter-spacing: -0.005em;
-        text-transform: uppercase;
-        color: var(--ink);
-      }
-      .section__title em { color: var(--sage); font-style: italic; font-weight: 400; }
-      .section__sub {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-        text-align: right;
-      }
-
-      .boxes__grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0;
-        border-top: 1px solid var(--rule);
-        border-left: 1px solid var(--rule);
-      }
-      @media (max-width: 720px) {
-        .boxes__grid { grid-template-columns: 1fr; }
-      }
-      .box {
-        position: relative;
-        padding: 32px 30px 36px;
-        border-right: 1px solid var(--rule);
-        border-bottom: 1px solid var(--rule);
-        transition: background 220ms;
-      }
-      .box:hover { background: rgba(156,168,138,0.03); }
-      .box__head {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
-        margin-bottom: 18px;
-      }
-      .box__num {
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.18em;
-        color: var(--sage);
-        background: var(--paper-edge);
-        padding: 3px 8px;
-        text-transform: uppercase;
-      }
-      .box__h {
-        font-family: var(--font-display);
-        font-weight: 500;
-        font-size: 22px;
-        line-height: 1.1;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        color: var(--ink);
-      }
-      .box__body {
-        font-size: 14.5px;
-        line-height: 1.6;
-        color: var(--ink-2);
-        max-width: 56ch;
-      }
-      .box__body strong { color: var(--ink); font-weight: 600; }
-      .box__details {
-        margin-top: 18px;
-        padding-top: 16px;
-        border-top: 1px dashed var(--rule);
-        display: grid;
-        gap: 6px;
-      }
-      .leader {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: baseline;
-        gap: 8px;
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        color: var(--ink-3);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .leader__lbl { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-      .leader__lbl::after {
-        content: "";
-        flex: 1;
-        border-bottom: 1px dotted var(--ink-faint);
-        margin: 0 4px;
-        transform: translateY(-3px);
-      }
-      .leader__val { color: var(--sage-bright); font-weight: 700; font-variant-numeric: tabular-nums; }
-
-      /* ════════════════════════════════════════════════════════════════
-         WIRE · live mono panel (teletype)
-         ════════════════════════════════════════════════════════════════ */
-      section.wire { padding: 56px 0 96px; }
-      .wire__panel {
-        background: #0d1015;
-        border: 1px solid var(--rule);
-        position: relative;
-        overflow: hidden;
-      }
-      .wire__panel::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: repeating-linear-gradient(
-          to bottom,
-          transparent 0px,
-          transparent 2px,
-          rgba(156,168,138,0.025) 2px,
-          rgba(156,168,138,0.025) 3px
-        );
-        pointer-events: none;
-      }
-      .wire__head {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 12px;
-        padding: 14px 22px;
-        border-bottom: 1px solid var(--rule);
-        background: rgba(0,0,0,0.25);
-        font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--ink-2);
-        position: relative;
-      }
-      .wire__head .pulse {
-        display: inline-flex; align-items: center; gap: 8px;
-        color: var(--sage);
-      }
-      .wire__head .pulse::before {
-        content: "";
-        width: 8px; height: 8px; border-radius: 50%; background: var(--sage);
-        animation: livePulse 1.4s ease-in-out infinite;
-      }
-      .wire__body {
-        padding: 24px 22px 26px;
-        font-family: var(--font-mono);
-        font-size: 13.5px;
-        line-height: 1.65;
-        color: var(--ink-2);
-        position: relative;
-      }
-      .wire__line { display: block; }
-      .wire__line .ts { color: var(--ink-3); margin-right: 14px; }
-      .wire__line .tag { color: var(--sage); margin-right: 14px; }
-      .wire__line .tag--warn { color: var(--terracotta-2); }
-      .wire__line .key { color: var(--ink); }
-      .wire__line .val { color: var(--sage-bright); font-weight: 700; }
-      .wire__line .meta { color: var(--ink-3); }
-      .wire__rule {
-        display: block;
-        color: var(--ink-faint);
-        margin: 4px 0;
-        letter-spacing: 0.04em;
-      }
-
-      /* ════════════════════════════════════════════════════════════════
-         PROCEDURE · numbered fields A → D
-         ════════════════════════════════════════════════════════════════ */
-      section.procedure { padding: 56px 0; }
-      .procedure__grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0;
-        border-top: 1px solid var(--rule);
-        border-left: 1px solid var(--rule);
-      }
-      @media (max-width: 980px) {
-        .procedure__grid { grid-template-columns: repeat(2, 1fr); }
-      }
-      @media (max-width: 540px) {
-        .procedure__grid { grid-template-columns: 1fr; }
-      }
-      .field {
-        padding: 26px 24px 32px;
-        border-right: 1px solid var(--rule);
+      /* ════════════════════════════════════════════════════════
+         HERO · editorial broadsheet
+         ════════════════════════════════════════════════════════ */
+      .hero {
+        padding: 56px 0 48px;
         border-bottom: 1px solid var(--rule);
         position: relative;
       }
-      .field__letter {
-        position: absolute;
-        top: 18px;
-        right: 18px;
-        font-family: var(--font-display);
-        font-size: 64px;
-        font-weight: 300;
-        line-height: 1;
-        color: var(--sage);
-        opacity: 0.18;
-        letter-spacing: -0.04em;
-      }
-      .field__lbl {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.22em;
-        color: var(--sage);
-        text-transform: uppercase;
-      }
-      .field__h {
-        font-family: var(--font-display);
-        font-weight: 500;
-        font-size: 22px;
-        line-height: 1.15;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        margin: 12px 0 12px;
-        color: var(--ink);
-      }
-      .field__b {
-        font-size: 14px;
-        color: var(--ink-2);
-        line-height: 1.55;
-      }
-      .field__b strong { color: var(--ink); font-weight: 600; }
-
-      /* ════════════════════════════════════════════════════════════════
-         AUTHORISATION · sign-in CTA styled as a customs form box
-         ════════════════════════════════════════════════════════════════ */
-      section.auth { padding: 88px 0; }
-      .auth__card {
-        position: relative;
-        padding: 48px 56px 52px;
-        border: 1px solid var(--rule-strong);
-        background:
-          linear-gradient(180deg, var(--paper-2), var(--paper));
-        overflow: hidden;
-      }
-      .auth__card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background-image:
-          repeating-linear-gradient(0deg, transparent 0 22px, var(--rule) 22px 23px),
-          repeating-linear-gradient(90deg, transparent 0 22px, var(--rule) 22px 23px);
-        opacity: 0.2;
-        pointer-events: none;
-      }
-      .auth__card::after {
-        content: "OFFICIAL · DUTIFY";
-        position: absolute;
-        top: 18px; right: 24px;
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.24em;
-        color: var(--terracotta);
-        opacity: 0.55;
-      }
-      .auth__inner {
-        position: relative;
+      .hero__grid {
         display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
+        grid-template-columns: 1.4fr 1fr;
         gap: 56px;
         align-items: end;
       }
       @media (max-width: 920px) {
-        .auth__inner { grid-template-columns: 1fr; gap: 36px; }
+        .hero__grid { grid-template-columns: 1fr; gap: 32px; }
       }
-      .auth__lbl {
-        font-family: var(--font-mono);
+      .hero__eyebrow {
+        font-family: var(--font-sans);
         font-size: 11px;
         letter-spacing: 0.22em;
-        color: var(--sage);
         text-transform: uppercase;
+        color: var(--ink-3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 22px;
       }
-      .auth__h {
+      .hero__eyebrow::before {
+        content: "";
+        width: 28px;
+        height: 1px;
+        background: var(--ink-2);
+      }
+      .hero__title {
         font-family: var(--font-display);
-        font-weight: 500;
-        font-size: clamp(34px, 4.6vw, 60px);
-        line-height: 0.96;
-        letter-spacing: -0.005em;
-        text-transform: uppercase;
-        margin-top: 14px;
+        font-size: clamp(56px, 9vw, 132px);
+        line-height: 0.94;
+        letter-spacing: -0.025em;
         color: var(--ink);
+        font-weight: 400;
       }
-      .auth__h em { color: var(--sage); font-style: italic; font-weight: 400; }
-      .auth__body {
-        margin-top: 18px;
-        max-width: 48ch;
+      .hero__title .one { display: block; }
+      .hero__title .two {
+        display: block;
+        font-style: italic;
         color: var(--ink-2);
-        font-size: 15.5px;
       }
+      .hero__title .two .ampersand {
+        font-family: var(--font-body);
+        font-style: italic;
+        font-weight: 300;
+        color: var(--ox);
+        padding: 0 .04em;
+      }
+      .hero__title .two .mobile { color: var(--sage); font-style: italic; }
+      .hero__title .two .excise { color: var(--ox); font-style: italic; }
 
-      .authform { display: flex; flex-direction: column; gap: 14px; }
-      .authform__row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 0;
-        background: var(--paper-edge);
-        border: 1px solid var(--rule);
-      }
-      .authform__row:focus-within { border-color: var(--sage); }
-      .authform input {
-        appearance: none;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: var(--ink);
-        font-family: var(--font-mono);
-        font-size: 15px;
-        padding: 18px 18px;
-        letter-spacing: 0.04em;
-      }
-      .authform input::placeholder { color: var(--ink-3); }
-      .authform__submit {
-        background: var(--sage);
-        color: var(--paper);
-        border: none;
-        font-family: var(--font-display);
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        padding: 0 24px;
-        cursor: pointer;
-        transition: background 180ms;
-      }
-      .authform__submit:hover { background: var(--sage-bright); }
-      .authform__hint {
+      .hero__rule {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin: 24px 0 22px;
         font-family: var(--font-mono);
         font-size: 11px;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.12em;
         color: var(--ink-3);
+      }
+      .hero__rule::before,
+      .hero__rule::after {
+        content: "";
+        height: 1px;
+        background: var(--rule);
+        flex: 1;
+      }
+
+      .hero__lede {
+        font-family: var(--font-body);
+        font-size: 17px;
+        line-height: 1.6;
+        color: var(--ink-2);
+        max-width: 60ch;
+        font-feature-settings: "onum";
+      }
+      .hero__lede strong { color: var(--ink); font-weight: 600; }
+      .hero__lede em.s { color: var(--sage); font-style: italic; font-weight: 500; }
+      .hero__lede em.x { color: var(--ox); font-style: italic; font-weight: 500; }
+
+      .hero__actions {
         display: flex;
         gap: 14px;
         flex-wrap: wrap;
+        margin-top: 28px;
       }
-      .authform__hint a { color: var(--sage); text-decoration: none; }
-      .authform__hint a:hover { color: var(--sage-bright); text-decoration: underline; }
+      .btn {
+        font-family: var(--font-sans);
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        text-decoration: none;
+        padding: 14px 22px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all .25s ease;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+        position: relative;
+      }
+      .btn .arrow { transition: transform .25s; }
+      .btn:hover .arrow { transform: translateX(4px); }
+      .btn--ink {
+        background: var(--ink);
+        color: var(--paper);
+      }
+      .btn--ink:hover { background: var(--ox); }
+      .btn--ghost {
+        background: transparent;
+        color: var(--ink);
+        border-color: var(--ink);
+      }
+      .btn--ghost:hover { background: var(--ink); color: var(--paper); }
+      .btn--sage {
+        background: var(--sage);
+        color: var(--paper);
+      }
+      .btn--sage:hover { background: var(--sage-2); }
+      .btn--ox {
+        background: var(--ox);
+        color: var(--paper);
+      }
+      .btn--ox:hover { background: var(--ox-2); }
 
-      /* ════════════════════════════════════════════════════════════════
-         FOOTER · perforated tear edge + colophon
-         ════════════════════════════════════════════════════════════════ */
-      .perforation {
-        height: 18px;
-        background:
-          radial-gradient(circle at 9px 9px, var(--paper) 4px, transparent 4.5px) 0 0 / 18px 18px,
-          var(--paper-edge);
+      /* ── HERO right · stamp + edition stack ─────────────── */
+      .hero__aside {
+        position: relative;
+        padding-left: 32px;
+        border-left: 1px solid var(--rule);
       }
-      footer.colophon {
-        background: var(--paper-edge);
-        padding: 40px 0 64px;
-        border-top: 1px solid var(--rule);
+      @media (max-width: 920px) {
+        .hero__aside { border-left: 0; padding-left: 0; }
       }
-      .colophon__grid {
-        display: grid;
-        grid-template-columns: 1.5fr 1fr 1fr 1fr;
-        gap: 36px;
+      .stamp {
+        position: relative;
+        border: 2px solid var(--ox);
+        color: var(--ox);
+        padding: 16px 22px;
+        text-align: center;
+        transform: rotate(-3.5deg);
+        max-width: 280px;
+        font-family: var(--font-sans);
+        margin: 0 0 24px;
+        background: rgba(241, 234, 215, 0.4);
       }
-      @media (max-width: 820px) {
-        .colophon__grid { grid-template-columns: repeat(2, 1fr); }
+      .stamp::before, .stamp::after {
+        content: "";
+        position: absolute;
+        left: 6px; right: 6px;
+        height: 1px;
+        background: var(--ox);
       }
-      .colophon__col h4 {
+      .stamp::before { top: 4px; }
+      .stamp::after  { bottom: 4px; }
+      .stamp__head {
+        font-size: 10px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .stamp__big {
+        font-family: var(--font-display);
+        font-size: 26px;
+        letter-spacing: 0.04em;
+        line-height: 1.1;
+        margin: 4px 0 6px;
+      }
+      .stamp__foot {
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ox-2);
+      }
+
+      .edition {
         font-family: var(--font-mono);
         font-size: 11px;
-        letter-spacing: 0.2em;
-        color: var(--sage);
-        text-transform: uppercase;
-        margin-bottom: 14px;
-      }
-      .colophon__col a, .colophon__col li {
-        display: block;
-        font-size: 13px;
+        letter-spacing: 0.08em;
         color: var(--ink-2);
-        text-decoration: none;
-        line-height: 2;
-        list-style: none;
+        line-height: 1.8;
+        border-top: 1px solid var(--rule);
+        padding-top: 18px;
       }
-      .colophon__col a:hover { color: var(--sage); }
-      .colophon__brand {
-        display: flex; align-items: center; gap: 12px;
-        margin-bottom: 14px;
+      .edition__row { display: flex; justify-content: space-between; gap: 12px; }
+      .edition__row strong { color: var(--ink); font-weight: 700; }
+      .edition__row .ox { color: var(--ox); }
+      .edition__row .sage { color: var(--sage); }
+
+      /* ════════════════════════════════════════════════════════
+         PILLARS · two products side by side
+         ════════════════════════════════════════════════════════ */
+      .pillars {
+        padding: 72px 0 56px;
+        border-bottom: 1px solid var(--rule);
       }
-      .colophon__brand .brand__name { font-size: 22px; }
-      .colophon__line {
-        font-size: 13px;
+      .pillars__head {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 40px;
+        margin-bottom: 56px;
+        align-items: start;
+      }
+      @media (max-width: 760px) {
+        .pillars__head { grid-template-columns: 1fr; gap: 16px; }
+      }
+      .pillars__num {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .pillars__title {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 64px);
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+      }
+      .pillars__title em { color: var(--ink-2); font-style: italic; }
+
+      .pillars__grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid var(--rule);
+        background: var(--paper-2);
+      }
+      @media (max-width: 920px) {
+        .pillars__grid { grid-template-columns: 1fr; }
+      }
+
+      .pillar {
+        padding: 44px 40px 40px;
+        position: relative;
+        background: var(--paper);
+      }
+      .pillar + .pillar { border-left: 1px solid var(--rule); }
+      @media (max-width: 920px) {
+        .pillar + .pillar { border-left: 0; border-top: 1px solid var(--rule); }
+      }
+      .pillar__band {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 4px;
+      }
+      .pillar--mobile .pillar__band { background: var(--sage); }
+      .pillar--excise .pillar__band { background: var(--ox); }
+
+      .pillar__corner {
+        position: absolute;
+        top: 18px;
+        right: 22px;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .pillar__corner strong { color: var(--ink); font-weight: 700; }
+
+      .pillar__num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin-top: 8px;
+      }
+      .pillar--mobile .pillar__num strong { color: var(--sage); }
+      .pillar--excise .pillar__num strong { color: var(--ox); }
+
+      .pillar__title {
+        font-family: var(--font-display);
+        font-size: clamp(40px, 5vw, 64px);
+        line-height: 0.95;
+        letter-spacing: -0.02em;
+        margin: 14px 0 6px;
+        color: var(--ink);
+      }
+      .pillar--mobile .pillar__title .accent { color: var(--sage); font-style: italic; }
+      .pillar--excise .pillar__title .accent { color: var(--ox); font-style: italic; }
+
+      .pillar__tag {
+        font-family: var(--font-body);
+        font-style: italic;
+        font-size: 18px;
+        line-height: 1.4;
         color: var(--ink-2);
         max-width: 38ch;
+        margin-bottom: 28px;
       }
-      .colophon__line strong { color: var(--ink); }
 
-      .colophon__bottom {
-        margin-top: 42px;
-        padding-top: 24px;
-        border-top: 1px solid var(--rule);
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 18px;
+      .pillar__list {
+        list-style: none;
+        font-family: var(--font-body);
+        font-size: 15.5px;
+        line-height: 1.5;
+        margin: 24px 0 28px;
+      }
+      .pillar__list li {
+        display: grid;
+        grid-template-columns: 36px 1fr auto;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px dashed var(--rule);
+        align-items: baseline;
+      }
+      .pillar__list li:last-child { border-bottom: 0; }
+      .pillar__list .ref {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.05em;
+        color: var(--ink-3);
+        padding-top: 3px;
+      }
+      .pillar__list .name { color: var(--ink); }
+      .pillar__list .meta {
         font-family: var(--font-mono);
         font-size: 11px;
-        letter-spacing: 0.14em;
+        letter-spacing: 0.08em;
         color: var(--ink-3);
         text-transform: uppercase;
       }
+      .pillar--mobile .pillar__list .meta strong { color: var(--sage); font-weight: 700; }
+      .pillar--excise .pillar__list .meta strong { color: var(--ox); font-weight: 700; }
 
-      /* ════════════════════════════════════════════════════════════════
+      .pillar__cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 32px;
+      }
+
+      /* ── PILLAR SPECIMEN cards (small previews) ─────────── */
+      .pillar__specimen {
+        background: var(--paper-2);
+        border: 1px solid var(--rule);
+        padding: 18px 20px;
+        margin: 6px 0 22px;
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        line-height: 1.7;
+        color: var(--ink-2);
+      }
+      .pillar__specimen .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .pillar__specimen .row .v { color: var(--ink); }
+      .pillar__specimen .row.total {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--rule-strong);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .pillar--mobile .pillar__specimen .total .v { color: var(--sage); }
+      .pillar--excise .pillar__specimen .total .v { color: var(--ox); }
+
+      /* ── decorative side translations ───────────────────── */
+      .pillar__multi {
+        position: absolute;
+        bottom: 18px;
+        right: 22px;
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: 12px;
+        color: var(--ink-faint);
+        text-align: right;
+        line-height: 1.5;
+      }
+
+      /* ════════════════════════════════════════════════════════
+         BUREAU SPECIMENS · full-width sample receipts
+         ════════════════════════════════════════════════════════ */
+      .bureau {
+        padding: 80px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .bureau__head {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 40px;
+        align-items: baseline;
+        margin-bottom: 40px;
+      }
+      @media (max-width: 760px) {
+        .bureau__head { grid-template-columns: 1fr; gap: 12px; }
+      }
+      .bureau__num {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .bureau__title {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 60px);
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.015em;
+      }
+      .bureau__title em { font-style: italic; color: var(--ink-2); }
+
+      .specimen {
+        background: var(--paper);
+        border: 1px solid var(--ink);
+        position: relative;
+        padding: 28px 32px 26px;
+        margin-bottom: 34px;
+      }
+      .specimen::before {
+        content: "";
+        position: absolute;
+        inset: 6px;
+        border: 1px solid var(--rule);
+        pointer-events: none;
+      }
+      .specimen--mobile { border-color: var(--sage); }
+      .specimen--excise { border-color: var(--ox); }
+
+      .specimen__corners {
+        position: absolute;
+        top: -1px; left: -1px; right: -1px; bottom: -1px;
+        pointer-events: none;
+      }
+      .specimen__corners::before,
+      .specimen__corners::after {
+        content: "";
+        position: absolute;
+        width: 16px; height: 16px;
+        border-color: var(--ink);
+        border-style: solid;
+      }
+      .specimen__corners::before {
+        top: -1px; left: -1px;
+        border-width: 1px 0 0 1px;
+      }
+      .specimen__corners::after {
+        bottom: -1px; right: -1px;
+        border-width: 0 1px 1px 0;
+      }
+
+      .specimen__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--rule);
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+      }
+      .specimen__title {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: 24px;
+        color: var(--ink);
+      }
+      .specimen__title strong {
+        font-style: normal;
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .specimen--mobile .specimen__title strong { color: var(--sage); }
+      .specimen--excise .specimen__title strong { color: var(--ox); }
+
+      .specimen__chip {
+        font-family: var(--font-sans);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        padding: 5px 10px;
+      }
+      .specimen--mobile .specimen__chip {
+        background: var(--sage); color: var(--paper);
+      }
+      .specimen--excise .specimen__chip {
+        background: var(--ox); color: var(--paper);
+      }
+
+      .specimen__rows {
+        display: grid;
+        gap: 0;
+      }
+      .specimen__row {
+        display: grid;
+        grid-template-columns: 110px 1fr auto;
+        gap: 18px;
+        padding: 11px 0;
+        border-bottom: 1px dashed var(--rule);
+        align-items: baseline;
+      }
+      .specimen__row:last-of-type { border-bottom: 0; }
+      .specimen__label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .specimen__label .box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 18px;
+        padding: 0 5px;
+        background: var(--paper-3);
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        color: var(--ink-2);
+        font-weight: 700;
+      }
+      .specimen__value {
+        font-family: var(--font-body);
+        font-size: 15px;
+        color: var(--ink);
+      }
+      .specimen__value em { color: var(--ink-2); font-style: italic; }
+      .specimen__amount {
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        color: var(--ink);
+        font-weight: 700;
+        text-align: right;
+        letter-spacing: 0.02em;
+      }
+      .specimen--mobile .specimen__row.hl .specimen__amount { color: var(--sage); }
+      .specimen--excise .specimen__row.hl .specimen__amount { color: var(--ox); }
+
+      .specimen__total {
+        margin-top: 18px;
+        padding: 18px 0 6px;
+        border-top: 2px solid var(--ink);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 16px;
+      }
+      .specimen__total .lbl {
+        font-family: var(--font-sans);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
+      .specimen__total .sub {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--ink-3);
+        margin-top: 4px;
+        letter-spacing: 0.04em;
+      }
+      .specimen__total .val {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1;
+        color: var(--ink);
+        letter-spacing: -0.01em;
+      }
+      .specimen__total .cur {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        margin-right: 10px;
+        vertical-align: 24%;
+        color: var(--ink-3);
+        letter-spacing: 0.05em;
+      }
+      .specimen--mobile .specimen__total .val { color: var(--sage); }
+      .specimen--excise .specimen__total .val { color: var(--ox); }
+
+      .specimen__foot {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--rule);
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .specimen__foot .ref { color: var(--ink-2); }
+
+      /* ════════════════════════════════════════════════════════
+         WIRE · live border ticker (kept from original DNA)
+         ════════════════════════════════════════════════════════ */
+      .wire {
+        padding: 64px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .wire__head {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 40px;
+        align-items: baseline;
+        margin-bottom: 36px;
+      }
+      @media (max-width: 760px) {
+        .wire__head { grid-template-columns: 1fr; gap: 12px; }
+      }
+      .wire__title {
+        font-family: var(--font-display);
+        font-size: clamp(32px, 4.5vw, 56px);
+        line-height: 1;
+        letter-spacing: -0.015em;
+      }
+      .wire__title em { font-style: italic; color: var(--ink-2); }
+
+      .ticker {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 18px 0;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        overflow: hidden;
+        position: relative;
+        border-top: 1px solid var(--ink);
+        border-bottom: 1px solid var(--ink);
+      }
+      .ticker::before, .ticker::after {
+        content: "";
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 80px;
+        z-index: 2;
+      }
+      .ticker::before {
+        left: 0;
+        background: linear-gradient(90deg, var(--ink), transparent);
+      }
+      .ticker::after {
+        right: 0;
+        background: linear-gradient(-90deg, var(--ink), transparent);
+      }
+      .ticker__track {
+        display: flex;
+        gap: 56px;
+        animation: ticker 60s linear infinite;
+        white-space: nowrap;
+        width: max-content;
+      }
+      .ticker__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        color: var(--paper);
+        letter-spacing: 0.05em;
+      }
+      .ticker__item .pip {
+        width: 6px; height: 6px;
+        background: var(--ox-bright);
+        border-radius: 50%;
+        flex: none;
+      }
+      .ticker__item .pip.sage { background: var(--sage-bright); }
+      .ticker__item .pip.brass { background: var(--brass-2); }
+      .ticker__item em {
+        font-style: normal;
+        color: var(--paper-deep);
+      }
+      @keyframes ticker {
+        from { transform: translateX(0); }
+        to   { transform: translateX(-50%); }
+      }
+
+      /* ════════════════════════════════════════════════════════
+         EXCISE BREAKDOWN · scope of regulated goods
+         ════════════════════════════════════════════════════════ */
+      .scope {
+        padding: 80px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .scope__head {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 40px;
+        align-items: baseline;
+        margin-bottom: 40px;
+      }
+      @media (max-width: 760px) {
+        .scope__head { grid-template-columns: 1fr; gap: 12px; }
+      }
+      .scope__title {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 60px);
+        line-height: 1;
+        letter-spacing: -0.015em;
+      }
+      .scope__title em { font-style: italic; color: var(--ox); }
+
+      .scope__sub {
+        font-family: var(--font-body);
+        font-size: 16px;
+        color: var(--ink-2);
+        max-width: 56ch;
+        line-height: 1.55;
+      }
+
+      .scope__grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+      }
+      @media (max-width: 920px) {
+        .scope__grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 560px) {
+        .scope__grid { grid-template-columns: 1fr; }
+      }
+
+      .scope__card {
+        padding: 26px 22px 24px;
+        background: var(--paper);
+        border: 1px solid var(--rule);
+        position: relative;
+        transition: all .3s ease;
+      }
+      .scope__card:hover {
+        border-color: var(--ox);
+        transform: translateY(-2px);
+      }
+      .scope__card__num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+      }
+      .scope__card__num strong { color: var(--ox); font-weight: 700; }
+      .scope__card__name {
+        font-family: var(--font-display);
+        font-size: 32px;
+        line-height: 1;
+        margin: 8px 0 14px;
+        color: var(--ink);
+        font-style: italic;
+      }
+      .scope__card__rate {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--ink-2);
+        line-height: 1.6;
+      }
+      .scope__card__rate strong {
+        color: var(--ink);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .scope__card__rate em {
+        font-style: normal;
+        color: var(--ox);
+        font-weight: 700;
+      }
+      .scope__card__cn {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        color: var(--ink-faint);
+      }
+
+      /* ════════════════════════════════════════════════════════
+         FOUNDATIONS · common ground between the two engines
+         ════════════════════════════════════════════════════════ */
+      .foundations {
+        padding: 80px 0;
+        border-bottom: 1px solid var(--rule);
+        background: var(--paper-2);
+      }
+      .foundations__head {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 40px;
+        align-items: baseline;
+        margin-bottom: 48px;
+      }
+      @media (max-width: 760px) {
+        .foundations__head { grid-template-columns: 1fr; gap: 12px; }
+      }
+      .foundations__title {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 60px);
+        line-height: 1;
+        letter-spacing: -0.015em;
+      }
+      .foundations__title em { font-style: italic; color: var(--brass); }
+
+      .foundations__grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+      }
+      @media (max-width: 800px) {
+        .foundations__grid { grid-template-columns: 1fr; }
+      }
+      .foundation {
+        padding: 32px 28px;
+        border-right: 1px solid var(--rule);
+      }
+      .foundation:last-child { border-right: 0; }
+      @media (max-width: 800px) {
+        .foundation { border-right: 0; border-bottom: 1px solid var(--rule); }
+        .foundation:last-child { border-bottom: 0; }
+      }
+      .foundation__num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--brass);
+        margin-bottom: 8px;
+      }
+      .foundation__h {
+        font-family: var(--font-display);
+        font-size: 28px;
+        line-height: 1.1;
+        margin-bottom: 10px;
+        color: var(--ink);
+      }
+      .foundation__h em { font-style: italic; color: var(--ink-2); }
+      .foundation__t {
+        font-family: var(--font-body);
+        font-size: 15px;
+        line-height: 1.55;
+        color: var(--ink-2);
+      }
+      .foundation__t strong { color: var(--ink); font-weight: 600; }
+      .foundation__seal {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px dashed var(--rule);
+      }
+      .foundation__seal::before {
+        content: "✦";
+        color: var(--brass);
+      }
+
+      /* ════════════════════════════════════════════════════════
+         AUTHORISATION · CTA
+         ════════════════════════════════════════════════════════ */
+      .auth {
+        padding: 100px 0 96px;
+        text-align: center;
+        position: relative;
+        border-bottom: 1px solid var(--rule);
+      }
+      .auth__seal {
+        display: inline-block;
+        margin-bottom: 36px;
+        position: relative;
+      }
+      .auth__seal svg {
+        width: 90px;
+        height: 90px;
+      }
+      .auth__num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        margin-bottom: 20px;
+      }
+      .auth__h {
+        font-family: var(--font-display);
+        font-size: clamp(48px, 8vw, 96px);
+        line-height: 0.95;
+        color: var(--ink);
+        letter-spacing: -0.02em;
+        margin-bottom: 18px;
+      }
+      .auth__h em { font-style: italic; color: var(--ox); }
+      .auth__sub {
+        font-family: var(--font-body);
+        font-size: 17px;
+        color: var(--ink-2);
+        max-width: 52ch;
+        margin: 0 auto 36px;
+        line-height: 1.55;
+      }
+      .auth__sub strong { color: var(--ink); font-weight: 600; }
+      .auth__actions {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 28px;
+      }
+      .auth__meta {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        color: var(--ink-3);
+        text-transform: uppercase;
+      }
+      .auth__meta span { padding: 0 14px; }
+      .auth__meta .sep { color: var(--paper-deep); }
+
+      /* ════════════════════════════════════════════════════════
+         COLOPHON · footer
+         ════════════════════════════════════════════════════════ */
+      .colophon {
+        padding: 48px 0 56px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: var(--ink-3);
+        line-height: 1.8;
+      }
+      .colophon__top {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding-bottom: 22px;
+        border-bottom: 1px solid var(--rule);
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+      }
+      .colophon__title {
+        font-family: var(--font-display);
+        font-size: 22px;
+        color: var(--ink);
+        letter-spacing: 0;
+        font-style: italic;
+      }
+      .colophon__cols {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 32px;
+      }
+      @media (max-width: 760px) {
+        .colophon__cols { grid-template-columns: 1fr 1fr; gap: 24px; }
+      }
+      .colophon h4 {
+        font-family: var(--font-sans);
+        font-size: 10.5px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--ink);
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .colophon a {
+        color: var(--ink-2);
+        text-decoration: none;
+        display: block;
+        transition: color .2s;
+      }
+      .colophon a:hover { color: var(--ox); }
+      .colophon__bottom {
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid var(--rule);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: var(--ink-3);
+      }
+      .colophon__bottom em { font-style: normal; color: var(--ox); }
+
+      /* ════════════════════════════════════════════════════════
          MOTION · scroll-revealed sections
-         ════════════════════════════════════════════════════════════════ */
+         ════════════════════════════════════════════════════════ */
       .reveal {
         opacity: 0;
-        transform: translateY(18px);
-        transition: opacity 700ms var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
-                    transform 700ms var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+        transform: translateY(14px);
+        transition:
+          opacity .85s cubic-bezier(.2,.7,.2,1),
+          transform .85s cubic-bezier(.2,.7,.2,1);
       }
-      .reveal.in { opacity: 1; transform: none; }
-      .reveal[data-stagger="1"] { transition-delay: 80ms; }
-      .reveal[data-stagger="2"] { transition-delay: 160ms; }
-      .reveal[data-stagger="3"] { transition-delay: 240ms; }
-      .reveal[data-stagger="4"] { transition-delay: 320ms; }
-
+      .reveal.is-in {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .reveal[data-stagger="1"] { transition-delay: .05s; }
+      .reveal[data-stagger="2"] { transition-delay: .15s; }
+      .reveal[data-stagger="3"] { transition-delay: .25s; }
+      .reveal[data-stagger="4"] { transition-delay: .35s; }
+      .reveal[data-stagger="5"] { transition-delay: .45s; }
+      .reveal[data-stagger="6"] { transition-delay: .55s; }
       @media (prefers-reduced-motion: reduce) {
-        .reveal, .reveal.in { opacity: 1; transform: none; transition: none; }
-        .specimen__chip::before, .wire__head .pulse::before { animation: none; }
+        .reveal, .reveal[data-stagger] {
+          opacity: 1; transform: none; transition: none;
+        }
+        .ticker__track { animation: none; }
       }
 
-      /* ── small-screen tweaks ─────────────────────────────── */
-      @media (max-width: 720px) {
-        .letterhead__inner { grid-template-columns: 1fr; gap: 16px; }
-        .formref { text-align: left; }
-        .formref .row { justify-content: flex-start; }
-        .topnav { flex-wrap: wrap; row-gap: 8px; }
-        .hero { padding: 40px 0 60px; }
-        .specimen__row { grid-template-columns: 90px 1fr auto; padding: 8px 14px; gap: 10px; }
-        .specimen__head, .specimen__total { padding-left: 14px; padding-right: 14px; }
-        .auth__card { padding: 32px 24px; }
-      }
+      /* ── tiny helpers ────────────────────────────────────── */
+      .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+      .nb { white-space: nowrap; }
+
+      /* ── selection ───────────────────────────────────────── */
+      ::selection { background: var(--ink); color: var(--paper); }
     </style>
   </head>
-
   <body>
-    <!-- ═══════════════════════════════════════════════════════════════
-         LETTERHEAD
-         ═══════════════════════════════════════════════════════════════ -->
-    <header class="letterhead">
-      <div class="wrap">
-        <div class="letterhead__inner">
-          <a class="brand" href="/">
-            <span class="brand__mark">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#9CA88A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 6h16M4 12h12M4 18h8" />
-              </svg>
-            </span>
-            <span>
-              <span class="brand__name">Dutify<span class="dot"></span></span>
-              <span class="brand__sub">EU Customs Declaration Engine</span>
-            </span>
-          </a>
+    <div class="wrap">
+      <!-- ═══════════════════════════════════════════════════════════════
+           MASTHEAD
+           ═══════════════════════════════════════════════════════════════ -->
+      <header class="masthead">
+        <div class="masthead__top">
+          <span>The Customs Almanac <span class="sep">·</span> <em>dutify.lu</em></span>
+          <span>Édition № <strong style="font-family:var(--font-mono);">CXXVII</strong> <span class="sep">·</span> Saturday, <span id="todayDate">24 V 26</span></span>
+          <span>Bureau de Luxembourg <span class="sep">·</span> EU‑27 <span class="sep">·</span> en · fr · de · lb</span>
+        </div>
 
-          <div class="formref">
-            <div class="row"><em>Form №</em> <strong>DTY-2026 / 01</strong></div>
-            <div class="row"><em>Edition</em> 04 · <em>Issued</em> <strong>Luxembourg</strong></div>
-            <div class="row"><em>Sheet</em> 01 / 04 · <em>Status</em> <strong>LIVE</strong></div>
+        <div class="masthead__wordmark">
+          <div class="wordmark" aria-label="Dutify">
+            Dutify<span class="dot" aria-hidden="true"></span>
+          </div>
+          <div class="wordmark__sub">
+            <em>Two engines.</em> One bureau.<br/>
+            Customs duty &amp; excise, <em>worked in plain sight.</em>
           </div>
         </div>
 
-        <nav class="topnav" aria-label="Primary">
-          <a href="#capabilities">Capabilities</a>
-          <a href="#wire">The Wire</a>
-          <a href="#procedure">Procedure</a>
-          <a href="#authorisation">Authorisation</a>
-          <span class="spacer"></span>
-          <a href="/login">Sign in →</a>
-        </nav>
-      </div>
-    </header>
+        <div class="masthead__nav">
+          <nav aria-label="Primary">
+            <a href="#mobile">Mobile</a>
+            <a href="#excise">Excise</a>
+            <a href="#specimens">Specimens</a>
+            <a href="#wire">The Wire</a>
+            <a href="#foundations">Foundations</a>
+          </nav>
+          <a class="signin" href="/login">Sign in →</a>
+        </div>
+      </header>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         HERO
-         ═══════════════════════════════════════════════════════════════ -->
-    <section class="hero">
-      <div class="wrap">
+      <!-- ═══════════════════════════════════════════════════════════════
+           HERO
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="hero">
         <div class="hero__grid">
           <div>
-            <span class="hero__eyebrow reveal">Box A · Statement of purpose</span>
+            <div class="hero__eyebrow reveal">Section A · Statement of purpose</div>
             <h1 class="hero__title reveal" data-stagger="1">
-              Customs duty.<br/>
-              Worked the way<br/>
-              <span class="underline">customs</span> <span class="em">would</span> work it.
+              <span class="one">Customs duty.</span>
+              <span class="one">Excise. VAT.</span>
+              <span class="two"><span class="mobile">Mobile</span> <span class="ampersand">&amp;</span> <span class="excise">Excise</span>,</span>
+              <span class="two">on one shelf.</span>
             </h1>
+
+            <div class="hero__rule reveal" data-stagger="2">
+              <span>§ A.1</span><span>The case in brief</span>
+            </div>
+
             <p class="hero__lede reveal" data-stagger="2">
-              Dutify is the customs landed-cost engine for importers and brokers across the EU.
-              <strong>AI-classified HS codes</strong> verified against TARIC.
-              <strong>Incoterms 2020</strong>-aware customs value per UCC Article 70.
-              <strong>VAT for all 27 member states</strong> from the live DG TAXUD reference.
-              Preference detection for GSP, EFTA, EPA, customs unions.
+              <strong>Dutify</strong> is the customs landed‑cost bureau for the European Union — two engines under one roof.
+              <em class="s">Mobile</em> classifies your goods to CN8/TARIC10 with AI verified against the EU reference, applies Incoterms 2020 to customs value per UCC Article 70, looks up the destination VAT across all 27 member states, and flags FTA preference where it applies.
+              <em class="x">Excise</em> calculates duty on spirits, beer, wine, intermediate products, tobacco and energy at the live rates of each member state — hectolitres of pure alcohol, °Plato, sticks, kilograms, gigajoules, whatever the schedule asks for.
               Audit trail you can hand to a broker.
             </p>
+
             <div class="hero__actions reveal" data-stagger="3">
-              <a class="btn btn--primary" href="/login">
+              <a class="btn btn--ink" href="/login">
                 Sign in <span class="arrow">→</span>
               </a>
-              <a class="btn btn--ghost" href="/register">
-                Request access <span class="arrow">↗</span>
+              <a class="btn btn--sage" href="#mobile">
+                See Mobile <span class="arrow">↘</span>
               </a>
-            </div>
-            <div class="hero__meta reveal" data-stagger="4">
-              <span><span class="pip"></span> Passwordless · email OTP</span>
-              <span><span class="pip"></span> Built in Luxembourg · serves the EU</span>
-              <span><span class="pip"></span> No card required</span>
+              <a class="btn btn--ox" href="#excise">
+                See Excise <span class="arrow">↘</span>
+              </a>
             </div>
           </div>
 
-          <!-- ── SPECIMEN form card ─────────────────────────────── -->
-          <aside class="specimen reveal" data-stagger="2" aria-label="Specimen calculation">
-            <div class="specimen__head">
-              <div class="specimen__title">Specimen · <em>Declaration extract</em></div>
-              <span class="specimen__chip">LIVE</span>
+          <aside class="hero__aside reveal" data-stagger="3" aria-label="Edition mark">
+            <div class="stamp" aria-hidden="true">
+              <div class="stamp__head">Bureau de Luxembourg</div>
+              <div class="stamp__big">VÉRIFIÉ</div>
+              <div class="stamp__foot">TARIC · LIVE · 24 · V · 26</div>
             </div>
-            <div class="specimen__rows">
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">33</span>HS code</span>
-                <span class="specimen__value">8518.30.95 — <em>Headphones, with microphone</em></span>
-                <span class="specimen__amount">CN10 ✓</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">15</span>Origin</span>
-                <span class="specimen__value">CN — Shenzhen <em>(via Antwerp)</em></span>
-                <span class="specimen__amount">→ LU</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">31</span>Incoterm</span>
-                <span class="specimen__value">FOB Shanghai · <em>add freight + insurance</em></span>
-                <span class="specimen__amount">FOB</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">42</span>Invoice</span>
-                <span class="specimen__value">Goods <em>+</em> freight <em>+</em> insurance</span>
-                <span class="specimen__amount">€&nbsp;12,400.00</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">46</span>CIF (UCC 70)</span>
-                <span class="specimen__value">Customs value at EU border</span>
-                <span class="specimen__amount">€&nbsp;13,180.00</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">36</span>Preference</span>
-                <span class="specimen__value">No FTA · MFN applies (4.7%)</span>
-                <span class="specimen__amount">MFN</span>
-              </div>
-              <div class="specimen__row">
-                <span class="specimen__label"><span class="box">47</span>Duty &amp; VAT</span>
-                <span class="specimen__value">Duty 4.7% · VAT 17.0% (LU)</span>
-                <span class="specimen__amount">€&nbsp;2,964.51</span>
-              </div>
-            </div>
-            <div class="specimen__total">
-              <div>
-                <div class="lbl">Total landed cost</div>
-                <div style="margin-top:6px; font-family:var(--font-mono); font-size:11px; color:var(--ink-3); letter-spacing:.06em;">
-                  CIF + duty + VAT + brokerage
-                </div>
-              </div>
-              <div class="val"><span class="cur">EUR</span><span id="specimen-total">16,144</span><span style="font-size:18px;color:var(--ink-3);">.51</span></div>
-            </div>
-            <div class="specimen__foot">
-              <span>Generated 14:32 · 2026.04.25</span>
-              <span>Δ vs MFN: <strong style="color:var(--sage-bright);">— ø</strong></span>
+            <div class="edition">
+              <div class="edition__row"><span>Edition</span><strong>CXXVII / 26</strong></div>
+              <div class="edition__row"><span>Pillar 01</span><span class="sage">DUTIFY · MOBILE</span></div>
+              <div class="edition__row"><span>Pillar 02</span><span class="ox">DUTIFY · EXCISE</span></div>
+              <div class="edition__row"><span>Jurisdiction</span><strong>EU‑27</strong></div>
+              <div class="edition__row"><span>Reference</span><strong>UCC Art. 70 · Dir. 2020/262</strong></div>
+              <div class="edition__row"><span>Issued</span><strong>Luxembourg, LU</strong></div>
             </div>
           </aside>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         CAPABILITIES — BOX 31 / 33 / 36 / 47
-         ═══════════════════════════════════════════════════════════════ -->
-    <section class="boxes" id="capabilities">
-      <div class="wrap">
-        <div class="section__head">
-          <div class="section__num">§ 02 · Capabilities</div>
-          <div>
-            <h2 class="section__title">Four boxes <em>that matter</em></h2>
-          </div>
-          <div></div>
-          <div class="section__sub">
-            Mapped to SAD fields<br/>
-            (Single Administrative Document)
-          </div>
+      <!-- ═══════════════════════════════════════════════════════════════
+           PILLARS — the two engines side by side
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="pillars" id="capabilities">
+        <div class="pillars__head reveal">
+          <div class="pillars__num">§ 02 · The two engines</div>
+          <h2 class="pillars__title">Mobile <em>for the eighteen tariff books.</em><br/>Excise <em>for the four schedules.</em></h2>
         </div>
 
-        <div class="boxes__grid">
-          <div class="box reveal" data-stagger="1">
-            <div class="box__head">
-              <span class="box__num">BOX 33</span>
-              <h3 class="box__h">HS Classification</h3>
-            </div>
-            <p class="box__body">
-              Describe the goods in plain English or French. Claude returns a CN10 candidate, then we round-trip it
-              against the TARIC SOAP service for verification — including a 3-level disambiguation probe when the
-              fourth digit is ambiguous. <strong>No silent guesses, no fabricated codes.</strong>
-            </p>
-            <div class="box__details">
-              <div class="leader"><span class="leader__lbl">CN10 hierarchy fetched</span><span class="leader__val">EN + FR</span></div>
-              <div class="leader"><span class="leader__lbl">USITC 4-digit gate</span><span class="leader__val">enabled</span></div>
-              <div class="leader"><span class="leader__lbl">Cache hit-rate (90d)</span><span class="leader__val">82.4%</span></div>
-            </div>
-          </div>
+        <div class="pillars__grid reveal" data-stagger="1">
+          <!-- ──── PILLAR 01 · MOBILE ──── -->
+          <article class="pillar pillar--mobile" id="mobile">
+            <div class="pillar__band" aria-hidden="true"></div>
+            <div class="pillar__corner">Pillar <strong>01</strong></div>
+            <div class="pillar__num">Engine · <strong>MOBILE</strong></div>
+            <h3 class="pillar__title">Dutify <span class="accent">Mobile</span></h3>
+            <p class="pillar__tag">Landed‑cost in the palm of your hand. Classify, value, look up VAT, detect preference — for any of EU‑27 in one pass.</p>
 
-          <div class="box reveal" data-stagger="2">
-            <div class="box__head">
-              <span class="box__num">BOX 31</span>
-              <h3 class="box__h">Incoterms 2020</h3>
+            <div class="pillar__specimen">
+              <div class="row"><span>HS</span><span class="v">8518.30.95</span></div>
+              <div class="row"><span>Origin → Destination</span><span class="v">CN → LU</span></div>
+              <div class="row"><span>Invoice (FOB)</span><span class="v">€&nbsp;12,400.00</span></div>
+              <div class="row"><span>CIF (UCC 70)</span><span class="v">€&nbsp;13,180.00</span></div>
+              <div class="row total"><span>Total landed</span><span class="v">€&nbsp;16,144.51</span></div>
             </div>
-            <p class="box__body">
-              All 11 terms, modelled correctly. The wizard knows that <strong>CIF</strong> already covers freight and
-              insurance, that <strong>EXW</strong> means you pay everything, and that <strong>DDP</strong> lets you
-              subtract post-importation costs from the customs value per UCC Article 70(2)(b).
-            </p>
-            <div class="box__details">
-              <div class="leader"><span class="leader__lbl">Terms supported</span><span class="leader__val">11 · 2020 ed.</span></div>
-              <div class="leader"><span class="leader__lbl">Auto CIF derivation</span><span class="leader__val">on</span></div>
-              <div class="leader"><span class="leader__lbl">Named-place capture</span><span class="leader__val">on</span></div>
-            </div>
-          </div>
 
-          <div class="box reveal" data-stagger="3">
-            <div class="box__head">
-              <span class="box__num">BOX 47</span>
-              <h3 class="box__h">EU27 VAT Lookup</h3>
-            </div>
-            <p class="box__body">
-              Standard, reduced, super-reduced, parking and zero rates for every EU member state — sourced from the
-              <strong>DG TAXUD VAT rates database</strong>. We hint at likely reduced-rate eligibility per HS chapter
-              (foodstuffs, books, pharmaceuticals) and surface the country's domestic notes inside the picker.
-            </p>
-            <div class="box__details">
-              <div class="leader"><span class="leader__lbl">Member states covered</span><span class="leader__val">27 / 27</span></div>
-              <div class="leader"><span class="leader__lbl">Source</span><span class="leader__val">EU TEDB</span></div>
-              <div class="leader"><span class="leader__lbl">Reduced-rate hints</span><span class="leader__val">42 chapters</span></div>
-            </div>
-          </div>
+            <ul class="pillar__list">
+              <li><span class="ref">A.1</span><span class="name">AI HS classification, verified against TARIC</span><span class="meta"><strong>CN10</strong></span></li>
+              <li><span class="ref">A.2</span><span class="name">Incoterms 2020 valuation — FOB, EXW, CIF, DDP</span><span class="meta"><strong>UCC 70</strong></span></li>
+              <li><span class="ref">A.3</span><span class="name">VAT lookup across all 27 EU member states</span><span class="meta"><strong>EU‑27</strong></span></li>
+              <li><span class="ref">A.4</span><span class="name">FTA preference detection — GSP, EFTA, EPA, unions</span><span class="meta"><strong>REX</strong></span></li>
+              <li><span class="ref">A.5</span><span class="name">Audit trail you can hand to your broker</span><span class="meta"><strong>PDF</strong></span></li>
+            </ul>
 
-          <div class="box reveal" data-stagger="4">
-            <div class="box__head">
-              <span class="box__num">BOX 36</span>
-              <h3 class="box__h">Preference Detection</h3>
+            <div class="pillar__cta">
+              <a class="btn btn--sage" href="/login">
+                Open Mobile <span class="arrow">→</span>
+              </a>
+              <a class="btn btn--ghost" href="#specimens">
+                See specimen <span class="arrow">↘</span>
+              </a>
             </div>
-            <p class="box__body">
-              We pull the live preference measures from TARIC and check the origin against every multilateral scheme:
-              <strong>GSP, GSP+, EFTA, EEA, EPA, Pan-Euro cumulation</strong> — plus the customs unions
-              (TR · A.TR, AD, SM). The wizard surfaces it as a one-tap toggle with the certificate you'll need.
-            </p>
-            <div class="box__details">
-              <div class="leader"><span class="leader__lbl">Multilateral schemes</span><span class="leader__val">12 + bilateral</span></div>
-              <div class="leader"><span class="leader__lbl">Customs unions</span><span class="leader__val">TR · AD · SM</span></div>
-              <div class="leader"><span class="leader__lbl">Refresh cadence</span><span class="leader__val">monthly</span></div>
+
+            <div class="pillar__multi" aria-hidden="true">
+              <em>FR ·</em> Coût en douane<br/>
+              <em>DE ·</em> Zollkalkulation
             </div>
-          </div>
+          </article>
+
+          <!-- ──── PILLAR 02 · EXCISE ──── -->
+          <article class="pillar pillar--excise" id="excise">
+            <div class="pillar__band" aria-hidden="true"></div>
+            <div class="pillar__corner">Pillar <strong>02</strong></div>
+            <div class="pillar__num">Engine · <strong>EXCISE</strong></div>
+            <h3 class="pillar__title">Dutify <span class="accent">Excise</span></h3>
+            <p class="pillar__tag">The schedules nobody likes: spirits, beer, wine, intermediates, tobacco, energy. Live rates for every member state, schema‑driven.</p>
+
+            <div class="pillar__specimen">
+              <div class="row"><span>HS</span><span class="v">2208.30.30 · Scotch</span></div>
+              <div class="row"><span>Vol × ABV</span><span class="v">700 L × 40 %</span></div>
+              <div class="row"><span>hl pure alcohol</span><span class="v">2.8 hl PA</span></div>
+              <div class="row"><span>LU rate</span><span class="v">€&nbsp;1,041.15 / hl PA</span></div>
+              <div class="row total"><span>Excise duty</span><span class="v">€&nbsp;2,915.22</span></div>
+            </div>
+
+            <ul class="pillar__list">
+              <li><span class="ref">B.1</span><span class="name">Spirits — hectolitres of pure alcohol, ABV</span><span class="meta"><strong>hl PA</strong></span></li>
+              <li><span class="ref">B.2</span><span class="name">Beer — by °Plato, ABV, small‑producer relief</span><span class="meta"><strong>°P</strong></span></li>
+              <li><span class="ref">B.3</span><span class="name">Wine &amp; intermediates — still, sparkling, fortified</span><span class="meta"><strong>hl</strong></span></li>
+              <li><span class="ref">B.4</span><span class="name">Tobacco — sticks, kilograms, ad valorem floors</span><span class="meta"><strong>WAP</strong></span></li>
+              <li><span class="ref">B.5</span><span class="name">Energy — petrol, diesel, kerosene, electricity</span><span class="meta"><strong>GJ</strong></span></li>
+            </ul>
+
+            <div class="pillar__cta">
+              <a class="btn btn--ox" href="/login">
+                Open Excise <span class="arrow">→</span>
+              </a>
+              <a class="btn btn--ghost" href="#scope">
+                See schedule <span class="arrow">↘</span>
+              </a>
+            </div>
+
+            <div class="pillar__multi" aria-hidden="true">
+              <em>FR ·</em> Droits d'accise<br/>
+              <em>DE ·</em> Verbrauchsteuer
+            </div>
+          </article>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         WIRE — live mono panel
-         ═══════════════════════════════════════════════════════════════ -->
-    <section class="wire" id="wire">
-      <div class="wrap">
-        <div class="section__head">
-          <div class="section__num">§ 03 · The Wire</div>
-          <div>
-            <h2 class="section__title">A teletype <em>of the EU border</em></h2>
-          </div>
-          <div></div>
-          <div class="section__sub">
-            Realistic excerpt — your live<br/>
-            data appears in the wizard
-          </div>
-        </div>
-
-        <div class="wire__panel reveal">
-          <div class="wire__head">
-            <span>DUTIFY · WIRE · 2026.04.25 14:32:08 GMT+1</span>
-            <span class="pulse">LIVE</span>
-          </div>
-          <div class="wire__body" id="wire-body">
-            <span class="wire__line"><span class="ts">14:32:01</span><span class="tag">[SYNC]</span> <span class="key">TARIC ¦ DG TAXUD pull ok</span> <span class="meta">— 311 zones · 2 621 members</span></span>
-            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
-            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">LU</span> · STD <span class="val">17.0%</span> · reduced <span class="val">8.0%</span> · super <span class="val">3.0%</span></span>
-            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">BE</span> · STD <span class="val">21.0%</span> · reduced <span class="val">6.0% / 12.0%</span></span>
-            <span class="wire__line"><span class="ts">14:32:02</span><span class="tag">[VAT ]</span> <span class="key">NL</span> · STD <span class="val">21.0%</span> · reduced <span class="val">9.0%</span></span>
-            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
-            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">CN→EU 8518.30.95</span> · MFN <span class="val">4.7%</span> · PREF <span class="val">— ø</span> <span class="meta">(GSP graduated)</span></span>
-            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">JP→EU 8703.23   </span> · MFN <span class="val">10.0%</span> · PREF <span class="val">0.0%</span> <span class="meta">(EU-Japan EPA)</span></span>
-            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">VN→EU 6109.10   </span> · MFN <span class="val">12.0%</span> · PREF <span class="val">0.0%</span> <span class="meta">(EVFTA)</span></span>
-            <span class="wire__line"><span class="ts">14:32:04</span><span class="tag">[HS  ]</span> <span class="key">TR→EU 7308.30   </span> · MFN <span class="val">— ø</span>  · CU   <span class="val">0.0%</span> <span class="meta">(A.TR certificate)</span></span>
-            <span class="wire__rule">────────────────────────────────────────────────────────────</span>
-            <span class="wire__line"><span class="ts">14:32:06</span><span class="tag">[FX  ]</span> <span class="key">ECB ref</span> · EUR/USD <span class="val">1.087</span> · EUR/CNY <span class="val">7.85</span> · EUR/GBP <span class="val">0.852</span></span>
-            <span class="wire__line"><span class="ts">14:32:07</span><span class="tag tag--warn">[CBAM]</span> <span class="key">Q2 filing window opens</span> <span class="meta">— iron, steel, aluminium, fertilisers, cement</span></span>
-            <span class="wire__line"><span class="ts">14:32:08</span><span class="tag">[OK  ]</span> <span class="key">All systems nominal · ready for declaration</span><span class="caret"></span></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         PROCEDURE
-         ═══════════════════════════════════════════════════════════════ -->
-    <section class="procedure" id="procedure">
-      <div class="wrap">
-        <div class="section__head">
-          <div class="section__num">§ 04 · Procedure</div>
-          <div>
-            <h2 class="section__title">Four fields. <em>Total in seconds.</em></h2>
-          </div>
-          <div></div>
-          <div class="section__sub">
-            From description to total<br/>
-            landed cost · audit-able
-          </div>
+      <!-- ═══════════════════════════════════════════════════════════════
+           BUREAU SPECIMENS — full sample receipts
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="bureau" id="specimens">
+        <div class="bureau__head reveal">
+          <div class="bureau__num">§ 03 · Two specimens, side by side</div>
+          <h2 class="bureau__title">What it <em>actually</em> hands back.</h2>
         </div>
 
-        <div class="procedure__grid">
-          <div class="field reveal" data-stagger="1">
-            <span class="field__letter">A</span>
-            <div class="field__lbl">Field A · Classify</div>
-            <h3 class="field__h">Describe the goods</h3>
-            <p class="field__b">
-              Plain language in EN or FR. Claude returns a candidate <strong>CN10</strong>, we round-trip
-              to TARIC for verification.
-            </p>
+        <!-- ────── MOBILE specimen ────── -->
+        <div class="specimen specimen--mobile reveal" data-stagger="1" aria-label="Mobile specimen">
+          <div class="specimen__corners" aria-hidden="true"></div>
+          <div class="specimen__head">
+            <div class="specimen__title">Specimen · <strong>Mobile</strong> · <em>Declaration extract</em></div>
+            <span class="specimen__chip">CN → LU</span>
           </div>
-          <div class="field reveal" data-stagger="2">
-            <span class="field__letter">B</span>
-            <div class="field__lbl">Field B · Origin &amp; tax</div>
-            <h3 class="field__h">Pick origin · destination</h3>
-            <p class="field__b">
-              VAT auto-suggests from <strong>EU27 TEDB</strong>. Trade-preference chips (GSP, EFTA, EPA…) appear
-              automatically for the chosen origin.
-            </p>
+          <div class="specimen__rows">
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">33</span>HS code</span>
+              <span class="specimen__value">8518.30.95 — <em>Headphones, with microphone</em></span>
+              <span class="specimen__amount">CN10 ✓</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">15</span>Origin</span>
+              <span class="specimen__value">CN — Shenzhen <em>(via Antwerp)</em></span>
+              <span class="specimen__amount">→ LU</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">31</span>Incoterm</span>
+              <span class="specimen__value">FOB Shanghai · <em>add freight + insurance</em></span>
+              <span class="specimen__amount">FOB</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">42</span>Invoice</span>
+              <span class="specimen__value">Goods <em>+</em> freight <em>+</em> insurance</span>
+              <span class="specimen__amount">€&nbsp;12,400.00</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">46</span>CIF (UCC 70)</span>
+              <span class="specimen__value">Customs value at the EU border</span>
+              <span class="specimen__amount">€&nbsp;13,180.00</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">36</span>Preference</span>
+              <span class="specimen__value">No FTA · MFN applies <em>(4.7 %)</em></span>
+              <span class="specimen__amount">MFN</span>
+            </div>
+            <div class="specimen__row hl">
+              <span class="specimen__label"><span class="box">47</span>Duty &amp; VAT</span>
+              <span class="specimen__value">Duty 4.7 % · VAT 17 % (LU)</span>
+              <span class="specimen__amount">€&nbsp;2,964.51</span>
+            </div>
           </div>
-          <div class="field reveal" data-stagger="3">
-            <span class="field__letter">C</span>
-            <div class="field__lbl">Field C · Shipping</div>
-            <h3 class="field__h">Set the Incoterm</h3>
-            <p class="field__b">
-              Freight &amp; insurance fields adapt — they <strong>dim when the term already covers them</strong>.
-              CIF is derived per UCC Art 70.
-            </p>
-          </div>
-          <div class="field reveal" data-stagger="4">
-            <span class="field__letter">D</span>
-            <div class="field__lbl">Field D · Export</div>
-            <h3 class="field__h">Sign &amp; hand off</h3>
-            <p class="field__b">
-              Print-friendly summary, JSON snapshot for downstream tooling, compliance reminders that
-              <strong>adapt to the scenario</strong> (REX, A.TR, fiscal rep).
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         AUTHORISATION (sign-in CTA)
-         ═══════════════════════════════════════════════════════════════ -->
-    <section class="auth" id="authorisation">
-      <div class="wrap">
-        <div class="auth__card reveal">
-          <div class="auth__inner">
+          <div class="specimen__total">
             <div>
-              <span class="auth__lbl">§ 05 · Authorisation</span>
-              <h2 class="auth__h">Sign in.<br/>Or <em>request</em><br/>an access code.</h2>
-              <p class="auth__body">
-                Dutify uses passwordless email OTP — enter your address, receive a one-time code,
-                and you're in. New here? Request access and we'll send the code with a short setup walkthrough.
-              </p>
+              <div class="lbl">Total landed cost</div>
+              <div class="sub">CIF + duty + VAT + brokerage</div>
             </div>
-
-            <form class="authform" action="/login" method="get" autocomplete="off">
-              <span class="auth__lbl" style="margin-bottom:6px;">Box 14 · Agent email</span>
-              <div class="authform__row">
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  spellcheck="false"
-                  placeholder="agent@company.eu"
-                  aria-label="Agent email"
-                />
-                <button type="submit" class="authform__submit">Sign in →</button>
-              </div>
-              <div class="authform__hint">
-                <span>OTP delivered in &lt; 30s</span>
-                <span>·</span>
-                <a href="/register">Don't have an account? Request access</a>
-              </div>
-            </form>
+            <div class="val"><span class="cur">EUR</span><span data-count-to="16144">0</span><span style="font-size:50%;color:var(--ink-3);">.51</span></div>
+          </div>
+          <div class="specimen__foot">
+            <span class="ref">Ref. MOB · LU · 240526‑0001</span>
+            <span>Computed in 1.2 s · TARIC live</span>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- ═══════════════════════════════════════════════════════════════
-         FOOTER
-         ═══════════════════════════════════════════════════════════════ -->
-    <div class="perforation" aria-hidden="true"></div>
-    <footer class="colophon">
-      <div class="wrap">
-        <div class="colophon__grid">
-          <div class="colophon__col">
-            <div class="colophon__brand">
-              <span class="brand__mark" style="width:32px;height:32px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#9CA88A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
-                  <path d="M4 6h16M4 12h12M4 18h8" />
-                </svg>
-              </span>
-              <span class="brand__name">Dutify<span class="dot"></span></span>
+        <!-- ────── EXCISE specimen ────── -->
+        <div class="specimen specimen--excise reveal" data-stagger="2" aria-label="Excise specimen">
+          <div class="specimen__corners" aria-hidden="true"></div>
+          <div class="specimen__head">
+            <div class="specimen__title">Specimen · <strong>Excise</strong> · <em>Spirits · Scotch whisky</em></div>
+            <span class="specimen__chip">GB → LU · TCA</span>
+          </div>
+          <div class="specimen__rows">
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">33</span>HS code</span>
+              <span class="specimen__value">2208.30.30 — <em>Whisky in containers ≤ 2 L</em></span>
+              <span class="specimen__amount">CN10 ✓</span>
             </div>
-            <p class="colophon__line">
-              <strong>Dutify S.A.R.L</strong> · Luxembourg · Built for importers and customs brokers across the
-              EU27. Reference data from DG TAXUD, ECB, and the Commission's TEDB; classifications are AI-assisted
-              and TARIC-verified — never substitutes for a binding tariff information.
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">31</span>Quantity</span>
+              <span class="specimen__value">1 000 bottles × 0.7 L</span>
+              <span class="specimen__amount">700 L</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">31</span>Strength</span>
+              <span class="specimen__value">ABV 40 % · pure alcohol</span>
+              <span class="specimen__amount">280 L PA</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">31</span>hl PA</span>
+              <span class="specimen__value">280 ÷ 100 — <em>hectolitres pure alcohol</em></span>
+              <span class="specimen__amount">2.8 hl PA</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">36</span>FTA</span>
+              <span class="specimen__value">EU‑UK TCA · customs duty 0 %</span>
+              <span class="specimen__amount">TCA</span>
+            </div>
+            <div class="specimen__row hl">
+              <span class="specimen__label"><span class="box">47</span>Excise</span>
+              <span class="specimen__value">LU spirits rate <em>€ 1 041.15 / hl PA</em></span>
+              <span class="specimen__amount">€&nbsp;2,915.22</span>
+            </div>
+            <div class="specimen__row">
+              <span class="specimen__label"><span class="box">47</span>VAT</span>
+              <span class="specimen__value">17 % LU · base = value + duty + excise</span>
+              <span class="specimen__amount">€&nbsp;4,745.59</span>
+            </div>
+          </div>
+          <div class="specimen__total">
+            <div>
+              <div class="lbl">Total landed cost</div>
+              <div class="sub">CIF + duty + excise + VAT</div>
+            </div>
+            <div class="val"><span class="cur">EUR</span><span data-count-to="32660">0</span><span style="font-size:50%;color:var(--ink-3);">.81</span></div>
+          </div>
+          <div class="specimen__foot">
+            <span class="ref">Ref. EXC · LU · 240526‑0002</span>
+            <span>€ 32.66 per bottle · ADA 2026</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           WIRE — live ticker
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="wire" id="wire">
+        <div class="wire__head reveal">
+          <div class="bureau__num">§ 04 · The wire</div>
+          <h2 class="wire__title">A teletype <em>of the EU border.</em></h2>
+        </div>
+      </section>
+    </div>
+
+    <!-- ticker is full-width — outside the wrap -->
+    <div class="ticker reveal" aria-hidden="true">
+      <div class="ticker__track">
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> CN 8518.30.95 <em>·</em> headphones <em>·</em> MFN 4.7 %</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> LU spirits <em>·</em> € 1 041.15 / hl PA</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> CN → LU <em>·</em> CIF € 13 180 <em>·</em> VAT 17 %</span>
+        <span class="ticker__item"><span class="pip brass"></span>FTA <em>·</em> EU‑UK TCA <em>·</em> 0 % duty <em>·</em> excise still due</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> DE beer <em>·</em> € 0.787 / hl × °P</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> US 8471.30 <em>·</em> laptops <em>·</em> MFN 0 %</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> FR cigarettes <em>·</em> WAP € 11.60 <em>·</em> 55 % + € 67.4</span>
+        <span class="ticker__item"><span class="pip brass"></span>VAT <em>·</em> LU 17 % <em>·</em> FR 20 % <em>·</em> DE 19 % <em>·</em> NL 21 %</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> IN 6403.99 <em>·</em> leather footwear <em>·</em> GSP eligible</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> IT wine still <em>·</em> € 0 / hl <em>·</em> sparkling € 0</span>
+        <!-- duplicate for seamless loop -->
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> CN 8518.30.95 <em>·</em> headphones <em>·</em> MFN 4.7 %</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> LU spirits <em>·</em> € 1 041.15 / hl PA</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> CN → LU <em>·</em> CIF € 13 180 <em>·</em> VAT 17 %</span>
+        <span class="ticker__item"><span class="pip brass"></span>FTA <em>·</em> EU‑UK TCA <em>·</em> 0 % duty <em>·</em> excise still due</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> DE beer <em>·</em> € 0.787 / hl × °P</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> US 8471.30 <em>·</em> laptops <em>·</em> MFN 0 %</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> FR cigarettes <em>·</em> WAP € 11.60 <em>·</em> 55 % + € 67.4</span>
+        <span class="ticker__item"><span class="pip brass"></span>VAT <em>·</em> LU 17 % <em>·</em> FR 20 % <em>·</em> DE 19 % <em>·</em> NL 21 %</span>
+        <span class="ticker__item"><span class="pip sage"></span>MOB <em>·</em> IN 6403.99 <em>·</em> leather footwear <em>·</em> GSP eligible</span>
+        <span class="ticker__item"><span class="pip"></span>EXC <em>·</em> IT wine still <em>·</em> € 0 / hl <em>·</em> sparkling € 0</span>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <!-- ═══════════════════════════════════════════════════════════════
+           EXCISE SCOPE — the schedules
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="scope" id="scope">
+        <div class="scope__head reveal">
+          <div class="bureau__num">§ 05 · Excise scope</div>
+          <h2 class="scope__title">The four schedules <em>that matter.</em></h2>
+        </div>
+        <p class="scope__sub reveal" data-stagger="1" style="margin-bottom:36px;">
+          Excise in the EU is harmonised in scope but national in rate. Dutify Excise keeps a schema for each schedule and a rate table for each member state, so you key in volume and ABV — never a euro figure.
+        </p>
+
+        <div class="scope__grid">
+          <article class="scope__card reveal" data-stagger="1">
+            <div class="scope__card__cn">CN 22</div>
+            <div class="scope__card__num">§ <strong>B.1</strong> · Alcohol</div>
+            <div class="scope__card__name">Spirits</div>
+            <div class="scope__card__rate">
+              <strong>hl PA</strong> — hectolitres pure alcohol<br/>
+              LU <em>€ 1 041.15</em> · FR <em>€ 1 866.52</em><br/>
+              DE <em>€ 1 303</em> · SE <em>€ 5 622</em>
+            </div>
+          </article>
+          <article class="scope__card reveal" data-stagger="2">
+            <div class="scope__card__cn">CN 22</div>
+            <div class="scope__card__num">§ <strong>B.2</strong> · Alcohol</div>
+            <div class="scope__card__name">Beer</div>
+            <div class="scope__card__rate">
+              <strong>hl × °P</strong> — Plato + ABV<br/>
+              LU <em>€ 0.7933</em> · DE <em>€ 0.787</em><br/>
+              FI <em>€ 38.05</em> (per hl × ABV)
+            </div>
+          </article>
+          <article class="scope__card reveal" data-stagger="3">
+            <div class="scope__card__cn">CN 22</div>
+            <div class="scope__card__num">§ <strong>B.3</strong> · Alcohol</div>
+            <div class="scope__card__name">Wine</div>
+            <div class="scope__card__rate">
+              <strong>hl</strong> — still &amp; sparkling<br/>
+              FR · IT · DE <em>€ 0 / hl</em><br/>
+              UK <em>£ 28.50</em> · SE <em>€ 270</em>
+            </div>
+          </article>
+          <article class="scope__card reveal" data-stagger="4">
+            <div class="scope__card__cn">CN 24</div>
+            <div class="scope__card__num">§ <strong>B.4</strong> · Tobacco</div>
+            <div class="scope__card__name">Tobacco</div>
+            <div class="scope__card__rate">
+              <strong>sticks · kg · WAP</strong><br/>
+              FR cigs <em>55 % WAP + € 67.4</em><br/>
+              LU cigs <em>€ 122 / 1000 + 49.7 %</em>
+            </div>
+          </article>
+          <article class="scope__card reveal" data-stagger="1" style="grid-column: span 2;">
+            <div class="scope__card__cn">CN 27 · 38</div>
+            <div class="scope__card__num">§ <strong>B.5</strong> · Energy</div>
+            <div class="scope__card__name">Energy &amp; fuels</div>
+            <div class="scope__card__rate">
+              <strong>litre · GJ · kWh</strong> — petrol, diesel, kerosene, heavy fuel oil, LPG, natural gas, coal, coke, electricity. Calorific‑value conversions baked in. Industrial &amp; commercial reductions where the directive allows.
+            </div>
+          </article>
+          <article class="scope__card reveal" data-stagger="2" style="grid-column: span 2;">
+            <div class="scope__card__cn">EU‑27</div>
+            <div class="scope__card__num">§ <strong>B.6</strong> · All states</div>
+            <div class="scope__card__name">Every member, every rate</div>
+            <div class="scope__card__rate">
+              Live tables for all 27 EU states + UK + NO + CH where excise applies on imports. Updated when the ministries update — not when a quarterly newsletter remembers to. Sourced and dated, with the schedule line cited.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           FOUNDATIONS — common ground
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="foundations" id="foundations">
+        <div class="foundations__head reveal">
+          <div class="bureau__num">§ 06 · Foundations</div>
+          <h2 class="foundations__title">What <em>both engines</em> rest on.</h2>
+        </div>
+
+        <div class="foundations__grid">
+          <div class="foundation reveal" data-stagger="1">
+            <div class="foundation__num">§ 06.1</div>
+            <div class="foundation__h">Live TARIC <em>verification</em></div>
+            <div class="foundation__t">
+              Every classification is checked against the EU's <strong>TARIC</strong> reference at lookup time. CN10 codes are probed level by level. No stale yearly snapshots — if Brussels changed it this morning, you see it this morning.
+            </div>
+            <div class="foundation__seal">Source · DG TAXUD</div>
+          </div>
+          <div class="foundation reveal" data-stagger="2">
+            <div class="foundation__num">§ 06.2</div>
+            <div class="foundation__h">UCC <em>Article 70</em></div>
+            <div class="foundation__t">
+              Customs value is the <strong>transaction value</strong>, adjusted for freight and insurance to the EU border. Dutify keeps to the Union Customs Code: no ad‑hoc add‑ons, no "we usually do it this way". The basis is cited on every receipt.
+            </div>
+            <div class="foundation__seal">Ref · UCC Reg. 952/2013</div>
+          </div>
+          <div class="foundation reveal" data-stagger="3">
+            <div class="foundation__num">§ 06.3</div>
+            <div class="foundation__h">Built in <em>Luxembourg</em></div>
+            <div class="foundation__t">
+              Luxembourg sits at a useful intersection — three borders, three languages, every fortnight a customs update. Dutify is built here, serves the whole EU, and treats every member state's schedule as a peer of the others — <strong>no centralism, no anglocentrism</strong>.
+            </div>
+            <div class="foundation__seal">Origin · LU · 2026</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           AUTHORISATION — sign in
+           ═══════════════════════════════════════════════════════════════ -->
+      <section class="auth" id="authorisation">
+        <div class="auth__seal reveal" aria-hidden="true">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <path id="circ" d="M 50,50 m -38,0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0"/>
+            </defs>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="#7a2418" stroke-width="1.2"/>
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#7a2418" stroke-width="0.6"/>
+            <circle cx="50" cy="50" r="20" fill="none" stroke="#7a2418" stroke-width="1"/>
+            <text font-family="Italiana, Bodoni, serif" font-size="9" fill="#7a2418" letter-spacing="2">
+              <textPath href="#circ" startOffset="0">DUTIFY · LUXEMBOURG · CUSTOMS · ALMANAC · </textPath>
+            </text>
+            <text x="50" y="55" text-anchor="middle" font-family="Italiana, serif" font-size="15" fill="#7a2418" letter-spacing="2">DTY</text>
+          </svg>
+        </div>
+        <div class="auth__num reveal" data-stagger="1">§ 07 · Authorisation</div>
+        <h2 class="auth__h reveal" data-stagger="2">Open the <em>almanac.</em></h2>
+        <p class="auth__sub reveal" data-stagger="3">
+          One account, both engines. Sign in by email — a code is issued, the session opens. <strong>No password</strong>, <strong>no card required</strong>. iOS app on the App Store; the web bureau at dutify.lu.
+        </p>
+        <div class="auth__actions reveal" data-stagger="4">
+          <a class="btn btn--ink" href="/login">
+            Sign in <span class="arrow">→</span>
+          </a>
+          <a class="btn btn--ox" href="/register">
+            Request access <span class="arrow">↗</span>
+          </a>
+        </div>
+        <div class="auth__meta reveal" data-stagger="5">
+          <span>Passwordless</span><span class="sep">·</span>
+          <span>Built in Luxembourg</span><span class="sep">·</span>
+          <span>EU‑27</span><span class="sep">·</span>
+          <span>iOS &amp; web</span>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════════
+           COLOPHON — footer
+           ═══════════════════════════════════════════════════════════════ -->
+      <footer class="colophon">
+        <div class="colophon__top">
+          <div class="colophon__title">Dutify · <em>The Customs Almanac</em></div>
+          <div>Set in Italiana, Newsreader, Bricolage &amp; Courier Prime. Luxembourg, 2026.</div>
+        </div>
+        <div class="colophon__cols">
+          <div>
+            <h4>The bureau</h4>
+            <p style="line-height:1.65; color: var(--ink-2);">
+              Two customs engines on dutify.lu — Mobile for landed cost, Excise for the regulated‑goods schedules. Built in Luxembourg, calibrated against EU‑27 reference data, refreshed daily.
             </p>
           </div>
-          <div class="colophon__col">
-            <h4>Engine</h4>
-            <a href="#capabilities">Capabilities</a>
-            <a href="#wire">The Wire</a>
-            <a href="#procedure">Procedure</a>
-            <a href="/login">Sign in</a>
+          <div>
+            <h4>Mobile</h4>
+            <a href="/login">Open the app →</a>
+            <a href="#mobile">Capabilities</a>
+            <a href="#specimens">Specimen</a>
+            <a href="/register">Request access</a>
           </div>
-          <div class="colophon__col">
-            <h4>Contact</h4>
-            <a href="mailto:hello@dutify.lu">hello@dutify.lu</a>
-            <a href="mailto:legal@dutify.lu">legal@dutify.lu</a>
-            <li>Maison Moderne · Luxembourg-Ville</li>
+          <div>
+            <h4>Excise</h4>
+            <a href="/login">Open the calculator →</a>
+            <a href="#excise">Capabilities</a>
+            <a href="#scope">Schedules</a>
+            <a href="#specimens">Specimen</a>
           </div>
-          <div class="colophon__col">
-            <h4>Compliance</h4>
-            <a href="#">Privacy notice</a>
-            <a href="#">Terms of service</a>
-            <a href="#">GDPR data inventory</a>
+          <div>
+            <h4>Foundations</h4>
+            <a href="#foundations">UCC Article 70</a>
+            <a href="#foundations">TARIC verification</a>
+            <a href="#wire">The wire</a>
+            <a href="/removemydata">Remove my data</a>
           </div>
         </div>
-
         <div class="colophon__bottom">
-          <span>© 2026 Dutify · Form DTY-2026 / 01 · Edition 04</span>
-          <span>Declaration of authenticity on file</span>
+          <span>© <em>MMXXVI</em> · Dutify · Luxembourg</span>
+          <span>dutify.lu</span>
+          <span>en · fr · de · lb</span>
         </div>
-      </div>
-    </footer>
+      </footer>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════════════════
-         JS · scroll reveals + auth form handoff
+         MOTION · reveal-on-scroll + total counters
          ═══════════════════════════════════════════════════════════════ -->
     <script>
-      (function () {
-        // Scroll-triggered reveals via IntersectionObserver — single
-        // observer handles every .reveal element. Each enters once.
-        var io = new IntersectionObserver(
-          function (entries) {
-            entries.forEach(function (e) {
-              if (e.isIntersecting) {
-                e.target.classList.add('in');
-                io.unobserve(e.target);
-              }
-            });
-          },
-          { rootMargin: '0px 0px -10% 0px', threshold: 0.05 }
-        );
-        document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
-
-        // Auth form: pre-fill the /login redirect with the typed email
-        // so the OTP form lands ready to submit.
-        var form = document.querySelector('.authform');
-        if (form) {
-          form.addEventListener('submit', function (ev) {
-            ev.preventDefault();
-            var email = form.querySelector('input[name="email"]').value.trim();
-            var url = '/login' + (email ? ('?email=' + encodeURIComponent(email)) : '');
-            window.location.href = url;
-          });
-        }
+      // ── Date stamp ─────────────────────────────────────────
+      (function setDate() {
+        try {
+          const months = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+          const d = new Date();
+          const day = String(d.getDate()).padStart(2,'0');
+          const m = months[d.getMonth()];
+          const y = String(d.getFullYear()).slice(-2);
+          const el = document.getElementById('todayDate');
+          if (el) el.textContent = `${day} ${m} ${y}`;
+        } catch (e) {}
       })();
+
+      // ── Reveal on scroll ───────────────────────────────────
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+      document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+      // ── Specimen total count-up ────────────────────────────
+      const countIO = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          const el = e.target;
+          const to = parseInt(el.dataset.countTo, 10);
+          if (!Number.isFinite(to)) return;
+          const dur = 1400;
+          const start = performance.now();
+          const tick = (now) => {
+            const t = Math.min(1, (now - start) / dur);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const v = Math.round(to * eased);
+            el.textContent = v.toLocaleString('en-US');
+            if (t < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          countIO.unobserve(el);
+        });
+      }, { threshold: 0.4 });
+      document.querySelectorAll('[data-count-to]').forEach(el => countIO.observe(el));
     </script>
   </body>
 </html>

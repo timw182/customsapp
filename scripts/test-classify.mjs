@@ -57,12 +57,21 @@ const INDEX_STOPWORDS = new Set([
   "product","item","items","goods","type","kind","form","new","used",
   "small","large","high","low",
 ]);
+// Kept in sync with src/app/api/hs-lookup/route.js (foldPlural + indexTokens).
+function foldPlural(t) {
+  if (t.length < 5) return t;
+  if (t.endsWith("ies")) return t.slice(0, -3) + "y";
+  if (t.endsWith("sses") || t.endsWith("xes") || t.endsWith("ches") || t.endsWith("shes")) return t.slice(0, -2);
+  if (t.endsWith("s") && !t.endsWith("ss") && !t.endsWith("us") && !t.endsWith("is")) return t.slice(0, -1);
+  return t;
+}
 function indexTokens(text) {
   if (!text) return [];
   return String(text).toLowerCase()
     .replace(/[^\p{L}\p{N}\s-]/gu, " ").split(/\s+/)
     .map((t) => t.trim().replace(/^-+|-+$/g, ""))
-    .filter((t) => t.length >= 3 && !INDEX_STOPWORDS.has(t) && !/^\d+$/.test(t));
+    .filter((t) => t.length >= 3 && !INDEX_STOPWORDS.has(t) && !/^\d+$/.test(t))
+    .map(foldPlural);
 }
 
 function narrowHeadings(attrs, description, limit = 12) {
@@ -83,7 +92,7 @@ function narrowHeadings(attrs, description, limit = 12) {
   for (const [h4, entry] of Object.entries(headings)) {
     const chapter = h4.slice(0, 2);
     const descTokens = new Set(indexTokens(entry.description));
-    const kwSet = new Set(entry.keywords || []);
+    const kwSet = new Set((entry.keywords || []).map(foldPlural));
     let score = 0;
     for (const tok of queryTokens) {
       if (descTokens.has(tok)) score += 3;
@@ -135,9 +144,94 @@ function rationaleInstruction(level) {
   return "For the 'reasoning' field: 1–2 sentences (around 250 chars) naming the chapter and the GRI/note that applies.";
 }
 
+// Kept in sync with NUMERIC_SPLIT_SUBHEADINGS in src/app/api/hs-lookup/route.js.
+const NUMERIC_SPLIT_SUBHEADINGS = {
+  "8407": [
+    ["8407.10", "Aircraft engines"],
+    ["8407.21", "Marine propulsion — outboard"],
+    ["8407.29", "Marine propulsion — other (inboard)"],
+    ["8407.31", "Vehicle propulsion engines, cylinder capacity ≤ 50 cm³"],
+    ["8407.32", "Vehicle propulsion, > 50 cm³ but ≤ 250 cm³"],
+    ["8407.33", "Vehicle propulsion, > 250 cm³ but ≤ 1 000 cm³"],
+    ["8407.34", "Vehicle propulsion, > 1 000 cm³"],
+    ["8407.90", "Other spark-ignition piston engines"],
+  ],
+  "8408": [
+    ["8408.10", "Marine propulsion engines (compression-ignition / diesel)"],
+    ["8408.20", "Engines for vehicles of Chapter 87 (diesel)"],
+    ["8408.90", "Other diesel engines"],
+  ],
+  "8411": [
+    ["8411.11", "Turbojets, thrust ≤ 25 kN"],
+    ["8411.12", "Turbojets, thrust > 25 kN"],
+    ["8411.21", "Turbopropellers, power ≤ 1 100 kW"],
+    ["8411.22", "Turbopropellers, power > 1 100 kW"],
+    ["8411.81", "Other gas turbines, power ≤ 5 000 kW"],
+    ["8411.82", "Other gas turbines, power > 5 000 kW"],
+    ["8411.91", "Parts of turbojets or turbopropellers"],
+    ["8411.99", "Parts of other gas turbines"],
+  ],
+  "8501": [
+    ["8501.10", "Motors of an output ≤ 37.5 W"],
+    ["8501.20", "Universal AC/DC motors > 37.5 W"],
+    ["8501.31", "Other DC motors / DC generators, output ≤ 750 W"],
+    ["8501.32", "Other DC motors / DC generators, > 750 W but ≤ 75 kW"],
+    ["8501.33", "Other DC motors / DC generators, > 75 kW but ≤ 375 kW"],
+    ["8501.34", "Other DC motors / DC generators, > 375 kW"],
+    ["8501.40", "Other AC single-phase motors"],
+    ["8501.51", "Other AC multi-phase motors, output ≤ 750 W"],
+    ["8501.52", "Other AC multi-phase motors, > 750 W but ≤ 75 kW"],
+    ["8501.53", "Other AC multi-phase motors, > 75 kW"],
+    ["8501.61", "AC generators (alternators), ≤ 75 kVA"],
+    ["8501.62", "AC generators, > 75 kVA but ≤ 375 kVA"],
+    ["8501.63", "AC generators, > 375 kVA but ≤ 750 kVA"],
+    ["8501.64", "AC generators, > 750 kVA"],
+    ["8501.71", "Photovoltaic DC generators, output ≤ 50 W"],
+    ["8501.72", "Photovoltaic DC generators, > 50 W"],
+    ["8501.80", "Photovoltaic AC generators"],
+  ],
+  "8504": [
+    ["8504.10", "Ballasts for discharge lamps or tubes"],
+    ["8504.21", "Liquid-dielectric transformers, ≤ 650 kVA"],
+    ["8504.22", "Liquid-dielectric transformers, > 650 kVA but ≤ 10 000 kVA"],
+    ["8504.23", "Liquid-dielectric transformers, > 10 000 kVA"],
+    ["8504.31", "Other transformers, ≤ 1 kVA"],
+    ["8504.32", "Other transformers, > 1 kVA but ≤ 16 kVA"],
+    ["8504.33", "Other transformers, > 16 kVA but ≤ 500 kVA"],
+    ["8504.34", "Other transformers, > 500 kVA"],
+    ["8504.40", "Static converters (rectifiers, inverters, UPS)"],
+    ["8504.50", "Other inductors"],
+    ["8504.90", "Parts"],
+  ],
+  "8507": [
+    ["8507.10", "Lead-acid, of a kind used for starting piston engines"],
+    ["8507.20", "Other lead-acid accumulators"],
+    ["8507.30", "Nickel-cadmium accumulators"],
+    ["8507.50", "Nickel-metal hydride accumulators"],
+    ["8507.60", "Lithium-ion accumulators"],
+    ["8507.80", "Other accumulators (e.g. lithium-iron-phosphate)"],
+    ["8507.90", "Parts"],
+  ],
+  "8711": [
+    ["8711.10", "With reciprocating internal-combustion piston engine, cylinder capacity ≤ 50 cm³"],
+    ["8711.20", "Piston engine, > 50 cm³ but ≤ 250 cm³"],
+    ["8711.30", "Piston engine, > 250 cm³ but ≤ 500 cm³"],
+    ["8711.40", "Piston engine, > 500 cm³ but ≤ 800 cm³"],
+    ["8711.50", "Piston engine, > 800 cm³"],
+    ["8711.60", "With electric motor for propulsion (incl. e-bikes and electric motorcycles)"],
+    ["8711.90", "Other (incl. side-cars)"],
+  ],
+};
+
 function formatCandidatesBlock(candidates) {
   if (!candidates?.length) return "(no narrowed candidates — pick freely from valid HS 2022 headings.)";
-  return candidates.map((c) => `- ${c.heading}: ${c.description}`).join("\n");
+  return candidates.map((c) => {
+    const base = `- ${c.heading}: ${c.description}`;
+    const subs = NUMERIC_SPLIT_SUBHEADINGS[c.heading];
+    if (!subs) return base;
+    const subLines = subs.map(([code, desc]) => `    ${code} — ${desc}`).join("\n");
+    return `${base}\n  Subheadings (HS 2022):\n${subLines}`;
+  }).join("\n");
 }
 function formatAttributesBlock(attrs) {
   if (!attrs) return "(none)";

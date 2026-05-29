@@ -28,7 +28,7 @@ export async function requireUser(req) {
     prisma.apiToken
       .update({ where: { id: tokenRow.id }, data: { lastUsedAt: new Date() } })
       .catch(() => {});
-    return { user: tokenRow.user, userId: tokenRow.userId, via: "token" };
+    return { user: tokenRow.user, userId: tokenRow.userId, tokenId: tokenRow.id, via: "token" };
   }
 
   const session = await auth();
@@ -79,6 +79,22 @@ export async function issueToken({ userId, name, expiresAt = null }) {
 export async function revokeToken(id) {
   return prisma.apiToken.update({
     where: { id },
+    data: { revokedAt: new Date() },
+  });
+}
+
+/**
+ * Revoke all of a user's live tokens, optionally keeping one (e.g. the session
+ * that is performing a password change). Used after credential changes so a
+ * stolen/old token can't outlive the password it was issued under.
+ */
+export async function revokeUserTokens(userId, exceptId = null) {
+  return prisma.apiToken.updateMany({
+    where: {
+      userId,
+      revokedAt: null,
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+    },
     data: { revokedAt: new Date() },
   });
 }

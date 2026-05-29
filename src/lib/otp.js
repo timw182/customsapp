@@ -1,5 +1,8 @@
-// Email OTP helpers — generation, hashing, rate limiting, cleanup.
+// Email-code helpers — generation, hashing, rate limiting, cleanup.
 // Plaintext codes are never stored: only the bcrypt hash lives in the DB.
+// Codes are scoped by `purpose` ("verify_email" after signup, "reset_password"
+// for forgot-password) so a code issued for one flow can't be replayed in the
+// other.
 
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -11,13 +14,25 @@ export const CODE_TTL_MS = 10 * 60 * 1000;
 /** Max failed `verify` attempts before a code self-destructs. */
 export const MAX_ATTEMPTS = 5;
 
-/** Rate limit windows for `/request-code`. */
+/** Rate limit windows for code-issuing endpoints. */
 export const RATE_LIMITS = {
   perEmailPerMinute: 1,
   perEmailPerHour: 5,
   perIpPerMinute: 3,
   perIpPerHour: 20,
 };
+
+/** Allowed `purpose` values. Anything else throws — fail loud on a typo. */
+export const CODE_PURPOSES = Object.freeze({
+  VERIFY_EMAIL: "verify_email",
+  RESET_PASSWORD: "reset_password",
+});
+
+function assertPurpose(purpose) {
+  if (purpose !== CODE_PURPOSES.VERIFY_EMAIL && purpose !== CODE_PURPOSES.RESET_PASSWORD) {
+    throw new Error(`Unknown OTP purpose: ${purpose}`);
+  }
+}
 
 /** RFC-ish email regex — permissive enough for real-world addresses, strict enough to reject garbage. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -84,14 +99,16 @@ export async function checkRateLimit({ email, ip }) {
   return { ok: true };
 }
 
-/** Create, persist, and return the plaintext of a fresh OTP for this email. */
-export async function issueCode({ email, ip }) {
+/** Create, persist, and return the plaintext of a fresh code for this email + purpose. */
+export async function issueCode({ email, ip, purpose = CODE_PURPOSES.VERIFY_EMAIL }) {
+  assertPurpose(purpose);
   const plaintext = generateCode();
   const codeHash = await hashCode(plaintext);
   const row = await prisma.otpCode.create({
     data: {
       email,
       codeHash,
+      purpose,
       expiresAt: new Date(Date.now() + CODE_TTL_MS),
       ip: ip ?? null,
     },
@@ -100,13 +117,15 @@ export async function issueCode({ email, ip }) {
 }
 
 /**
- * Find the latest unconsumed, non-expired code for this email.
+ * Find the latest unconsumed, non-expired code for this email + purpose.
  * Returns the OtpCode row or null.
  */
-export async function latestActiveCode(email) {
+export async function latestActiveCode(email, purpose = CODE_PURPOSES.VERIFY_EMAIL) {
+  assertPurpose(purpose);
   return prisma.otpCode.findFirst({
     where: {
       email,
+      purpose,
       consumedAt: null,
       expiresAt: { gt: new Date() },
     },

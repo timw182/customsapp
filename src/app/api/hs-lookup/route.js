@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { requireUser } from "@/lib/apiAuth";
+import { FREE_SONNET_LIMIT } from "@/lib/limits";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendPushToUser } from "@/lib/push";
@@ -52,6 +53,15 @@ const classifySchema = z.object({
   // When false, skip the TARIC SOAP verification + sibling probe entirely.
   // Results are faster but marked `taricVerified: false`. Defaults to true.
   autoTaricValidation: z.boolean().optional(),
+  // Marks this call as a re-classify after the user picked a disambiguation
+  // pill on the previous result. Skips the "ask the user" branch on low
+  // confidence — they've already disambiguated — and escalates to Opus as
+  // last resort instead. Prevents an infinite question loop.
+  disambiguated: z.boolean().optional(),
+  // When false, skip writing an hsSearchHistory row for this call. Set by the
+  // mobile app when a user re-opens an existing history entry so the lookup
+  // isn't duplicated in their history. Cache writes still happen. Defaults true.
+  recordHistory: z.boolean().optional(),
 });
 
 const rateSchema = z.object({
@@ -194,7 +204,7 @@ function buildSensitiveGoods(hs6, bestMatch) {
 // Returns the best-fit CN10 code (or null on failure).
 // Groups by CN8 within CN6 so the model sees both the subheading category
 // (CN6) and the specific CN8 subdivision, then picks the right CN10.
-async function pickCn8FromSiblings(description, siblings, priorReasoning = "", model = "claude-haiku-4-5-20251001") {
+async function pickCn8FromSiblings(description, siblings, priorReasoning = "", model = "claude-haiku-4-5-20251001", attrs = null) {
   if (!Array.isArray(siblings) || siblings.length === 0) return null;
   if (siblings.length === 1) return siblings[0].cn10;
   // Group siblings by CN6 prefix so the model can see the 6-digit subheading
@@ -235,13 +245,31 @@ async function pickCn8FromSiblings(description, siblings, priorReasoning = "", m
     "3. Pick the CN10 entry whose CN8 subgroup AND description best fit the product.\n\n" +
     "The CN10 descriptions (e.g. 'Other', 'Containing rice') describe distinctions WITHIN a " +
     "CN8 subgroup — always resolve CN6 then CN8 meaning first (steps 1-2).\n\n" +
+    "NUMERIC THRESHOLDS: When CN8/CN10 descriptions split a subheading by a numeric threshold " +
+    "(e.g. thrust in kN, power in kW, displacement in cm³, weight in kg, ash %, thickness in µm), " +
+    "match the threshold against the product's stated specs. If specs are not stated but the product " +
+    "is a named model whose rating is well-known (e.g. GE GEnx ≈ 300–340 kN thrust, Tesla Model 3 ≈ 75 kWh battery, " +
+    "Pratt & Whitney PW1100G ≈ 110 kN), use that knowledge — do NOT default to the first or smallest bucket. " +
+    "If you genuinely cannot determine which numeric bucket applies, prefer the most common/representative " +
+    "rating for that product class, not the lowest.\n\n" +
+    "MIXTURES / ASSORTMENTS: If the product description indicates a mixture, blend, assortment, medley, " +
+    "or 'several different / mixed / varied' members of the heading (e.g. 'frozen mixed vegetables', " +
+    "'assorted dried fruit', 'spice mix'), and one of the CN6/CN8 subgroups is named 'Mixtures of …' " +
+    "(e.g. 0710 90 'Mixtures of vegetables', 0813 50 'Mixtures of nuts or dried fruits', 0910 91 " +
+    "'Mixtures of spices'), prefer the named mixture subgroup over a generic 'Other vegetables/fruits/etc' " +
+    "subgroup. Never collapse a true multi-kind mixture into a single-kind subheading (e.g. 'Olives') just " +
+    "because that single-kind subheading happens to come first in the candidate list.\n\n" +
     'Output raw JSON only: {"cn10":"ten-digit string"}. The answer MUST be one of the candidates listed.';
 
+  const specsBlock = attrs?.attributes?.specs
+    ? `\nKnown specs: ${attrs.attributes.specs}\n`
+    : "";
+  const kindBlock = attrs?.kind ? `\nProduct kind: ${attrs.kind}` : "";
   const reasoningBlock = priorReasoning
     ? `\nPrior analysis: ${priorReasoning}\n`
     : "";
   const user =
-    `Product: ${description}${reasoningBlock}\n\n` +
+    `Product: ${description}${kindBlock}${specsBlock}${reasoningBlock}\n\n` +
     `Candidate CN10 codes (grouped CN6 → CN8 → CN10):\n${list}\n\n` +
     `Return only the JSON object.`;
 
@@ -573,6 +601,68 @@ async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
   }
 }
 
+// Cheap "find any declarable CN10 under this HS6" probe used to enrich the
+// model's alternative subheadings (which the LLM only returns at hs6 level).
+// Strategy: try hs6+"0000" first (single SOAP call covers the common case),
+// then fan out to the 10 CN8 children in parallel, then to CN10 children of
+// any non-declarable CN8. Returns null if TARIC has nothing declarable under
+// the heading — caller falls back to displaying hs6 alone.
+async function findFirstDeclarableCn10(hs6) {
+  const h6 = String(hs6 ?? "").replace(/\D/g, "").slice(0, 6);
+  if (h6.length !== 6) return null;
+
+  async function probe(code10) {
+    try {
+      const resp = await fetch(TARIC_SOAP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/xml; charset=UTF-8", SOAPAction: '""' },
+        body: makeSoap("goodsDescrForWs", { goodsCode: code10, languageCode: "en" }),
+        signal: AbortSignal.timeout(6000),
+      });
+      const xml = await resp.text();
+      if (xml.includes("<faultstring>")) return null;
+      const description = xmlText(xml, "description");
+      if (!description) return null;
+      const declarable = xmlText(xml, "declarable") === "true";
+      return { code10, declarable, description };
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    // Step 1: base CN10 (hs6 + "0000") — many subheadings are declarable here.
+    const base = h6 + "0000";
+    const baseRes = await probe(base);
+    if (baseRes?.declarable) return base;
+
+    // Step 2: probe the 10 CN8 children in parallel.
+    const cn8Codes = Array.from({ length: 10 }, (_, i) =>
+      h6 + String(i * 10).padStart(2, "0") + "00",
+    );
+    const cn8Results = await Promise.all(cn8Codes.map(probe));
+    for (let i = 0; i < cn8Results.length; i++) {
+      if (cn8Results[i]?.declarable) return cn8Codes[i];
+    }
+
+    // Step 3: for non-declarable CN8 parents, probe their CN10 children.
+    for (let i = 0; i < cn8Results.length; i++) {
+      if (!cn8Results[i] || cn8Results[i].declarable) continue;
+      const cn8 = cn8Codes[i].slice(0, 8);
+      const cn10Codes = Array.from({ length: 10 }, (_, j) =>
+        cn8 + String(j * 10).padStart(2, "0"),
+      );
+      const cn10Results = await Promise.all(cn10Codes.map(probe));
+      for (let j = 0; j < cn10Results.length; j++) {
+        if (cn10Results[j]?.declarable) return cn10Codes[j];
+      }
+    }
+  } catch {
+    // Network-level failure — caller treats null as "no enrichment available"
+  }
+  return null;
+}
+
 // ── Heading-keyword index (deterministic narrowing) ──────────────────────────
 //
 // Loaded once at module init from data/heading-index.json (built by
@@ -606,6 +696,26 @@ const INDEX_STOPWORDS = new Set([
   "small","large","high","low",
 ]);
 
+// Conservative plural→singular folding so query "motorcycle" matches a heading
+// keyword bag built from "motorcycles". Applied at both ends (query + bag) so
+// the result is symmetric regardless of which side came pluralised. Only fires
+// for tokens of length ≥ 5 and skips known false-positive suffixes (ss, us, is)
+// to keep "glass", "gas", "axis" from being mangled.
+function foldPlural(t) {
+  if (t.length < 5) return t;
+  if (t.endsWith("ies")) return t.slice(0, -3) + "y";          // batteries → battery
+  if (
+    t.endsWith("sses") ||                                       // classes → class
+    t.endsWith("xes") ||                                        // boxes → box
+    t.endsWith("ches") ||                                       // watches → watch
+    t.endsWith("shes")                                          // dishes → dish
+  ) return t.slice(0, -2);
+  if (t.endsWith("s") && !t.endsWith("ss") && !t.endsWith("us") && !t.endsWith("is")) {
+    return t.slice(0, -1);                                      // motorcycles → motorcycle
+  }
+  return t;
+}
+
 function indexTokens(text) {
   if (!text) return [];
   return String(text)
@@ -613,7 +723,8 @@ function indexTokens(text) {
     .replace(/[^\p{L}\p{N}\s-]/gu, " ")
     .split(/\s+/)
     .map((t) => t.trim().replace(/^-+|-+$/g, ""))
-    .filter((t) => t.length >= 3 && !INDEX_STOPWORDS.has(t) && !/^\d+$/.test(t));
+    .filter((t) => t.length >= 3 && !INDEX_STOPWORDS.has(t) && !/^\d+$/.test(t))
+    .map(foldPlural);
 }
 
 /**
@@ -660,7 +771,10 @@ function narrowHeadings(attrs, description, limit = 12) {
     if (h4.endsWith("00")) continue;
     const chapter = h4.slice(0, 2);
     const descTokens = new Set(indexTokens(entry.description));
-    const kwSet = new Set(entry.keywords || []);
+    // Fold stored keywords on read so existing index files (built before
+    // foldPlural existed) still match folded query tokens. Once the index is
+    // rebuilt this is a cheap no-op since stored keywords will already be folded.
+    const kwSet = new Set((entry.keywords || []).map(foldPlural));
 
     let score = 0;
     for (const tok of queryTokens) {
@@ -768,6 +882,7 @@ const HAIKU_EXTRACT_SYSTEM = `You are a product attribute extractor for EU custo
 
 Output raw JSON only, no markdown:
 {
+  "correctedQuery": "<the description rewritten with obvious spelling/typo mistakes in ordinary product words corrected (e.g. 'bycicle'→'bicycle', 'aluminium tyre'→'aluminium tyre'). PRESERVE brand names, model numbers, units, part codes and unfamiliar technical/material terms EXACTLY as written. Do not expand abbreviations, add words, or change meaning. If nothing needs fixing, repeat the description verbatim.>",
   "kind": "<short noun phrase: what is this thing? e.g. 'turbojet engine', 'cotton t-shirt', 'lithium iron phosphate cathode powder'>",
   "material": "<dominant material(s), lowercase, comma-separated for blends — e.g. 'aluminium', '60% cotton, 40% polyester'>",
   "function": "<what it does or its primary purpose>",
@@ -783,6 +898,7 @@ Output raw JSON only, no markdown:
 }
 
 Rules:
+- "correctedQuery": fix ONLY clear misspellings of common product words. Never touch brand names, model numbers, units, codes, or technical/material terms you don't recognise — copy them through unchanged. When in doubt, leave the word as-is. This is spell-correction, not rewriting.
 - DO NOT output an HS code, heading number, or subheading. Your job is attribute extraction.
 - Be specific and discriminating. "alloy steel structural beam" > "metal part". Avoid generic adjectives.
 - For "keywords": pick terms that distinguish this product within the HS nomenclature (materials, forms, technical specs, functional descriptors). Skip generic words like "product", "item", brand names.
@@ -835,6 +951,17 @@ CLASSIFICATION RULE CHANGES — these affect the correct 6-digit heading, not ju
    - Mixtures of halogenated ethylene/propylene derivatives → 2903 or 3824 depending on composition and use
    Do NOT classify these as ethane derivatives.
 
+3. MIXTURES / ASSORTMENTS OF MULTIPLE KINDS within one heading (GRI 3(b) and named subheadings):
+   When the product is a mixture, blend, assortment, medley, or "several different / mixed / varied" members of the same heading, and that heading has a dedicated "Mixtures of …" subheading, the mixture subheading wins over the generic "Other" subheading. Do not collapse a true mixture into an "other" residual when a named mixture subheading exists. Examples:
+   - Frozen mixed vegetables (peas + carrots + corn + …) → 0710 90 (Mixtures of vegetables), NOT 0710 80 (Other vegetables)
+   - Mixed dried vegetables → 0712 90 (incl. mixtures of dried vegetables)
+   - Mixed dried fruits / mixed nuts → 0813 50 (Mixtures of nuts or dried fruits)
+   - Mixed frozen fruit → 0811 90 (Other — includes mixtures); check 0811 subheading notes
+   - Mixed prepared/preserved vegetables → 2004 90 (frozen) / 2005 99 (not frozen)
+   - Curry / mixed spices / spice blends → 0910 91 (Mixtures of spices)
+   - Muesli (mixed cereals + fruit + nuts) → 1904 10 / 1904 20 depending on form
+   Rule of thumb: if the user says "mixed", "mixture", "assorted", "variety", "medley", "several different", or lists multiple sibling products from one heading, pick the named mixture subheading first.
+
 When classifying CN 2026 product types in the list above, note in your reasoning that a dedicated CN 2026 subheading exists at the 8-digit level (TARIC will resolve it). Classify to the correct 6-digit HS subheading.
 
 PROCESS:
@@ -855,6 +982,7 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
   "heading": "4-digit heading (e.g. 8807)",
   "confidence": "high | medium",
   "confidencePct": <integer 60-99>,
+  "shortLabel": "2-3 word product label (e.g. 'Wireless headphones', 'Portable computer', 'Cotton t-shirt'). Title-case the first word; keep it concrete and visual — a user scanning a list of past lookups should recognise the product at a glance.",
   "reasoning": "Authoritative reasoning citing: (1) which GRI applies (GRI 1–6) and why, (2) the relevant Chapter Note or Section Note by number (e.g. 'Chapter 61 Note 3 excludes...'), (3) the WCO Explanatory Note for the heading/subheading (e.g. 'EN 6203 covers...'), (4) any applicable EU BTI reference or CJEU ruling. If a CN 2026 dedicated subheading exists for this product, state it explicitly. Be specific — quote the rule, do not just name it.",
   "chapter": "HS chapter name",
   "notes": "any ambiguity, assumptions, or CN 2026 subheading notes",
@@ -939,6 +1067,7 @@ CRITICAL PRIORITY RULES:
 // ── Pipeline stage helpers ────────────────────────────────────────────────────
 
 const EMPTY_ATTRS = Object.freeze({
+  correctedQuery: "",
   kind: "", material: "", function: "", endUse: "",
   attributes: { form: "", processing: "", powered: "", specs: "" },
   keywords: [], likelyChapters: [],
@@ -958,6 +1087,7 @@ async function extractAttributes(description) {
       500,
     );
     return {
+      correctedQuery: String(raw?.correctedQuery ?? "").slice(0, 500),
       kind: String(raw?.kind ?? "").slice(0, 200),
       material: String(raw?.material ?? "").slice(0, 200),
       function: String(raw?.function ?? "").slice(0, 300),
@@ -980,12 +1110,136 @@ async function extractAttributes(description) {
   }
 }
 
+// 6-digit subheading structure for headings the model has historically
+// hallucinated. Each entry maps a 4-digit heading → an ordered list of its
+// CN6 children with a one-line summary. Sonnet otherwise has to recall e.g.
+// the cm³ ladder under 8711 from training data, and gets it wrong (cf.
+// "2000 cc motorcycle" → 871160 instead of 871150). Surfacing the structure
+// in-prompt anchors the pick. Keep entries terse — these multiply token cost
+// for every classify call where the heading is shortlisted.
+const NUMERIC_SPLIT_SUBHEADINGS = {
+  "8407": [
+    ["8407.10", "Aircraft engines"],
+    ["8407.21", "Marine propulsion — outboard"],
+    ["8407.29", "Marine propulsion — other (inboard)"],
+    ["8407.31", "Vehicle propulsion engines, cylinder capacity ≤ 50 cm³"],
+    ["8407.32", "Vehicle propulsion, > 50 cm³ but ≤ 250 cm³"],
+    ["8407.33", "Vehicle propulsion, > 250 cm³ but ≤ 1 000 cm³"],
+    ["8407.34", "Vehicle propulsion, > 1 000 cm³"],
+    ["8407.90", "Other spark-ignition piston engines"],
+  ],
+  "8408": [
+    ["8408.10", "Marine propulsion engines (compression-ignition / diesel)"],
+    ["8408.20", "Engines for vehicles of Chapter 87 (diesel)"],
+    ["8408.90", "Other diesel engines"],
+  ],
+  "8411": [
+    ["8411.11", "Turbojets, thrust ≤ 25 kN"],
+    ["8411.12", "Turbojets, thrust > 25 kN"],
+    ["8411.21", "Turbopropellers, power ≤ 1 100 kW"],
+    ["8411.22", "Turbopropellers, power > 1 100 kW"],
+    ["8411.81", "Other gas turbines, power ≤ 5 000 kW"],
+    ["8411.82", "Other gas turbines, power > 5 000 kW"],
+    ["8411.91", "Parts of turbojets or turbopropellers"],
+    ["8411.99", "Parts of other gas turbines"],
+  ],
+  "8501": [
+    ["8501.10", "Motors of an output ≤ 37.5 W"],
+    ["8501.20", "Universal AC/DC motors > 37.5 W"],
+    ["8501.31", "Other DC motors / DC generators, output ≤ 750 W"],
+    ["8501.32", "Other DC motors / DC generators, > 750 W but ≤ 75 kW"],
+    ["8501.33", "Other DC motors / DC generators, > 75 kW but ≤ 375 kW"],
+    ["8501.34", "Other DC motors / DC generators, > 375 kW"],
+    ["8501.40", "Other AC single-phase motors"],
+    ["8501.51", "Other AC multi-phase motors, output ≤ 750 W"],
+    ["8501.52", "Other AC multi-phase motors, > 750 W but ≤ 75 kW"],
+    ["8501.53", "Other AC multi-phase motors, > 75 kW"],
+    ["8501.61", "AC generators (alternators), ≤ 75 kVA"],
+    ["8501.62", "AC generators, > 75 kVA but ≤ 375 kVA"],
+    ["8501.63", "AC generators, > 375 kVA but ≤ 750 kVA"],
+    ["8501.64", "AC generators, > 750 kVA"],
+    ["8501.71", "Photovoltaic DC generators, output ≤ 50 W"],
+    ["8501.72", "Photovoltaic DC generators, > 50 W"],
+    ["8501.80", "Photovoltaic AC generators"],
+  ],
+  "8504": [
+    ["8504.10", "Ballasts for discharge lamps or tubes"],
+    ["8504.21", "Liquid-dielectric transformers, ≤ 650 kVA"],
+    ["8504.22", "Liquid-dielectric transformers, > 650 kVA but ≤ 10 000 kVA"],
+    ["8504.23", "Liquid-dielectric transformers, > 10 000 kVA"],
+    ["8504.31", "Other transformers, ≤ 1 kVA"],
+    ["8504.32", "Other transformers, > 1 kVA but ≤ 16 kVA"],
+    ["8504.33", "Other transformers, > 16 kVA but ≤ 500 kVA"],
+    ["8504.34", "Other transformers, > 500 kVA"],
+    ["8504.40", "Static converters (rectifiers, inverters, UPS)"],
+    ["8504.50", "Other inductors"],
+    ["8504.90", "Parts"],
+  ],
+  "8507": [
+    ["8507.10", "Lead-acid, of a kind used for starting piston engines"],
+    ["8507.20", "Other lead-acid accumulators"],
+    ["8507.30", "Nickel-cadmium accumulators"],
+    ["8507.50", "Nickel-metal hydride accumulators"],
+    ["8507.60", "Lithium-ion accumulators"],
+    ["8507.80", "Other accumulators (e.g. lithium-iron-phosphate)"],
+    ["8507.90", "Parts"],
+  ],
+  "8703": [
+    ["8703.10", "Snowmobiles, golf cars & similar special-purpose vehicles"],
+    ["8703.21", "Petrol (spark-ignition) car, cylinder capacity ≤ 1 000 cm³"],
+    ["8703.22", "Petrol car, > 1 000 cm³ but ≤ 1 500 cm³"],
+    ["8703.23", "Petrol car, > 1 500 cm³ but ≤ 3 000 cm³"],
+    ["8703.24", "Petrol car, > 3 000 cm³"],
+    ["8703.31", "Diesel (compression-ignition) car, cylinder capacity ≤ 1 500 cm³"],
+    ["8703.32", "Diesel car, > 1 500 cm³ but ≤ 2 500 cm³"],
+    ["8703.33", "Diesel car, > 2 500 cm³"],
+    ["8703.40", "Petrol HYBRID (HEV, NOT plug-in) — only if an electric motor is explicitly stated"],
+    ["8703.50", "Diesel HYBRID (HEV, NOT plug-in) — only if an electric motor is explicitly stated"],
+    ["8703.60", "Petrol PLUG-IN hybrid (PHEV) — only if chargeable from an external source is stated"],
+    ["8703.70", "Diesel PLUG-IN hybrid (PHEV) — only if chargeable from an external source is stated"],
+    ["8703.80", "Pure ELECTRIC vehicle (BEV) — electric motor only"],
+    ["8703.90", "Other (e.g. hydrogen / other propulsion)"],
+  ],
+  "8711": [
+    ["8711.10", "With reciprocating internal-combustion piston engine, cylinder capacity ≤ 50 cm³"],
+    ["8711.20", "Piston engine, > 50 cm³ but ≤ 250 cm³"],
+    ["8711.30", "Piston engine, > 250 cm³ but ≤ 500 cm³"],
+    ["8711.40", "Piston engine, > 500 cm³ but ≤ 800 cm³"],
+    ["8711.50", "Piston engine, > 800 cm³"],
+    ["8711.60", "With electric motor for propulsion (incl. e-bikes and electric motorcycles)"],
+    ["8711.90", "Other (incl. side-cars)"],
+  ],
+};
+
+// Optional per-heading disambiguation rules, surfaced under the subheading
+// ladder. Used where the *structure* alone isn't enough and the model tends to
+// jump to the wrong branch — e.g. picking a hybrid/electric car code when the
+// description only gives engine displacement.
+const NUMERIC_SPLIT_NOTES = {
+  "8703":
+    "Pick the propulsion branch from what is described, not from assumptions. " +
+    "If no electric motor / hybrid / plug-in / battery is mentioned, treat it as a " +
+    "conventional combustion car: use 8703.21–24 (petrol) or 8703.31–33 (diesel) by " +
+    "cylinder capacity. Default to petrol (spark-ignition) when the fuel type is not " +
+    "stated. Only use 8703.40/.50/.60/.70/.80 when electrification is explicitly described.",
+};
+
 function formatCandidatesBlock(candidates) {
   if (!candidates || candidates.length === 0) {
     return "(no narrowed candidates — pick freely from valid HS 2022 headings.)";
   }
   return candidates
-    .map((c) => `- ${c.heading}: ${c.description}`)
+    .map((c) => {
+      const base = `- ${c.heading}: ${c.description}`;
+      const subs = NUMERIC_SPLIT_SUBHEADINGS[c.heading];
+      if (!subs) return base;
+      // Indent the subheading list under the parent so the model reads it
+      // as a structural expansion, not a separate candidate.
+      const subLines = subs.map(([code, desc]) => `    ${code} — ${desc}`).join("\n");
+      const note = NUMERIC_SPLIT_NOTES[c.heading];
+      const noteLine = note ? `\n  Note: ${note}` : "";
+      return `${base}\n  Subheadings (HS 2022):\n${subLines}${noteLine}`;
+    })
     .join("\n");
 }
 
@@ -1048,6 +1302,16 @@ function saturnUrl(cn10) {
 // ── Core classification (streaming-aware) ─────────────────────────────────────
 
 const CONFIDENCE_PCT = { high: 92, medium: 72, low: 45 };
+
+// Tidy the model's 2-3 word product label so it's safe to surface on tiles:
+// strip newlines/whitespace runs, trim, cap at 40 chars (covers any
+// "Wireless headphones (large)" style overshoot without truncating mid-word).
+function cleanShortLabel(raw) {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.replace(/\s+/g, " ").trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 40);
+}
 
 // Normalize the model's self-reported `alternatives` into the shape the client
 // consumes. We intentionally don't TARIC-probe alternatives — cost + latency.
@@ -1127,6 +1391,28 @@ async function runClassification(data, userId, isPro, emit) {
   const effectiveLevel =
     requestedLevel === "detailed" && !isPro ? "medium" : requestedLevel;
 
+  // Pro-gated duty rate: free users keep TARIC-verified codes but not the
+  // TARIC duty rate — that's a Pro unlock. We strip the rate fields from the
+  // payload sent to a free user and flag `dutyRateProOnly` so the app shows a
+  // locked "Pro" chip in its place. Only flags when a rate actually exists, so
+  // results with no TARIC rate don't show a misleading upsell. The cache still
+  // stores the full result, so Pro users get rates on a cache hit.
+  const gateDutyRateForFree = (payload) => {
+    if (isPro || !payload || typeof payload !== "object") return payload;
+    let gated = payload;
+    if (payload.standardDutyRate != null || payload.mfnRateRaw != null) {
+      gated = { ...gated, standardDutyRate: null, mfnRateRaw: null, dutyRateProOnly: true };
+    }
+    if (Array.isArray(payload.candidates) && payload.candidates.some((c) => c?.mfnRate != null || c?.mfnRateRaw != null)) {
+      gated = {
+        ...gated,
+        dutyRateProOnly: true,
+        candidates: payload.candidates.map((c) => ({ ...c, mfnRate: null, mfnRateRaw: null })),
+      };
+    }
+    return gated;
+  };
+
   // Cache check
   emit({ type: "thinking", text: "Checking cache…" });
   const cached = await prisma.hsLookupCache.findUnique({ where: { descriptionNorm: descNorm } });
@@ -1144,21 +1430,41 @@ async function runClassification(data, userId, isPro, emit) {
       );
     }
     emit({ type: "thinking", text: "Cache hit — returning saved result ⚡" });
-    prisma.$transaction([
+    const cacheHitTx = [
       prisma.hsLookupCache.update({ where: { id: cached.id }, data: { hitCount: { increment: 1 } } }),
-      prisma.hsSearchHistory.create({ data: {
+    ];
+    if (data.recordHistory !== false) {
+      cacheHitTx.push(prisma.hsSearchHistory.create({ data: {
         userId, description: data.description,
+        shortLabel: cleanShortLabel(result.shortLabel),
         hs6: result.hs6 || null, cn8: result.cn8 || null,
-        dutyRate: result.standardDutyRate ?? null,
+        dutyRate: isPro ? (result.standardDutyRate ?? null) : null,
         confidencePct: result.confidencePct ?? null,
         fromCache: true,
-      }}),
-    ]).catch(() => {});
-    firePushForResult(userId, result);
-    emit({ type: "result", payload: { ...result, fromCache: true } });
+      }}));
+    }
+    prisma.$transaction(cacheHitTx).catch(() => {});
+    // Re-opens (recordHistory: false) must not create a fresh inbox notification
+    // or bump the unread bell — same duplication we avoid for the history row.
+    if (data.recordHistory !== false) firePushForResult(userId, result);
+    emit({ type: "result", payload: gateDutyRateForFree({ ...result, fromCache: true }) });
     return;
   }
   emit({ type: "thinking", text: "Cache miss — starting AI classification" });
+
+  // Free-tier Sonnet cap. Once a free user has burned FREE_SONNET_LIMIT
+  // lifetime Sonnet escalations, the cascade caps at Haiku for the pick
+  // step and skips Opus rescues. Mobile renders a "less reliable" warning
+  // on the result when `_modelCapped` is true. Cache hits don't count.
+  let sonnetCapped = false;
+  if (!isPro) {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { sonnetUsesUsed: true },
+    });
+    if ((u?.sonnetUsesUsed ?? 0) >= FREE_SONNET_LIMIT) sonnetCapped = true;
+  }
+  const pickModel = sonnetCapped ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-6";
 
   // Step 1: Haiku — extract structured attributes (no classification).
   // Haiku no longer picks an HS code; it produces material/function/end-use
@@ -1172,9 +1478,22 @@ async function runClassification(data, userId, isPro, emit) {
   ].filter(Boolean).join(", ");
   emit({ type: "thinking", text: `Haiku → ${attrSummary || "(extraction empty — Sonnet will work from description)"}` });
 
+  // Spell-correction: Haiku returns the description with obvious typos fixed
+  // (brand names / model numbers / technical terms left verbatim). We only
+  // adopt it when it actually differs from what the user typed — otherwise a
+  // misspelled query ("bycicle") drops into the low-confidence candidates path
+  // because the keyword matcher can't match the heading bag. The user's
+  // original text is still what we store in history and the cache key.
+  let effectiveDescription = data.description;
+  const corrected = (attrs.correctedQuery || "").trim();
+  if (corrected && normalizeDescription(corrected) !== descNorm) {
+    effectiveDescription = corrected;
+    emit({ type: "thinking", text: `Corrected spelling: “${data.description}” → “${corrected}”` });
+  }
+
   // Step 2: deterministic narrowing — score every heading in the index
   // against the description + extracted attributes; keep the top N.
-  const candidates = narrowHeadings(attrs, data.description, 12);
+  const candidates = narrowHeadings(attrs, effectiveDescription, 12);
   if (candidates.length > 0) {
     const preview = candidates.slice(0, 5).map((c) => c.heading).join(", ");
     emit({ type: "thinking", text: `Narrowed to ${candidates.length} candidate heading${candidates.length !== 1 ? "s" : ""} (${preview}${candidates.length > 5 ? "…" : ""})` });
@@ -1182,55 +1501,135 @@ async function runClassification(data, userId, isPro, emit) {
     emit({ type: "thinking", text: "Narrowing produced no candidates — Sonnet will pick from full HS" });
   }
 
-  // Step 3: Sonnet — pick the 6-digit subheading from the narrowed list.
+  // Step 3: Sonnet (or Haiku when the free-tier cap is reached) — pick the
+  // 6-digit subheading from the narrowed list.
   let claudeResult;
-  let modelUsed = "sonnet";
-  emit({ type: "thinking", text: "Sonnet: GRI / chapter-notes pick…" });
+  let modelUsed = sonnetCapped ? "haiku" : "sonnet";
+  emit({
+    type: "thinking",
+    text: sonnetCapped
+      ? "Haiku: GRI / chapter-notes pick (Sonnet cap reached — upgrade for full accuracy)"
+      : "Sonnet: GRI / chapter-notes pick…",
+  });
+  // A free user's Sonnet allowance is only spent when we actually SHOW them a
+  // usable result — a single classification or the candidates list — never for
+  // a disambiguation question, an error, or a fatal. Otherwise a lookup that
+  // bounces back for disambiguation would burn two uses (the question + the
+  // re-classify) for one logical search. Fires at most once per run, and is a
+  // no-op for Pro users and when the pick fell back to Haiku (cap reached).
+  let sonnetCharged = false;
+  const chargeSonnetUse = () => {
+    if (sonnetCharged || isPro || sonnetCapped) return;
+    sonnetCharged = true;
+    // Best-effort — if the increment fails the user still gets their result;
+    // we just won't have cleanly billed the call.
+    prisma.user.update({
+      where: { id: userId },
+      data: { sonnetUsesUsed: { increment: 1 } },
+    }).catch(() => {});
+  };
+
   try {
     claudeResult = await pickFromCandidates({
-      description: data.description,
+      description: effectiveDescription,
       attrs,
       candidates,
-      model: "claude-sonnet-4-6",
+      model: pickModel,
       level: effectiveLevel,
     });
-    emit({ type: "thinking", text: `Sonnet → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidencePct ?? "—"}%)` });
+    emit({
+      type: "thinking",
+      text: `${sonnetCapped ? "Haiku" : "Sonnet"} → ${claudeResult.hs6 ?? claudeResult.status} (${claudeResult.confidencePct ?? "—"}%)`,
+    });
   } catch {
     emit({ type: "error", message: "Classification service error", status: 502 });
     return;
   }
 
-  // Step 4: Opus escalation — only fire on genuinely low-confidence results
-  // (Sonnet pct < 75). Borderline cases (75–94) stay with Sonnet; Opus is
-  // reserved for the cases where Sonnet itself signalled it's unsure.
+  // Step 4: low-confidence handling.
+  // First pass (data.disambiguated !== true): if Sonnet is <75% sure and has
+  // plausible alternatives, bounce back to the user with a single
+  // multiple-choice question whose options are the model's own labels for
+  // the primary + alternatives. The user's pick is appended to the
+  // description and the client re-classifies with disambiguated=true.
+  //
+  // Why this beats the old Opus escalation:
+  //   - ~85% cheaper (~$0.03 vs ~$0.22 for an Opus run)
+  //   - faster (no extra ~10-30s for Opus to think)
+  //   - the user disambiguates with knowledge the model can't have
+  //
+  // Second pass (data.disambiguated === true): Sonnet has now seen the
+  // user's pick. If it's STILL <75%, fall back to Opus as a last resort —
+  // we've burned the user's patience already and can't ask twice.
   if (
     claudeResult?.status === "classified" &&
     Number.isFinite(Number(claudeResult.confidencePct)) &&
     Number(claudeResult.confidencePct) < 75
   ) {
-    emit({ type: "thinking", text: `Sonnet confidence ${claudeResult.confidencePct}% < 75% — escalating to Opus…` });
-    try {
-      const opus = await pickFromCandidates({
-        description: data.description,
-        attrs,
-        candidates,
-        model: "claude-opus-4-7",
-        level: effectiveLevel,
-        prior: { hs6: claudeResult.hs6, confidencePct: claudeResult.confidencePct, reasoning: claudeResult.reasoning },
+    const altsForChoice = Array.isArray(claudeResult.alternatives)
+      ? claudeResult.alternatives
+          .map((a) => (typeof a?.label === "string" ? a.label.trim() : ""))
+          .filter((l) => l.length > 0)
+      : [];
+
+    if (!data.disambiguated && altsForChoice.length > 0) {
+      const primaryLabel =
+        (typeof claudeResult.shortLabel === "string" && claudeResult.shortLabel.trim()) ||
+        (typeof claudeResult.heading === "string" && claudeResult.heading) ||
+        "Stick with current pick";
+      // Dedupe — model occasionally repeats the primary label among alternatives.
+      const seen = new Set();
+      const options = [primaryLabel, ...altsForChoice]
+        .map((l) => l.replace(/\s+/g, " ").trim())
+        .filter((l) => l && !seen.has(l.toLowerCase()) && (seen.add(l.toLowerCase()) || true))
+        .slice(0, 4);
+
+      emit({
+        type: "thinking",
+        text: `Sonnet ${claudeResult.confidencePct}% < 75% — asking the user to pick (skipping Opus)`,
       });
-      if (opus?.status) {
-        modelUsed = "opus";
-        const sameAsSonnet = opus.status === "classified" && opus.hs6 === claudeResult.hs6;
-        emit({
-          type: "thinking",
-          text: sameAsSonnet
-            ? `Opus confirms ${opus.hs6} (${opus.confidencePct ?? "—"}%)`
-            : `Opus → ${opus.hs6 ?? opus.status} (${opus.confidencePct ?? "—"}%)`,
+      const askResult = {
+        status: "needs_info",
+        needsMoreInfo: true,
+        reason: claudeResult.reasoning ?? null,
+        hint: claudeResult.reasoning ?? null,
+        questions: [{
+          question: "Which best matches your product?",
+          answers: options,
+          why: "Picking the closest one helps us classify more precisely.",
+        }],
+      };
+      emit({ type: "result", payload: askResult });
+      return;
+    }
+
+    // Second-pass last resort: user already disambiguated, Sonnet still unsure.
+    // Skipped for capped free users — Opus would defeat the cost cap.
+    if (data.disambiguated && !sonnetCapped) {
+      emit({ type: "thinking", text: `Sonnet ${claudeResult.confidencePct}% after disambiguation — escalating to Opus as last resort…` });
+      try {
+        const opus = await pickFromCandidates({
+          description: effectiveDescription,
+          attrs,
+          candidates,
+          model: "claude-opus-4-7",
+          level: effectiveLevel,
+          prior: { hs6: claudeResult.hs6, confidencePct: claudeResult.confidencePct, reasoning: claudeResult.reasoning },
         });
-        claudeResult = opus;
+        if (opus?.status) {
+          modelUsed = "opus";
+          const sameAsSonnet = opus.status === "classified" && opus.hs6 === claudeResult.hs6;
+          emit({
+            type: "thinking",
+            text: sameAsSonnet
+              ? `Opus confirms ${opus.hs6} (${opus.confidencePct ?? "—"}%)`
+              : `Opus → ${opus.hs6 ?? opus.status} (${opus.confidencePct ?? "—"}%)`,
+          });
+          claudeResult = opus;
+        }
+      } catch {
+        emit({ type: "thinking", text: "Opus escalation failed — keeping Sonnet result" });
       }
-    } catch {
-      emit({ type: "thinking", text: "Opus escalation failed — keeping Sonnet result" });
     }
   }
 
@@ -1286,7 +1685,8 @@ async function runClassification(data, userId, isPro, emit) {
       return;
     }
     emit({ type: "thinking", text: `TARIC verified ${verified.length} candidate(s)` });
-    emit({ type: "result", payload: { isCandidates: true, candidates: verified, partialReasoning: claudeResult.partial_reasoning } });
+    chargeSonnetUse();
+    emit({ type: "result", payload: gateDutyRateForFree({ isCandidates: true, candidates: verified, partialReasoning: claudeResult.partial_reasoning }) });
     return;
   }
 
@@ -1312,8 +1712,10 @@ async function runClassification(data, userId, isPro, emit) {
     hs6,
     taricChapter: hs6.slice(0, 2),
     rationale: claudeResult.reasoning,
+    shortLabel: cleanShortLabel(claudeResult.shortLabel),
     confidencePct: resolvedPct,
     _model: modelUsed,
+    _modelCapped: sonnetCapped,
     alternatives: normalizeAlternatives(claudeResult.alternatives, hs6, resolvedPct),
   };
 
@@ -1326,6 +1728,9 @@ async function runClassification(data, userId, isPro, emit) {
   emit({ type: "thinking", text: "Cross-checking heading against USITC…" });
   let usitcStatus = await usitcHs6Exists(hs6);
   if (usitcStatus === "missing") {
+    if (sonnetCapped) {
+      emit({ type: "thinking", text: `USITC: heading ${heading} not found — skipping Opus retry (cap reached)` });
+    } else {
     emit({ type: "thinking", text: `USITC: heading ${heading} not found — likely abolished. Retrying with Opus…` });
     try {
       // Drop the rejected heading from the candidate set so Opus is forced
@@ -1333,7 +1738,7 @@ async function runClassification(data, userId, isPro, emit) {
       // knows what was just rejected and why.
       const retryCandidates = candidates.filter((c) => c.heading !== heading);
       const retry = await pickFromCandidates({
-        description: data.description,
+        description: effectiveDescription,
         attrs,
         candidates: retryCandidates,
         model: "claude-opus-4-7",
@@ -1361,8 +1766,10 @@ async function runClassification(data, userId, isPro, emit) {
             hs6,
             taricChapter: hs6.slice(0, 2),
             rationale: retry.reasoning,
+            shortLabel: cleanShortLabel(retry.shortLabel),
             confidencePct: retryPct,
             _model: modelUsed,
+            _modelCapped: sonnetCapped,
             alternatives: normalizeAlternatives(retry.alternatives, hs6, retryPct),
           };
           usitcStatus = retryStatus;
@@ -1375,6 +1782,7 @@ async function runClassification(data, userId, isPro, emit) {
     } catch {
       emit({ type: "thinking", text: "Opus retry failed — giving up" });
     }
+    } // end !sonnetCapped
 
     // If retry didn't rescue us, emit a low-confidence warning result.
     if (usitcStatus === "missing") {
@@ -1384,14 +1792,17 @@ async function runClassification(data, userId, isPro, emit) {
       finalResult.taricWarning = `Heading ${heading} could not be verified in either EU TARIC or US HTS — even after an Opus retry. Please re-classify with more detail.`;
       finalResult.saturnUrl = saturnUrl(hs6);
       // No cache write — don't poison other users' lookups.
-      prisma.hsSearchHistory.create({ data: {
-        userId, description: data.description,
-        hs6: finalResult.hs6 || null, cn8: null,
-        dutyRate: null,
-        confidencePct: finalResult.confidencePct ?? null,
-        fromCache: false,
-      }}).catch(() => {});
-      emit({ type: "result", payload: finalResult });
+      if (data.recordHistory !== false) {
+        prisma.hsSearchHistory.create({ data: {
+          userId, description: data.description,
+          shortLabel: finalResult.shortLabel ?? null,
+          hs6: finalResult.hs6 || null, cn8: null,
+          dutyRate: null,
+          confidencePct: finalResult.confidencePct ?? null,
+          fromCache: false,
+        }}).catch(() => {});
+      }
+      emit({ type: "result", payload: gateDutyRateForFree(finalResult) });
       return;
     }
   } else if (usitcStatus === "exists") {
@@ -1401,16 +1812,25 @@ async function runClassification(data, userId, isPro, emit) {
   }
 
   // TARIC heading browse — skippable per-request via `autoTaricValidation`.
-  const autoTaric = data.autoTaricValidation !== false; // default on
+  // Free users always get TARIC validation (verified codes + TARIC reasoning) —
+  // it's part of the free tier; only the TARIC duty rate is Pro-gated (stripped
+  // by gateDutyRateForFree). The "Auto TARIC Validation" toggle is Pro-only, so
+  // honour the per-request flag for Pro users (they can disable it for speed)
+  // but ignore a stale `false` from a free client.
+  const autoTaric = isPro ? data.autoTaricValidation !== false : true;
   if (!autoTaric) {
     emit({ type: "thinking", text: "TARIC validation disabled — returning AI result as-is" });
     finalResult.taricVerified = false;
     finalResult.saturnUrl = saturnUrl(hs6);
   }
 
+  // Hoisted so the alternatives-enrichment step below can reuse declarable
+  // CN10s the primary heading probe already fetched (free for alts in the
+  // same 4-digit heading as the primary).
+  let siblings = [];
+
   if (autoTaric) {
     emit({ type: "thinking", text: `Probing TARIC · heading ${heading}…` });
-    let siblings = [];
     try {
       siblings = await taricBrowseHeading(heading, [], hs6);
     } catch (e) {
@@ -1451,7 +1871,7 @@ async function runClassification(data, userId, isPro, emit) {
       if (matching.length > 1) {
         // Multiple CN10s under Claude's preferred subheading — disambiguate.
         const pickedCn10 = await pickCn8FromSiblings(
-          data.description, matching, claudeResult.reasoning || "", pickModel,
+          effectiveDescription, matching, claudeResult.reasoning || "", pickModel, attrs,
         );
         const picked = pickedCn10 ? matching.find((s) => s.cn10 === pickedCn10) : null;
         if (picked) {
@@ -1470,7 +1890,7 @@ async function runClassification(data, userId, isPro, emit) {
         // back to siblings[0] which may be a completely different product.
         emit({ type: "thinking", text: `hs6 ${hs6} not found in TARIC — running full-heading disambiguation across ${siblings.length} siblings` });
         const pickedCn10 = await pickCn8FromSiblings(
-          data.description, siblings, claudeResult.reasoning || "", pickModel,
+          effectiveDescription, siblings, claudeResult.reasoning || "", pickModel, attrs,
         );
         exactMatch = pickedCn10 ? siblings.find((s) => s.cn10 === pickedCn10) : null;
         if (exactMatch) {
@@ -1522,25 +1942,66 @@ async function runClassification(data, userId, isPro, emit) {
     }
   }
 
+  // ── Enrich alternatives with declarable CN10s ──────────────────────────
+  // The model only returns 6-digit hs6 codes for alternatives. The UI shows
+  // them next to the 10-digit primary, so without enrichment the ranks 2/3
+  // look visually truncated. For alts sharing the primary's 4-digit heading
+  // we pick a CN10 from the already-fetched siblings (free); for others we
+  // run a targeted TARIC probe. Failures fall back to hs6-only display.
+  if (autoTaric && Array.isArray(finalResult.alternatives) && finalResult.alternatives.length > 0) {
+    const primaryHeading = (finalResult.hs6 ?? "").slice(0, 4);
+    const otherHs6 = [
+      ...new Set(
+        finalResult.alternatives
+          .map((a) => (a?.hs6 ?? "").replace(/\D/g, "").slice(0, 6))
+          .filter((h) => h.length === 6 && h.slice(0, 4) !== primaryHeading),
+      ),
+    ];
+    const probeResults = await Promise.all(
+      otherHs6.map((h) => findFirstDeclarableCn10(h).catch(() => null)),
+    );
+    const cn10ByHs6 = new Map();
+    otherHs6.forEach((h, i) => { if (probeResults[i]) cn10ByHs6.set(h, probeResults[i]); });
+
+    finalResult.alternatives = finalResult.alternatives.map((alt) => {
+      const h6 = (alt?.hs6 ?? "").replace(/\D/g, "").slice(0, 6);
+      if (h6.length !== 6) return alt;
+      // Same heading as primary → reuse siblings; prefer one whose CN8 sits
+      // under this hs6, else first declarable in the heading.
+      if (h6.slice(0, 4) === primaryHeading && siblings.length > 0) {
+        const match = siblings.find((s) => s.cn8?.startsWith(h6)) || siblings[0];
+        if (match?.cn10) return { ...alt, cn10: match.cn10, cn8: match.cn8 ?? null };
+      }
+      const probed = cn10ByHs6.get(h6);
+      if (probed) return { ...alt, cn10: probed, cn8: probed.slice(0, 8) };
+      return alt;
+    });
+  }
+
   // Cache + history (fire-and-forget)
   const resultJson = JSON.stringify(finalResult);
-  prisma.$transaction([
+  const cacheTx = [
     prisma.hsLookupCache.upsert({
       where: { descriptionNorm: descNorm },
       create: { descriptionNorm: descNorm, description: data.description, resultJson, hitCount: 1 },
       update: { resultJson, hitCount: { increment: 1 } },
     }),
-    prisma.hsSearchHistory.create({ data: {
+  ];
+  if (data.recordHistory !== false) {
+    cacheTx.push(prisma.hsSearchHistory.create({ data: {
       userId, description: data.description,
+      shortLabel: finalResult.shortLabel ?? null,
       hs6: finalResult.hs6 || null, cn8: finalResult.cn8 || null,
-      dutyRate: finalResult.standardDutyRate ?? null,
+      dutyRate: isPro ? (finalResult.standardDutyRate ?? null) : null,
       confidencePct: finalResult.confidencePct ?? null,
       fromCache: false,
-    }}),
-  ]).catch(() => {});
+    }}));
+  }
+  prisma.$transaction(cacheTx).catch(() => {});
 
-  firePushForResult(userId, finalResult);
-  emit({ type: "result", payload: finalResult });
+  if (data.recordHistory !== false) firePushForResult(userId, finalResult);
+  chargeSonnetUse();
+  emit({ type: "result", payload: gateDutyRateForFree(finalResult) });
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────

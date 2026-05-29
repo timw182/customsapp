@@ -420,9 +420,9 @@ export default function HsLookupTabV2({
                   </div>
                 )}
                 {hsResult.taricSiblings?.length > 1 && (
-                  <div style={{marginTop:6,padding:'8px 10px',background:'var(--sage-bg)',border:'1px solid rgba(156,168,138,0.35)',borderRadius:6}}>
-                    <div style={{fontSize:11,fontWeight:600,color:'var(--sage-light)',marginBottom:6,textTransform:'uppercase',letterSpacing:'.5px'}}>
-                      📋 Valid 10-digit TARIC codes under {hsResult.hs6} — pick the most specific:
+                  <div style={{marginTop:6,padding:'8px 10px',background:'var(--terracotta-bg)',border:'1px solid rgba(196,99,74,0.3)',borderRadius:6}}>
+                    <div style={{fontSize:11,fontWeight:600,color:'var(--terracotta)',marginBottom:6,textTransform:'uppercase',letterSpacing:'.5px'}}>
+                      📋 Luxembourg requires a full 10-digit TARIC code. Select the correct subheading:
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:4}}>
                       {hsResult.taricSiblings.map((s) => {

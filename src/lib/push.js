@@ -57,6 +57,7 @@ export async function sendPushToUser({ userId, category, title, body, data }) {
     select: { pushEnabled: true, [flagKey]: true },
   });
   if (!prefs?.pushEnabled || !prefs[flagKey]) {
+    console.log(`[push] muted user=${userId} category=${category} pushEnabled=${prefs?.pushEnabled ?? "null"} ${flagKey}=${prefs?.[flagKey] ?? "null"}`);
     return { sent: 0, skipped: "muted" };
   }
 
@@ -64,7 +65,11 @@ export async function sendPushToUser({ userId, category, title, body, data }) {
     where: { userId },
     select: { id: true, token: true },
   });
-  if (devices.length === 0) return { sent: 0, skipped: "no-devices" };
+  if (devices.length === 0) {
+    console.log(`[push] no-devices user=${userId} category=${category}`);
+    return { sent: 0, skipped: "no-devices" };
+  }
+  console.log(`[push] sending user=${userId} category=${category} devices=${devices.length}`);
 
   const messages = devices.map((d) => ({
     to: d.token,

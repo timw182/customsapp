@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/apiAuth";
 import { prisma } from "@/lib/prisma";
+import { FREE_SAVED_LIMIT } from "@/lib/limits";
 import { z } from "zod";
 
 const sensitiveGoodsSchema = z.object({
@@ -14,6 +15,7 @@ const sensitiveGoodsSchema = z.object({
 const createSchema = z.object({
   hsCode: z.string().min(4).max(14),
   description: z.string().min(1).max(500),
+  shortLabel: z.string().max(80).optional(),
   dutyRate: z.number().min(0).max(100).optional(),
   notes: z.string().max(1000).optional(),
   reasoning: z.string().max(4000).optional(),
@@ -59,12 +61,37 @@ export async function POST(req) {
     return NextResponse.json({ error: "Invalid input", details: parsed.error.issues }, { status: 400 });
   }
 
-  const { hsCode, description, dutyRate, notes, reasoning, confidencePct, sensitiveGoods } = parsed.data;
+  const { hsCode, description, shortLabel, dutyRate, notes, reasoning, confidencePct, sensitiveGoods } = parsed.data;
   const sensitiveGoodsJson = sensitiveGoods ? JSON.stringify(sensitiveGoods) : null;
+  const cleanLabel = typeof shortLabel === "string" ? shortLabel.replace(/\s+/g, " ").trim().slice(0, 40) || null : null;
+
+  // Free-tier cap: 4 saved records. UPSERT means editing an existing
+  // favourite (same hsCode) doesn't count against the cap — only adding a
+  // brand-new one does. Pro skips the check entirely.
+  const user = await prisma.user.findUnique({
+    where: { id: a.userId },
+    select: { plan: true },
+  });
+  if (user?.plan !== "pro") {
+    const existing = await prisma.hSFavourite.findUnique({
+      where: { userId_hsCode: { userId: a.userId, hsCode } },
+      select: { id: true },
+    });
+    if (!existing) {
+      const count = await prisma.hSFavourite.count({ where: { userId: a.userId } });
+      if (count >= FREE_SAVED_LIMIT) {
+        return NextResponse.json(
+          { error: "SAVED_LIMIT", code: "SAVED_LIMIT", limit: FREE_SAVED_LIMIT },
+          { status: 402 },
+        );
+      }
+    }
+  }
+
   const fav = await prisma.hSFavourite.upsert({
     where: { userId_hsCode: { userId: a.userId, hsCode } },
-    update: { description, dutyRate, notes, reasoning, confidencePct, sensitiveGoods: sensitiveGoodsJson },
-    create: { userId: a.userId, hsCode, description, dutyRate: dutyRate ?? 0, notes, reasoning, confidencePct, sensitiveGoods: sensitiveGoodsJson },
+    update: { description, shortLabel: cleanLabel, dutyRate, notes, reasoning, confidencePct, sensitiveGoods: sensitiveGoodsJson },
+    create: { userId: a.userId, hsCode, description, shortLabel: cleanLabel, dutyRate: dutyRate ?? 0, notes, reasoning, confidencePct, sensitiveGoods: sensitiveGoodsJson },
   });
   return NextResponse.json(serialiseFav(fav));
 }

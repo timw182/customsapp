@@ -797,9 +797,14 @@ export default function CustomsCalculator({ user }) {
   const [dutyRateSource, setDutyRateSource] = useState(null);
   const [antiDumpingRate, setAntiDumpingRate] = useState(""); // ADD rate % if applicable
   const [stillWineLow, setStillWineLow] = useState(false); // true = still wine ≤13° ABV → 14% VAT
+  const [vatSuggestion, setVatSuggestion] = useState(null);
+  const [vatSuggestionLoading, setVatSuggestionLoading] = useState(false);
+  const [vatOverride, setVatOverride] = useState(null); // user-confirmed rate in % (e.g. 17, 14, 8, 3)
   const [dutyRateLoading, setDutyRateLoading] = useState(false);
   const [taricData, setTaricData] = useState(null);
   const [showChapterPopup, setShowChapterPopup] = useState(false);
+  const [hsCodeSiblings, setHsCodeSiblings] = useState(null);
+  const [hsCodeSiblingsLoading, setHsCodeSiblingsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [favourites, setFavourites] = useState([]);
@@ -1009,6 +1014,9 @@ export default function CustomsCalculator({ user }) {
         note: `Standard MFN rate from HS classification. ${parsed.antiDumping ? "⚠ Anti-dumping may apply." : ""}`,
         rateType: "ad valorem",
       });
+      setVatSuggestion(null);
+      setVatOverride(null);
+      lookupVatSuggestion(parsed.cn10 || parsed.cn8 || parsed.hs6 || "", parsed.description || desc);
     } catch (e) {
       setHsResult({ error: "Could not classify product. Try entering HS code manually." });
     }
@@ -1059,6 +1067,7 @@ export default function CustomsCalculator({ user }) {
         });
         setShowChapterPopup(true);
         setTimeout(() => setShowChapterPopup(false), 5000);
+        lookupVatSuggestion(clean, parsed.description || description);
       } else {
         throw new Error(parsed.error);
       }
@@ -1078,6 +1087,20 @@ export default function CustomsCalculator({ user }) {
       }
     }
     setDutyRateLoading(false);
+  };
+
+  const lookupVatSuggestion = async (hs, desc) => {
+    const clean = (hs || "").replace(/\D/g, "");
+    if (!clean || !desc?.trim()) return;
+    setVatSuggestionLoading(true);
+    setVatSuggestion(null);
+    try {
+      const params = new URLSearchParams({ hs: clean, description: desc.slice(0, 400) });
+      const resp = await fetch(`/api/vat-lookup-ai?${params}`);
+      const data = await resp.json();
+      if (!data.error) setVatSuggestion(data);
+    } catch {}
+    setVatSuggestionLoading(false);
   };
 
   const calculate = () => {
@@ -1144,9 +1167,10 @@ export default function CustomsCalculator({ user }) {
     const addRate = parseFloat(antiDumpingRate) || 0;
     const antiDumpingDuty = cifEUR * (addRate / 100);
 
-    // VAT rate based on HS code (Luxembourg Loi TVA)
-    // stillWineLow = user confirmed still wine ≤13° ABV → 14% VAT
-    const vatRate = getLuVAT(hsCode, stillWineLow);
+    // VAT rate: user-confirmed override > AI suggestion > chapter-based fallback
+    const vatRate = vatOverride !== null
+      ? vatOverride / 100
+      : getLuVAT(hsCode, stillWineLow);
     // VAT base: CIF + all duties including excise (Loi TVA art. 42 / UCC Art. 86)
     const exciseDutyAmt = exciseResult ? exciseResult.duty || 0 : 0;
     const vatBase = cifEUR + customsDuty + antiDumpingDuty + exciseDutyAmt;
@@ -1416,6 +1440,7 @@ export default function CustomsCalculator({ user }) {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes trailGrow { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
         @keyframes arrivalPulse { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
         .result-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rule-soft); }
         .result-row:last-child { border-bottom: none; }
@@ -1646,16 +1671,42 @@ export default function CustomsCalculator({ user }) {
                             onChange={(e) => {
                               setHsCode(e.target.value);
                               setDutyRateSource(null);
+                              setHsCodeSiblings(null);
+                              setVatSuggestion(null);
+                              setVatOverride(null);
                               setPreferential(false);
                               setHasProofOfOrigin(false);
                             }}
                           />
                           <button
                             className="v2-btn-ghost v2-btn-sm"
-                            onClick={() => {
-                              if (hsCode) {
+                            onClick={async () => {
+                              if (!hsCode) return;
+                              const clean = hsCode.replace(/\D/g, "");
+                              if (clean.length >= 10) {
+                                setHsCodeSiblings(null);
+                                lookupDutyRate(hsCode);
+                                return;
+                              }
+                              if (clean.length < 6) return;
+                              setHsCodeSiblingsLoading(true);
+                              setHsCodeSiblings(null);
+                              setDutyRateSource(null);
+                              try {
+                                const resp = await fetch(`/api/taric-children?code=${clean}`);
+                                const data = await resp.json();
+                                if (data.children?.length === 1) {
+                                  const only = data.children[0];
+                                  setHsCode(only.cn10);
+                                  setHsCodeSiblings(null);
+                                  lookupDutyRate(only.cn10);
+                                } else {
+                                  setHsCodeSiblings(data.children ?? []);
+                                }
+                              } catch {
                                 lookupDutyRate(hsCode);
                               }
+                              setHsCodeSiblingsLoading(false);
                             }}
                           >Rate</button>
                           <a
@@ -1687,6 +1738,54 @@ export default function CustomsCalculator({ user }) {
                         {dutyRateSource?.safeguard && (
                           <div className="v2-hint" style={{color:"var(--terracotta)",marginTop:4}}>
                             ⚠ Safeguard duty active on this product — additional tariff applies, check TARIC for current rate
+                          </div>
+                        )}
+                        {hsCodeSiblingsLoading && (
+                          <div className="v2-hint" style={{marginTop:6}}>Probing TARIC for CN10 codes…</div>
+                        )}
+                        {hsCodeSiblings !== null && (
+                          <div style={{marginTop:10,background:"var(--bg-card)",border:"1px solid var(--terracotta)",borderRadius:"var(--radius-md)",overflow:"hidden",animation:"slideDown 0.18s ease-out"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--terracotta-bg)",borderBottom:"1px solid rgba(196,99,74,0.25)"}}>
+                              <span style={{fontSize:13}}>⚠</span>
+                              <span style={{flex:1,fontSize:12,fontWeight:600,color:"var(--terracotta)"}}>
+                                {hsCodeSiblings.length === 0
+                                  ? `No declarable CN10 codes found under "${hsCode.replace(/\D/g,"")}" on TARIC`
+                                  : `"${hsCode.replace(/\D/g,"")}" covers ${hsCodeSiblings.length} CN10 code${hsCodeSiblings.length !== 1 ? "s" : ""} — select one for the Luxembourg duty rate:`
+                                }
+                              </span>
+                              <button
+                                onClick={() => setHsCodeSiblings(null)}
+                                style={{background:"none",border:"none",cursor:"pointer",color:"var(--text-muted)",fontSize:16,lineHeight:1,padding:"2px 4px",borderRadius:4}}
+                                aria-label="Dismiss"
+                              >×</button>
+                            </div>
+                            {hsCodeSiblings.length > 0 && (
+                              <div style={{display:"flex",flexDirection:"column",gap:1,maxHeight:280,overflowY:"auto",padding:"4px 0"}}>
+                                {hsCodeSiblings.map((child) => {
+                                  const fmt = child.cn10.replace(/(\d{4})(\d{2})(\d{2})(\d{2})/, "$1.$2.$3.$4");
+                                  const desc = child.description?.length > 52 ? child.description.slice(0, 52) + "…" : (child.description || "—");
+                                  return (
+                                    <div
+                                      key={child.cn10}
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => { setHsCode(child.cn10); setHsCodeSiblings(null); lookupDutyRate(child.cn10); }}
+                                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { setHsCode(child.cn10); setHsCodeSiblings(null); lookupDutyRate(child.cn10); } }}
+                                      style={{display:"flex",alignItems:"center",gap:10,padding:"6px 12px",cursor:"pointer",transition:"background 0.1s"}}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--sage-bg)"}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                    >
+                                      <span style={{fontFamily:"var(--font-mono)",fontWeight:700,fontSize:12,color:"var(--sage-light)",minWidth:90,flexShrink:0}}>{fmt}</span>
+                                      <span style={{fontSize:12,color:"var(--text-secondary)",flex:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{desc}</span>
+                                      {child.mfnRateRaw
+                                        ? <span style={{fontSize:10,fontWeight:700,color:"var(--sage-dim)",background:"rgba(156,168,138,.09)",border:"1px solid rgba(156,168,138,.25)",borderRadius:3,padding:"1px 6px",whiteSpace:"nowrap",flexShrink:0}}>{child.mfnRateRaw}</span>
+                                        : <span style={{fontSize:10,color:"var(--text-muted)",background:"var(--bg-input)",border:"1px solid var(--border-strong)",borderRadius:3,padding:"1px 6px",whiteSpace:"nowrap",flexShrink:0}}>—</span>
+                                      }
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1869,19 +1968,72 @@ export default function CustomsCalculator({ user }) {
                         </div>
                         <div className="v2-hint">ADD applies on top of customs duty and is NOT waived by the €150 de minimis · check TARIC for active measures</div>
                       </div>
-                      {/* Still wine VAT — only show when HS chapter 22 */}
-                      {parseInt(String(hsCode).replace(/\D/g,"").substring(0,2),10) === 22 && (
+                      {/* Luxembourg VAT — AI suggestion + user confirmation */}
+                      {hsCode && hsCode.replace(/\D/g,"").length >= 4 && (
                         <div>
-                          <div className="v2-lbl">Wine VAT Rate (LU)</div>
-                          <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,cursor:"pointer",marginTop:4}}>
-                            <input
-                              type="checkbox"
-                              checked={stillWineLow}
-                              onChange={(e) => setStillWineLow(e.target.checked)}
-                            />
-                            Still wine ≤ 13° ABV → 14% VAT
-                          </label>
-                          <div className="v2-hint">Luxembourg: still wine ≤13° ABV = 14% VAT; {'>'}13° ABV, sparkling, beer, spirits = 17%</div>
+                          <div className="v2-lbl">Luxembourg VAT Rate</div>
+                          {vatSuggestionLoading && (
+                            <div className="v2-hint" style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{width:10,height:10,borderRadius:"50%",border:"2px solid var(--sage)",borderTopColor:"transparent",display:"inline-block",animation:"spin 0.7s linear infinite",flexShrink:0}}/>
+                              AI checking applicable VAT rate…
+                            </div>
+                          )}
+                          {vatOverride !== null && (
+                            <div style={{marginTop:6,display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--sage-bg)",border:"1px solid rgba(156,168,138,0.3)",borderRadius:"var(--radius-md)"}}>
+                              <span style={{fontSize:12,color:"var(--sage)"}}>✓</span>
+                              <span style={{fontSize:13,fontWeight:600,color:"var(--sage-light)",flex:1}}>
+                                {vatOverride}% confirmed
+                                {vatSuggestion?.category && (
+                                  <span style={{fontWeight:400,color:"var(--text-secondary)",marginLeft:6}}>— {vatSuggestion.category}</span>
+                                )}
+                              </span>
+                              <button className="v2-btn-ghost v2-btn-sm" onClick={() => setVatOverride(null)}>Change</button>
+                            </div>
+                          )}
+                          {!vatSuggestionLoading && vatSuggestion && vatOverride === null && (
+                            <div style={{marginTop:6,background:"var(--bg-card)",border:`1px solid ${vatSuggestion.confidence==="low"?"var(--terracotta)":"rgba(156,168,138,0.3)"}`,borderRadius:"var(--radius-md)",overflow:"hidden"}}>
+                              <div style={{padding:"8px 12px",borderBottom:"1px solid var(--border-subtle)"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
+                                  <span style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",color:"var(--sage-dim)"}}>AI proposes</span>
+                                  <span style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{vatSuggestion.rate}%</span>
+                                  <span style={{fontSize:11,color:"var(--text-secondary)",flex:1}}>{vatSuggestion.rateLabel?.split("—")[1]?.trim()}</span>
+                                  <span style={{
+                                    fontSize:10,fontWeight:700,padding:"1px 6px",borderRadius:3,flexShrink:0,
+                                    background:vatSuggestion.confidence==="high"?"var(--sage-bg)":vatSuggestion.confidence==="medium"?"rgba(196,160,74,0.12)":"var(--terracotta-bg)",
+                                    color:vatSuggestion.confidence==="high"?"var(--sage-dim)":vatSuggestion.confidence==="medium"?"#b8943a":"var(--terracotta)",
+                                    border:`1px solid ${vatSuggestion.confidence==="high"?"rgba(156,168,138,0.3)":vatSuggestion.confidence==="medium"?"rgba(196,160,74,0.3)":"rgba(196,99,74,0.3)"}`,
+                                  }}>{vatSuggestion.confidence}</span>
+                                </div>
+                                <div style={{fontSize:11.5,color:"var(--text-secondary)",lineHeight:1.5}}>{vatSuggestion.reasoning}</div>
+                              </div>
+                              <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",background:"var(--bg-input)",flexWrap:"wrap"}}>
+                                <button
+                                  className="v2-btn-ghost v2-btn-sm"
+                                  style={{fontWeight:700,color:"var(--sage-light)",borderColor:"rgba(156,168,138,0.4)"}}
+                                  onClick={() => setVatOverride(vatSuggestion.rate)}
+                                >✓ Confirm {vatSuggestion.rate}%</button>
+                                <span style={{fontSize:11,color:"var(--text-muted)"}}>or:</span>
+                                {[17,14,8,3].filter(r => r !== vatSuggestion.rate).map(r => (
+                                  <button key={r} className="v2-btn-ghost v2-btn-sm" onClick={() => setVatOverride(r)}>{r}%</button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {!vatSuggestionLoading && !vatSuggestion && vatOverride === null && (
+                            <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                              <span style={{fontSize:12,color:"var(--text-secondary)"}}>
+                                Estimated: <strong style={{color:"var(--text)"}}>{(getLuVAT(hsCode,stillWineLow)*100).toFixed(0)}%</strong>
+                                <span style={{color:"var(--text-muted)",marginLeft:4,fontSize:11}}>(chapter-based)</span>
+                              </span>
+                              <span style={{fontSize:11,color:"var(--text-muted)"}}>Override:</span>
+                              {[17,14,8,3].map(r => (
+                                <button key={r} className="v2-btn-ghost v2-btn-sm" onClick={() => setVatOverride(r)}>{r}%</button>
+                              ))}
+                            </div>
+                          )}
+                          {parseInt(String(hsCode).replace(/\D/g,"").substring(0,2),10) === 22 && !vatOverride && (
+                            <div className="v2-hint" style={{marginTop:4}}>Still wine ≤ 13° ABV = 14% (intermédiaire) · sparkling, beer, spirits = 17%</div>
+                          )}
                         </div>
                       )}
                       <div>
@@ -1935,7 +2087,7 @@ export default function CustomsCalculator({ user }) {
                     <button className="v2-calc-btn" onClick={calculate}>
                       Calculate
                     </button>
-                    <button className="v2-reset-btn" onClick={() => { setResult(null); setDescription(""); setHsCode(""); setDutyRate(""); setItemValue(""); setFreight(""); setInsurance(""); setAntiDumpingRate(""); setDutyRateSource(null); setPreferential(false); setHasProofOfOrigin(false); }}>Reset</button>
+                    <button className="v2-reset-btn" onClick={() => { setResult(null); setDescription(""); setHsCode(""); setDutyRate(""); setItemValue(""); setFreight(""); setInsurance(""); setAntiDumpingRate(""); setDutyRateSource(null); setPreferential(false); setHasProofOfOrigin(false); setVatSuggestion(null); setVatOverride(null); setStillWineLow(false); }}>Reset</button>
                     <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-courier-prime),monospace"}}>Results update live as you type</span>
                   </div>
                 </div>

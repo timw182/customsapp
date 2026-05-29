@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { requireUser } from '@/lib/apiAuth';
 
 const TARIC_SOAP_URL = 'https://ec.europa.eu/taxation_customs/dds2/taric/services/goods';
 
@@ -84,8 +84,10 @@ const MEASURE_TYPES = {
 };
 
 export async function POST(req) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Accepts both NextAuth session cookies (web) and Bearer tokens (mobile).
+  // Previously was session-only, which silently 401'd every mobile request.
+  const a = await requireUser(req);
+  if (a.error) return NextResponse.json({ error: a.error }, { status: a.status });
 
   let body;
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }

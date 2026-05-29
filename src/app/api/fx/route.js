@@ -21,10 +21,19 @@ function setCached(key, data) {
   cache.set(key, { data, ts: Date.now() });
 }
 
+const CCY = /^[A-Z]{3}$/;
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const from = searchParams.get('from') || 'EUR';
-  const to = searchParams.get('to') || null;
+  const from = (searchParams.get('from') || 'EUR').toUpperCase();
+  const toRaw = searchParams.get('to');
+  const to = toRaw ? toRaw.toUpperCase() : null;
+
+  // Validate before they ever reach the upstream URL or the cache key — both
+  // are built by interpolation, so reject anything that isn't a 3-letter code.
+  if (!CCY.test(from) || (to !== null && !CCY.test(to))) {
+    return Response.json({ error: 'Invalid currency code' }, { status: 400 });
+  }
 
   const cacheKey = to ? `${from}-${to}` : `${from}-all`;
   const cached = getCached(cacheKey);

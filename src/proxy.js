@@ -5,18 +5,9 @@ export default auth((req) => {
   const isLoggedIn  = !!req.auth
   const isAuthPage  = req.nextUrl.pathname.startsWith('/login') ||
                       req.nextUrl.pathname.startsWith('/register')
-  const isPublicApi = req.nextUrl.pathname.startsWith('/api/register') ||
-                      req.nextUrl.pathname.startsWith('/api/auth') ||
-                      req.nextUrl.pathname.startsWith('/api/hs-lookup') ||
-                      req.nextUrl.pathname.startsWith('/api/taric-describe') ||
-                      req.nextUrl.pathname.startsWith('/api/trade-agreements') ||
-                      req.nextUrl.pathname.startsWith('/api/taric-rates') ||
-                      req.nextUrl.pathname.startsWith('/api/vat-lookup') ||
-                      req.nextUrl.pathname.startsWith('/api/favourites') ||
-                      req.nextUrl.pathname.startsWith('/api/me') ||
-                      req.nextUrl.pathname.startsWith('/api/admin/tokens') ||
-                      req.nextUrl.pathname.startsWith('/api/admin/users') ||
-                      req.nextUrl.pathname.startsWith('/api/admin/broadcast-notification') ||
+  // All /api/* routes bypass the middleware — each route handler calls
+  // requireUser() or auth() to enforce its own auth requirements.
+  const isPublicApi = req.nextUrl.pathname.startsWith('/api/') ||
                       req.nextUrl.pathname === '/' ||
                       req.nextUrl.pathname === '/landing.html' ||
                       req.nextUrl.pathname.startsWith('/preview') ||

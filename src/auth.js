@@ -8,6 +8,7 @@ import {
   bumpAttempts, latestActiveCode, MAX_ATTEMPTS,
 } from '@/lib/otp'
 
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },

@@ -98,6 +98,24 @@ const STOPWORDS = new Set([
   "non", "etc",
 ]);
 
+// Conservative plural→singular folding — must match foldPlural in
+// src/app/api/hs-lookup/route.js so the runtime query and the stored keyword
+// bag end up in the same form. Keep these two implementations in sync.
+function foldPlural(t) {
+  if (t.length < 5) return t;
+  if (t.endsWith("ies")) return t.slice(0, -3) + "y";
+  if (
+    t.endsWith("sses") ||
+    t.endsWith("xes") ||
+    t.endsWith("ches") ||
+    t.endsWith("shes")
+  ) return t.slice(0, -2);
+  if (t.endsWith("s") && !t.endsWith("ss") && !t.endsWith("us") && !t.endsWith("is")) {
+    return t.slice(0, -1);
+  }
+  return t;
+}
+
 function tokenize(text) {
   if (!text) return [];
   return String(text)
@@ -105,7 +123,8 @@ function tokenize(text) {
     .replace(/[^\p{L}\p{N}\s-]/gu, " ")
     .split(/\s+/)
     .map((t) => t.trim().replace(/^-+|-+$/g, ""))
-    .filter((t) => t.length >= 3 && !STOPWORDS.has(t) && !/^\d+$/.test(t));
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t) && !/^\d+$/.test(t))
+    .map(foldPlural);
 }
 
 // Walk a chapter tree and harvest:
