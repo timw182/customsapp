@@ -1,0 +1,69 @@
+// Golden evaluation set for the HS classification pipeline. One JSON object per line.
+// Lines that are blank or start with "//" are ignored by scripts/eval-classify.mjs.
+//
+// Schema:
+//   id          short stable identifier
+//   description what a user would actually type (the model input)
+//   hs6         REQUIRED — correct 6-digit HS 2022 subheading (no dots). Primary scored target.
+//   cn8         OPTIONAL — correct 8-digit CN code, only where stable/known (informational; the
+//               pure pipeline resolves cn8 via live TARIC, so the offline harness scores hs6).
+//   tags        category labels for per-tag breakdowns
+//   source      "hand" (manually labelled below) or "bti" (EU Binding Tariff Information ruling)
+//   note        the classification basis (GRI / chapter note / why)
+//
+// NOTE: this seed set is hand-labelled and intentionally small. For statistically
+// meaningful accuracy it should be grown to a few hundred rows sourced from the EU
+// BTI database (description→code is published and authoritative). Treat current
+// numbers as directional, not final.
+//
+// ── Anchor consumer goods (stress the colloquial→nomenclature lexical gap) ──
+{"id":"laptop","description":"14-inch laptop computer, 1.3 kg","hs6":"847130","cn8":"84713000","tags":["anchor","electronics"],"source":"hand","note":"Portable ADP machine ≤10kg, GRI1 → 8471.30"}
+{"id":"tshirt-cotton","description":"plain white cotton t-shirt","hs6":"610910","cn8":"61091000","tags":["anchor","textile"],"source":"hand","note":"Knitted T-shirt of cotton → 6109.10"}
+{"id":"trousers-cotton","description":"men's woven cotton chino trousers","hs6":"620342","tags":["anchor","textile"],"source":"hand","note":"Men's trousers of cotton, not knitted → 6203.42"}
+{"id":"handbag-leather","description":"women's leather handbag","hs6":"420221","cn8":"42022100","tags":["anchor"],"source":"hand","note":"Handbag, outer surface of leather → 4202.21"}
+{"id":"earbuds","description":"wireless bluetooth earbuds","hs6":"851830","tags":["anchor","electronics"],"source":"hand","note":"Headphones/earphones → 8518.30 (not 8517)"}
+{"id":"tv","description":"55-inch 4K LED television","hs6":"852872","tags":["anchor","electronics"],"source":"hand","note":"Colour TV reception apparatus → 8528.72"}
+{"id":"ballpoint","description":"box of ballpoint pens","hs6":"960810","tags":["anchor"],"source":"hand","note":"Ball point pens → 9608.10"}
+{"id":"coffee-roasted","description":"roasted coffee beans, not decaffeinated","hs6":"090121","cn8":"09012100","tags":["anchor","food"],"source":"hand","note":"Coffee, roasted, not decaffeinated → 0901.21"}
+{"id":"honey","description":"jar of natural honey","hs6":"040900","cn8":"04090000","tags":["anchor","food"],"source":"hand","note":"Natural honey → 0409.00"}
+{"id":"cement-grey","description":"grey Portland cement, 25 kg bag","hs6":"252329","cn8":"25232900","tags":["anchor"],"source":"hand","note":"Portland cement other than white → 2523.29"}
+{"id":"chocolate-bar","description":"plain dark chocolate bar, not filled, 100 g","hs6":"180632","tags":["anchor","food"],"source":"hand","note":"Chocolate in bars/blocks, not filled → 1806.32"}
+{"id":"paracetamol","description":"paracetamol 500mg tablets, retail box","hs6":"300490","tags":["anchor"],"source":"hand","note":"Medicament in measured doses for retail → 3004.90"}
+{"id":"vacuum-flask","description":"stainless steel insulated vacuum flask","hs6":"961700","cn8":"96170000","tags":["anchor","tricky"],"source":"hand","note":"Vacuum flask → 9617.00 (not chapter 73 steel)"}
+{"id":"microwave","description":"household microwave oven, 900 W","hs6":"851650","tags":["anchor","electronics"],"source":"hand","note":"Microwave ovens → 8516.50"}
+{"id":"fridge-freezer","description":"combi fridge-freezer with separate external doors","hs6":"841810","tags":["anchor","electronics"],"source":"hand","note":"Combined refrigerator-freezers, separate doors → 8418.10"}
+{"id":"vacuum-cleaner","description":"household bagless vacuum cleaner, 800 W","hs6":"850811","tags":["anchor","numeric-split"],"source":"hand","note":"Vacuum cleaner with self-contained motor ≤1500W → 8508.11"}
+{"id":"office-chair","description":"swivel office chair with wheels and mesh back","hs6":"940130","tags":["anchor"],"source":"hand","note":"Swivel seat with variable height adjustment → 9401.30"}
+{"id":"guitar","description":"acoustic six-string guitar","hs6":"920290","tags":["anchor"],"source":"hand","note":"String instrument not played with a bow → 9202.90"}
+{"id":"diapers","description":"disposable baby diapers, pack of 40","hs6":"961900","tags":["anchor"],"source":"hand","note":"Babies' napkins/diapers → 9619.00"}
+{"id":"mattress-foam","description":"memory foam mattress, queen size","hs6":"940421","tags":["anchor","material-gri"],"source":"hand","note":"Mattress of cellular plastics (PU foam) → 9404.21"}
+// ── Numeric-threshold splits (cc / kN / kW ladders) ──
+{"id":"moto-650","description":"650 cc petrol motorcycle","hs6":"871140","tags":["numeric-split","vehicle"],"source":"hand","note":">500 ≤800 cm³ → 8711.40"}
+{"id":"moto-1200","description":"1200 cc touring motorcycle","hs6":"871150","tags":["numeric-split","vehicle"],"source":"hand","note":">800 cm³ → 8711.50"}
+{"id":"scooter-125","description":"125 cc motor scooter","hs6":"871120","tags":["numeric-split","vehicle"],"source":"hand","note":">50 ≤250 cm³ → 8711.20"}
+{"id":"turbojet-120kn","description":"turbojet engine rated 120 kN thrust","hs6":"841112","tags":["numeric-split","aerospace"],"source":"hand","note":"Turbojet thrust >25 kN → 8411.12"}
+{"id":"turbojet-20kn","description":"small turbojet, 20 kN thrust","hs6":"841111","tags":["numeric-split","aerospace"],"source":"hand","note":"Turbojet thrust ≤25 kN → 8411.11"}
+{"id":"car-petrol-1400","description":"petrol passenger car, 1400 cc engine","hs6":"870322","tags":["numeric-split","vehicle"],"source":"hand","note":"Spark-ignition >1000 ≤1500 cm³ → 8703.22"}
+{"id":"car-diesel-2000","description":"diesel saloon car, 2.0 litre","hs6":"870332","tags":["numeric-split","vehicle"],"source":"hand","note":"Compression-ignition >1500 ≤2500 cm³ → 8703.32"}
+{"id":"motor-50kw","description":"three-phase AC induction motor, 50 kW","hs6":"850152","tags":["numeric-split"],"source":"hand","note":"AC multi-phase motor >750W ≤75kW → 8501.52"}
+// ── Electrification (only switch branch when explicitly stated) ──
+{"id":"car-bev","description":"battery electric passenger car","hs6":"870380","tags":["electrification","vehicle"],"source":"hand","note":"Pure electric vehicle → 8703.80"}
+{"id":"car-phev","description":"petrol plug-in hybrid SUV, chargeable from a socket","hs6":"870360","tags":["electrification","vehicle"],"source":"hand","note":"Petrol plug-in hybrid → 8703.60"}
+{"id":"ebike","description":"pedal-assist electric bicycle (e-bike)","hs6":"871160","tags":["electrification","vehicle"],"source":"hand","note":"Cycle with auxiliary electric motor → 8711.60"}
+{"id":"bicycle","description":"adult road bicycle, no motor","hs6":"871200","tags":["vehicle"],"source":"hand","note":"Bicycle, non-motorised → 8712.00"}
+// ── Named mixtures (mixture subheading beats generic 'Other') ──
+{"id":"frozen-mixed-veg","description":"frozen mixed vegetables (peas, carrots and corn)","hs6":"071090","tags":["mixture","food"],"source":"hand","note":"Mixtures of vegetables, frozen → 0710.90"}
+{"id":"mixed-nuts","description":"bag of assorted dried nuts and raisins","hs6":"081350","tags":["mixture","food"],"source":"hand","note":"Mixtures of nuts/dried fruits → 0813.50"}
+{"id":"curry-powder","description":"curry powder spice blend","hs6":"091091","tags":["mixture","food"],"source":"hand","note":"Mixtures of spices (chapter note 1(b)) → 0910.91"}
+// ── HS 2022 new headings/subheadings ──
+{"id":"smartphone","description":"5G smartphone","hs6":"851713","cn8":"85171300","tags":["hs2022","electronics"],"source":"hand","note":"Smartphones (new HS2022 subheading) → 8517.13"}
+{"id":"feature-phone","description":"basic cellular feature phone","hs6":"851714","tags":["hs2022","electronics"],"source":"hand","note":"Other telephones for cellular networks → 8517.14"}
+{"id":"pv-module","description":"solar photovoltaic panel, 450 W module","hs6":"854143","cn8":"85414300","tags":["hs2022"],"source":"hand","note":"PV cells assembled in modules (new HS2022) → 8541.43"}
+{"id":"led-bulb","description":"LED light bulb, E27, 9 W","hs6":"853952","tags":["hs2022"],"source":"hand","note":"LED lamps (new HS2022 subheading) → 8539.52"}
+{"id":"drone-249g","description":"consumer camera quadcopter drone, 249 g, remote-controlled","hs6":"880621","tags":["hs2022","numeric-split","aerospace"],"source":"hand","note":"UAV remote-control only, ≤250 g (new HS2022 heading 8806) → 8806.21"}
+{"id":"nmc-cathode","description":"lithium nickel manganese cobalt oxide (NMC) cathode powder","hs6":"284190","tags":["hs2022","chemicals"],"source":"hand","note":"Salt of oxometallic acid, ch 28 not 85 → 2841.90 (CN 2026 8-digit 28419040)"}
+// ── Material-driven GRI 1 (incl. post-2025 Christmas rule) ──
+{"id":"xmas-bauble-plastic","description":"plastic Christmas tree bauble ornament","hs6":"392640","tags":["festive","material-gri"],"source":"hand","note":"Ch95 Note 1 deleted (2025) → classify by material, plastic ornament → 3926.40"}
+{"id":"drinking-glass","description":"plain glass drinking tumbler","hs6":"701337","tags":["material-gri"],"source":"hand","note":"Other drinking glasses, not crystal/glass-ceramic → 7013.37"}
+{"id":"steel-bolts","description":"stainless steel hex bolts, M8","hs6":"731815","tags":["material-gri"],"source":"hand","note":"Threaded screws/bolts of iron or steel → 7318.15"}
+{"id":"wooden-chair","description":"upholstered wooden dining chair","hs6":"940161","tags":["material-gri"],"source":"hand","note":"Seat with wooden frame, upholstered → 9401.61"}

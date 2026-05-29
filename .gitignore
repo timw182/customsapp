@@ -20,6 +20,13 @@ data/*.db.bak*
 # scripts
 create-admin.mjs
 
+# eval harness reports (timestamped artifacts; commit a named baseline if you want one)
+eval-reports/
+
+# stray backups
+*.bak
+**/*.js.bak
+
 # misc
 .DS_Store
 public/landing.old.html
