@@ -193,37 +193,73 @@ function narrowHeadings(attrs, description, limit = 12) {
 
 // ── Claude call helper ────────────────────────────────────────────────────────
 
+// Recover a JSON value from a model response that may be wrapped in markdown
+// fences and/or surrounded by prose — the pick model occasionally prefixes
+// "Looking at the candidates: { … }", which a bare JSON.parse rejected (those
+// requests used to fail to the user). Tries a direct parse, then extracts the
+// first balanced {…} or […] literal (string- and escape-aware). Returns the
+// parsed value, or undefined if nothing parseable is present.
+function extractJson(text) {
+  if (!text) return undefined;
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+  const start = cleaned.search(/[{[]/);
+  if (start < 0) return undefined;
+  const open = cleaned[start];
+  const close = open === "{" ? "}" : "]";
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === open) depth++;
+    else if (ch === close && --depth === 0) {
+      try { return JSON.parse(cleaned.slice(start, i + 1)); } catch { return undefined; }
+    }
+  }
+  return undefined;
+}
+
 async function callClaude(system, userMsg, model = "claude-sonnet-4-6", maxTokens = 2500) {
   // userMsg may be a plain string (text-only) OR an array of content blocks
   // for multimodal input (e.g. [{type:"image",source:{...}}, {type:"text",text:"..."}]).
   // Anthropic's API accepts both shapes; pass through unchanged.
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: "user", content: userMsg }],
-    }),
-  });
-  if (!resp.ok) {
-    const errText = await resp.text().catch(() => "");
-    console.error(`[hs-lookup] Claude API error (${model}):`, resp.status, errText.slice(0, 300));
-    throw new Error(`Claude API ${resp.status}`);
+  async function request(content) {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: "user", content }] }),
+    });
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => "");
+      console.error(`[hs-lookup] Claude API error (${model}):`, resp.status, errText.slice(0, 300));
+      throw new Error(`Claude API ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.content?.find((b) => b.type === "text")?.text || "";
   }
-  const data = await resp.json();
-  const text = data.content?.find(b => b.type === "text")?.text || "";
-  try {
-    return JSON.parse(text.replace(/```json|```/g, "").trim());
-  } catch (e) {
-    console.error(`[hs-lookup] JSON parse error (${model}). Raw:`, text.slice(0, 500));
-    throw e;
-  }
+
+  const text = await request(userMsg);
+  let parsed = extractJson(text);
+  if (parsed !== undefined) return parsed;
+
+  // Couldn't recover JSON (truncated, or pure prose) — retry once with an
+  // explicit "JSON only" nudge. Only fires on the rare miss, so the happy path
+  // keeps its single call; cheap insurance against a 502 reaching the user.
+  console.warn(`[hs-lookup] JSON parse retry (${model}). Raw:`, text.slice(0, 200));
+  const NUDGE = "\n\nIMPORTANT: respond with ONLY the JSON value — no preamble, explanation, or markdown.";
+  const retryMsg = typeof userMsg === "string" ? userMsg + NUDGE : [...userMsg, { type: "text", text: NUDGE }];
+  const parsed2 = extractJson(await request(retryMsg));
+  if (parsed2 !== undefined) return parsed2;
+
+  console.error(`[hs-lookup] JSON parse error (${model}) after retry.`);
+  throw new Error(`Claude returned unparseable JSON (${model})`);
 }
 
 // Haiku no longer classifies — it extracts structured attributes that drive
@@ -731,6 +767,7 @@ function rationaleInstruction(level) {
 export {
   normalizeDescription,
   callClaude,
+  extractJson,
   HEADING_INDEX,
   INDEX_STOPWORDS,
   foldPlural,
