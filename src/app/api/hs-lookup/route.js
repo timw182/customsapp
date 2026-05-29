@@ -32,6 +32,19 @@ function firePushForResult(userId, result) {
   }).catch(() => {});
 }
 
+// CN/TARIC leaf codes are very often the bare residual "Other" (the meaning lives
+// in parent levels of the nomenclature). When that's all the declarable code gives
+// us, fall back to the model's shortLabel — a meaningful 2-3 word product label —
+// so the result never surfaces just "Other". Only the truly-bare residual is
+// replaced; "Other, of cotton" etc. carry real info and are kept as-is.
+function meaningfulDescription(description, shortLabel) {
+  const d = (description || "").trim();
+  const bareOther = /^others?[\s:.,;-]*$/i.test(d) || /^n\.?\s*e\.?\s*s\.?$/i.test(d);
+  const label = (shortLabel || "").trim();
+  if ((!d || bareOther) && label) return label;
+  return description;
+}
+
 // Cache entries older than 180 days are considered stale (CN codes update annually)
 const CACHE_MAX_AGE_DAYS = 180;
 
@@ -807,6 +820,8 @@ async function runClassification(data, userId, isPro, emit) {
   const cached = await prisma.hsLookupCache.findUnique({ where: { descriptionNorm: descNorm } });
   if (cached && cached.updatedAt > staleThreshold) {
     const result = JSON.parse(cached.resultJson);
+    // Older entries may have a bare "Other" leaf stored; surface shortLabel on read.
+    result.description = meaningfulDescription(result.description, result.shortLabel);
     // Re-run alternatives normalisation on cache hits. Older entries (pre-
     // normaliser, or written by an earlier version of this code) can have raw
     // model probabilities that sum to >100% with the primary — we don't want
@@ -1291,7 +1306,7 @@ async function runClassification(data, userId, isPro, emit) {
       finalResult.cn8 = bestMatch.cn8;
       finalResult.cn10 = bestMatch.cn10;
       finalResult.hs6 = bestMatch.cn8.slice(0, 6);
-      finalResult.description = bestMatch.description;
+      finalResult.description = meaningfulDescription(bestMatch.description, finalResult.shortLabel);
       finalResult.taricVerified = !taricFromTree; // Full SOAP verification only
       finalResult.saturnUrl = saturnUrl(bestMatch.cn10);
 
