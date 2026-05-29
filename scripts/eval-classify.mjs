@@ -48,6 +48,10 @@ const TAGS = args.tag ? String(args.tag).split(",").map((t) => t.trim()).filter(
 const USE_OPUS = !!args.opus;
 const THRESHOLD = args.threshold ? parseFloat(args.threshold) : null;
 const DATA_PATH = args.data ? resolve(ROOT, args.data) : resolve(ROOT, "scripts/eval-data.jsonl");
+const NARROW_ONLY = !!args["narrow-only"];
+const CACHE_ATTRS = args["cache-attrs"]
+  ? (args["cache-attrs"] === true ? resolve(ROOT, "eval-reports/attrs-cache.json") : resolve(ROOT, args["cache-attrs"]))
+  : null;
 
 // ── env (callClaude reads ANTHROPIC_API_KEY at call time) ──────────────────────
 function loadDotenv(file) {
@@ -92,12 +96,34 @@ if (cases.length === 0) { console.error("no cases selected"); process.exit(2); }
 
 const norm6 = (s) => String(s || "").replace(/\D/g, "").slice(0, 6);
 
+// Optional attrs cache — lets a narrowing-algorithm A/B run on identical Haiku
+// attrs. Haiku is stochastic, so without this the narrowing delta is swamped by
+// extraction jitter. Keyed by case id + description (recompute if it changed).
+const attrsCache = new Map();
+let attrsCacheDirty = false;
+if (CACHE_ATTRS) {
+  try {
+    const raw = JSON.parse(readFileSync(CACHE_ATTRS, "utf8"));
+    for (const [k, v] of Object.entries(raw)) attrsCache.set(k, v);
+    console.log(`[eval] loaded attrs cache: ${attrsCache.size} entries`);
+  } catch { /* first run — no cache yet */ }
+}
+async function getAttrs(c) {
+  if (CACHE_ATTRS) {
+    const hit = attrsCache.get(c.id);
+    if (hit && hit.__desc === c.description) return hit.attrs;
+  }
+  const attrs = await extractAttributes(c.description);
+  if (CACHE_ATTRS) { attrsCache.set(c.id, { __desc: c.description, attrs }); attrsCacheDirty = true; }
+  return attrs;
+}
+
 // ── per-case runner ────────────────────────────────────────────────────────---
 async function runCase(c) {
   const t0 = Date.now();
   const rec = { id: c.id, tags: c.tags || [], goldHs6: c.hs6, goldHeading: c.hs6.slice(0, 4) };
   try {
-    const attrs = await extractAttributes(c.description);
+    const attrs = await getAttrs(c);
     const effective = (attrs.correctedQuery || "").trim() || c.description;
     const candidates = narrowHeadings(attrs, effective, 12);
     const shortlist = candidates.map((x) => x.heading);
@@ -105,6 +131,8 @@ async function runCase(c) {
     rec.headingRank = shortlist.indexOf(rec.goldHeading); // -1 if absent
     rec.recallHit = rec.headingRank >= 0;
     rec.likelyChapters = attrs.likelyChapters || [];
+
+    if (NARROW_ONLY) { rec.status = "narrow-only"; rec.ms = Date.now() - t0; return rec; }
 
     let pick = await pickFromCandidates({ description: effective, attrs, candidates, model: PICK_MODEL, level: "medium" });
     rec.model = PICK_MODEL.includes("sonnet") ? "sonnet" : PICK_MODEL.includes("opus") ? "opus" : PICK_MODEL;
@@ -149,7 +177,7 @@ async function runPool(items, n, worker) {
       const r = await worker(items[idx]);
       out[idx] = r;
       done++;
-      const mark = r.error ? "ERR " : r.top1 ? "PASS" : "MISS";
+      const mark = r.error ? "ERR " : NARROW_ONLY ? (r.recallHit ? "HIT " : "MISS") : r.top1 ? "PASS" : "MISS";
       const rk = r.recallHit ? `rank ${r.headingRank}` : "ABSENT";
       process.stdout.write(
         `  [${String(done).padStart(2)}/${items.length}] ${mark}  ${r.id.padEnd(18)} ` +
@@ -170,6 +198,13 @@ const wall0 = Date.now();
 const recs = await runPool(cases, CONCURRENCY, runCase);
 const wallMs = Date.now() - wall0;
 
+if (CACHE_ATTRS && attrsCacheDirty) {
+  mkdirSync(dirname(CACHE_ATTRS), { recursive: true });
+  const obj = {}; for (const [k, v] of attrsCache) obj[k] = v;
+  writeFileSync(CACHE_ATTRS, JSON.stringify(obj, null, 2), "utf8");
+  console.log(`[eval] wrote attrs cache: ${attrsCache.size} entries → ${CACHE_ATTRS}`);
+}
+
 // ── aggregate ─────────────────────────────────────────────────────────────────
 const n = recs.length;
 const errs = recs.filter((r) => r.error);
@@ -189,6 +224,10 @@ const meanRank = ranks.length ? (ranks.reduce((s, x) => s + x, 0) / ranks.length
 const lat = scored.map((r) => r.ms).sort((a, b) => a - b);
 const median = (arr) => (arr.length ? arr[Math.floor(arr.length / 2)] : 0);
 
+const rankHist = { "0": 0, "1-2": 0, "3-5": 0, "6+": 0 };
+for (const r of recallHits) { const k = r.headingRank === 0 ? "0" : r.headingRank <= 2 ? "1-2" : r.headingRank <= 5 ? "3-5" : "6+"; rankHist[k]++; }
+const absentIds = scored.filter((r) => !r.recallHit).map((r) => r.id);
+
 // calibration: bucket classified picks by confidence, compare to actual top-1
 const buckets = [[0, 60], [60, 70], [70, 80], [80, 90], [90, 101]];
 const calib = buckets.map(([lo, hi]) => {
@@ -206,22 +245,28 @@ const perTag = tagSet.map((tag) => {
 
 // ── print summary ──────────────────────────────────────────────────────────---
 console.log("\n" + "═".repeat(72));
-console.log("SUMMARY");
+console.log(NARROW_ONLY ? "NARROWING SUMMARY" : "SUMMARY");
 console.log("═".repeat(72));
 console.log(`cases scored        ${scored.length}/${n}${errs.length ? `  (${errs.length} errored)` : ""}`);
 console.log(`narrowing recall    ${pct(recallHits.length, scored.length)}  (correct heading offered to the model; mean rank ${meanRank})`);
-console.log(`hs6 top-1           ${pct(top1.length, scored.length)}`);
-console.log(`hs6 top-3           ${pct(top3.length, scored.length)}  (primary + alternatives / candidates)`);
-console.log(`resolved            ${pct(scored.filter((r) => r.resolved).length, scored.length)}  (classified or candidates; rest = needs_info/fatal)`);
-console.log(`would-disambiguate  ${pct(wouldDis.length, scored.length)}  (classified picks < 75%)`);
-console.log(`\ntop-1 miss breakdown:`);
-console.log(`  ceiling breaches (heading ABSENT from shortlist)  ${ceilingBreaches.length}${ceilingBreaches.length ? "  → " + ceilingBreaches.map((r) => r.id).join(", ") : ""}`);
-console.log(`  pick errors (heading present, wrong subheading)   ${pickFailsWithHeadingPresent.length}${pickFailsWithHeadingPresent.length ? "  → " + pickFailsWithHeadingPresent.map((r) => `${r.id}(${r.predictedHs6}≠${r.goldHs6})`).join(", ") : ""}`);
-console.log(`\nstatus distribution: ${Object.entries(statusDist).map(([k, v]) => `${k}=${v}`).join("  ")}`);
-console.log(`\nconfidence calibration (classified picks):`);
-for (const b of calib) console.log(`  ${b.range.padStart(6)}%   n=${String(b.n).padStart(2)}   actual top-1 ${b.acc == null ? "—" : b.acc.toFixed(0) + "%"}`);
-console.log(`\nper-tag (top-1 · recall):`);
-for (const t of perTag) console.log(`  ${t.tag.padEnd(16)} top-1 ${pct(t.top1, t.n).padStart(6)}   recall ${pct(t.recall, t.n).padStart(6)}   (n=${t.n})`);
+console.log(`gold-heading rank   0:${rankHist["0"]}  1-2:${rankHist["1-2"]}  3-5:${rankHist["3-5"]}  6+:${rankHist["6+"]}  absent:${absentIds.length}`);
+console.log(`absent from list    ${absentIds.length}${absentIds.length ? "  → " + absentIds.join(", ") : ""}`);
+if (!NARROW_ONLY) {
+  console.log(`hs6 top-1           ${pct(top1.length, scored.length)}`);
+  console.log(`hs6 top-3           ${pct(top3.length, scored.length)}  (primary + alternatives / candidates)`);
+  console.log(`resolved            ${pct(scored.filter((r) => r.resolved).length, scored.length)}  (classified or candidates; rest = needs_info/fatal)`);
+  console.log(`would-disambiguate  ${pct(wouldDis.length, scored.length)}  (classified picks < 75%)`);
+  console.log(`\ntop-1 miss breakdown:`);
+  console.log(`  ceiling breaches (heading ABSENT from shortlist)  ${ceilingBreaches.length}${ceilingBreaches.length ? "  → " + ceilingBreaches.map((r) => r.id).join(", ") : ""}`);
+  console.log(`  pick errors (heading present, wrong subheading)   ${pickFailsWithHeadingPresent.length}${pickFailsWithHeadingPresent.length ? "  → " + pickFailsWithHeadingPresent.map((r) => `${r.id}(${r.predictedHs6}≠${r.goldHs6})`).join(", ") : ""}`);
+  console.log(`\nstatus distribution: ${Object.entries(statusDist).map(([k, v]) => `${k}=${v}`).join("  ")}`);
+  console.log(`\nconfidence calibration (classified picks):`);
+  for (const b of calib) console.log(`  ${b.range.padStart(6)}%   n=${String(b.n).padStart(2)}   actual top-1 ${b.acc == null ? "—" : b.acc.toFixed(0) + "%"}`);
+}
+console.log(`\nper-tag (${NARROW_ONLY ? "recall" : "top-1 · recall"}):`);
+for (const t of perTag) console.log(NARROW_ONLY
+  ? `  ${t.tag.padEnd(16)} recall ${pct(t.recall, t.n).padStart(6)}   (n=${t.n})`
+  : `  ${t.tag.padEnd(16)} top-1 ${pct(t.top1, t.n).padStart(6)}   recall ${pct(t.recall, t.n).padStart(6)}   (n=${t.n})`);
 if (errs.length) console.log(`\nerrors: ${errs.map((r) => `${r.id}: ${r.error}`).join(" | ")}`);
 console.log(`\nlatency  median ${median(lat)}ms · p-slowest ${lat[lat.length - 1] || 0}ms · wall ${(wallMs / 1000).toFixed(1)}s`);
 
@@ -231,10 +276,11 @@ const outPath = args.out ? resolve(ROOT, args.out) : resolve(ROOT, `eval-reports
 mkdirSync(dirname(outPath), { recursive: true });
 const report = {
   runAt: new Date().toISOString(),
-  config: { pickModel: PICK_MODEL, useOpus: USE_OPUS, opusModel: USE_OPUS ? OPUS_MODEL : null, concurrency: CONCURRENCY, n: scored.length, errored: errs.length, tagsFilter: TAGS, dataPath: DATA_PATH },
+  config: { pickModel: PICK_MODEL, useOpus: USE_OPUS, opusModel: USE_OPUS ? OPUS_MODEL : null, narrowOnly: NARROW_ONLY, cacheAttrs: !!CACHE_ATTRS, concurrency: CONCURRENCY, n: scored.length, errored: errs.length, tagsFilter: TAGS, dataPath: DATA_PATH },
   metrics: {
     narrowingRecall: scored.length ? recallHits.length / scored.length : 0,
     meanHeadingRank: meanRank,
+    rankHistogram: rankHist,
     hs6Top1: scored.length ? top1.length / scored.length : 0,
     hs6Top3: scored.length ? top3.length / scored.length : 0,
     resolvedRate: scored.length ? scored.filter((r) => r.resolved).length / scored.length : 0,
@@ -252,7 +298,8 @@ writeFileSync(outPath, JSON.stringify(report, null, 2), "utf8");
 console.log(`\nreport → ${outPath}\n`);
 
 if (THRESHOLD != null) {
-  const t1 = scored.length ? (100 * top1.length) / scored.length : 0;
-  if (t1 < THRESHOLD) { console.error(`FAIL: hs6 top-1 ${t1.toFixed(1)}% < threshold ${THRESHOLD}%`); process.exit(1); }
-  console.log(`PASS: hs6 top-1 ${t1.toFixed(1)}% ≥ threshold ${THRESHOLD}%`);
+  const metricName = NARROW_ONLY ? "narrowing recall" : "hs6 top-1";
+  const val = scored.length ? (100 * (NARROW_ONLY ? recallHits.length : top1.length)) / scored.length : 0;
+  if (val < THRESHOLD) { console.error(`FAIL: ${metricName} ${val.toFixed(1)}% < threshold ${THRESHOLD}%`); process.exit(1); }
+  console.log(`PASS: ${metricName} ${val.toFixed(1)}% ≥ threshold ${THRESHOLD}%`);
 }

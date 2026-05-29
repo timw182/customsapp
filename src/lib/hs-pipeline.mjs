@@ -77,15 +77,47 @@ function indexTokens(text) {
     .map(foldPlural);
 }
 
+// Precomputed scoring model over the heading corpus, built once (lazily) from
+// HEADING_INDEX so narrowHeadings doesn't re-tokenise 1300+ headings every call
+// and so tokens can be weighted by rarity. For each heading we keep its
+// description/keyword token sets + token count; across the corpus we keep each
+// token's document frequency → BM25 idf, and the average doc length. Rebuilt
+// only if the index object identity changes.
+let _scoringModel = null;
+let _scoringFor = null;
+function getScoringModel() {
+  const headings = HEADING_INDEX?.headings || {};
+  if (_scoringModel && _scoringFor === HEADING_INDEX) return _scoringModel;
+  const docs = new Map();   // h4 → { desc, descSet, kwSet, len }
+  const df = new Map();     // token → number of headings containing it
+  let totalLen = 0, n = 0;
+  for (const [h4, entry] of Object.entries(headings)) {
+    if (h4.endsWith("00")) continue;            // chapter-umbrella rows aren't real headings
+    const descSet = new Set(indexTokens(entry.description));
+    const kwSet = new Set((entry.keywords || []).map(foldPlural));
+    const all = new Set([...descSet, ...kwSet]);
+    docs.set(h4, { desc: entry.description, descSet, kwSet, len: all.size });
+    for (const t of all) df.set(t, (df.get(t) || 0) + 1);
+    totalLen += all.size; n++;
+  }
+  const idf = new Map();
+  for (const [t, d] of df) idf.set(t, Math.log(1 + (n - d + 0.5) / (d + 0.5))); // BM25 idf
+  _scoringModel = { docs, idf, avgdl: n ? totalLen / n : 1 };
+  _scoringFor = HEADING_INDEX;
+  return _scoringModel;
+}
+
 /**
  * Score every heading in the index against the product attributes + raw
  * description and return the top N candidates. Returns [] if the index is
  * missing — the caller falls back to letting Sonnet pick from full HS.
  *
- *   - +3 per query token that appears in the heading's canonical description
- *   - +1 per query token that appears in the heading's keyword bag
- *   - ×1.5 multiplier if the heading's chapter is in attrs.likelyChapters
- *   - +5 flat bonus if the heading's chapter == attrs.likelyChapters[0]
+ * Scoring is BM25 over the heading's description + keyword bag, so a rare,
+ * discriminating token (e.g. "saffron", "turbojet", "vacuum") far outweighs a
+ * ubiquitous one (e.g. "other", "article", "machine"), and a heading with a
+ * huge keyword bag no longer matches everything by chance (length norm). A
+ * description hit outweighs a keyword-bag hit (FIELD_DESC vs FIELD_KW).
+ * Haiku's likelyChapters apply a gentle multiplicative prior on top.
  *
  * Always seeds the top of `likelyChapters` so the model still sees Haiku's
  * preferred chapters even when keyword scoring misses (e.g. specs-heavy
@@ -115,27 +147,29 @@ function narrowHeadings(attrs, description, limit = 12) {
   const likelySet = new Set(likely);
   const primaryChapter = likely[0] || null;
 
+  // BM25 token scoring. Field weights boost a description hit over a keyword-bag
+  // hit; k1/b are standard BM25 knobs (b < 0.75 since HS doc lengths vary a lot).
+  const { docs, idf, avgdl } = getScoringModel();
+  const K1 = 1.2, B = 0.5, FIELD_DESC = 2.0, FIELD_KW = 1.0;
   const scored = [];
-  for (const [h4, entry] of Object.entries(headings)) {
-    // Skip chapter-umbrella rows (e.g. "8800") — not real HS headings.
-    if (h4.endsWith("00")) continue;
+  for (const [h4, doc] of docs) {
     const chapter = h4.slice(0, 2);
-    const descTokens = new Set(indexTokens(entry.description));
-    // Fold stored keywords on read so existing index files (built before
-    // foldPlural existed) still match folded query tokens. Once the index is
-    // rebuilt this is a cheap no-op since stored keywords will already be folded.
-    const kwSet = new Set((entry.keywords || []).map(foldPlural));
-
     let score = 0;
     for (const tok of queryTokens) {
-      if (descTokens.has(tok)) score += 3;
-      else if (kwSet.has(tok)) score += 1;
+      const inDesc = doc.descSet.has(tok);
+      const inKw = !inDesc && doc.kwSet.has(tok);
+      if (!inDesc && !inKw) continue;
+      const f = inDesc ? FIELD_DESC : FIELD_KW;
+      score += (idf.get(tok) || 0) * (f * (K1 + 1)) / (f + K1 * (1 - B + B * doc.len / avgdl));
     }
     if (score === 0 && !likelySet.has(chapter)) continue;
 
-    if (likelySet.has(chapter)) score *= 1.5;
-    if (chapter === primaryChapter) score += 5;
-    scored.push({ heading: h4, description: entry.description, score });
+    // Gentle multiplicative chapter prior (replaces the old ×1.5 + flat +5,
+    // which on the new score scale would either dominate or vanish). A strong
+    // lexical match in an unexpected chapter can now still surface.
+    if (chapter === primaryChapter) score *= 1.8;
+    else if (likelySet.has(chapter)) score *= 1.4;
+    scored.push({ heading: h4, description: doc.desc, score });
   }
 
   scored.sort((a, b) => b.score - a.score);
