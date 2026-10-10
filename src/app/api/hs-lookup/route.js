@@ -233,7 +233,7 @@ async function pickCn8FromSiblings(description, siblings, priorReasoning = "", m
       const subgroups = Array.from(cn8Map.entries())
         .map(([cn8, items]) => {
           const rows = items
-            .map((s) => `      - ${s.cn10}: ${s.description || "(no description)"}`)
+            .map((s) => `      - ${s.cn10}: ${s.path || s.description || "(no description)"}`)
             .join("\n");
           return `    ${cn8}:\n${rows}`;
         })
@@ -244,7 +244,9 @@ async function pickCn8FromSiblings(description, siblings, priorReasoning = "", m
 
   const sys =
     "You are a customs classification expert. You will receive a product description, " +
-    "prior reasoning, and CN10 codes grouped CN6 → CN8 → CN10.\n\n" +
+    "prior reasoning, and CN10 codes grouped CN6 → CN8 → CN10. Each candidate is written as its " +
+    "full path in the nomenclature, outer level to inner, separated by ' > ': every segment is a " +
+    "condition the goods must meet, read them all.\n\n" +
     "PROCESS (in order):\n" +
     "1. Identify what CATEGORY each 6-digit (CN6) subheading group represents using your " +
     "HS/CN knowledge — e.g. 190240 = couscous, 190230 = other pasta, 190219 = uncooked pasta.\n" +
@@ -267,7 +269,12 @@ async function pickCn8FromSiblings(description, siblings, priorReasoning = "", m
     "'Mixtures of spices'), prefer the named mixture subgroup over a generic 'Other vegetables/fruits/etc' " +
     "subgroup. Never collapse a true multi-kind mixture into a single-kind subheading (e.g. 'Olives') just " +
     "because that single-kind subheading happens to come first in the candidate list.\n\n" +
-    'Output raw JSON only: {"cn10":"ten-digit string"}. The answer MUST be one of the candidates listed.';
+    "WHEN THE DESCRIPTION DOES NOT SAY: if the candidates split on a fact the description does not " +
+    "give and no general knowledge settles (men's or women's, covers the ankle or not, insole length, " +
+    "material of the sole, fresh or dried), do NOT guess the first bucket: ask. Return " +
+    '{"question":"one plain question","options":["option 1","option 2",…]} with at most 5 options, ' +
+    "each option a short phrase a customer could answer with, worded so that each maps to one candidate.\n\n" +
+    'Otherwise output raw JSON only: {"cn10":"ten-digit string"}. The answer MUST be one of the candidates listed.';
 
   const specsBlock = attrs?.attributes?.specs
     ? `\nKnown specs: ${attrs.attributes.specs}\n`
@@ -282,9 +289,12 @@ async function pickCn8FromSiblings(description, siblings, priorReasoning = "", m
     `Return only the JSON object.`;
 
   try {
-    const result = await callClaude(sys, user, model, 60);
+    const result = await callClaude(sys, user, model, 400);
     const picked = String(result?.cn10 ?? "").replace(/\D/g, "");
-    if (picked && siblings.some((s) => s.cn10 === picked)) return picked;
+    if (picked && siblings.some((s) => s.cn10 === picked)) return { cn10: picked };
+    const question = typeof result?.question === "string" ? result.question.trim() : "";
+    const options = Array.isArray(result?.options) ? result.options.map((o) => String(o).trim()).filter(Boolean).slice(0, 5) : [];
+    if (question && options.length >= 2) return { question, options };
   } catch {
     // fall through
   }
@@ -385,6 +395,17 @@ function extractJsonArray(js, varName) {
   return null;
 }
 
+/* One nomenclature tree file per chapter, fetched once per process: the EU publishes them on
+   1 January, and a classification run walks the same chapter several times. */
+const treeCache = new Map();
+
+/**
+ * Every declarable line under a heading, from the EU nomenclature tree, each with its `path`: the
+ * descriptions of its ancestors below the heading, so "For men" reads as
+ * "Other footwear with outer soles of leather > Other > Other > …insoles of 24 cm or more > For men".
+ * The tree is the complete list; the SOAP probe below only ever found the round-numbered codes
+ * (2026-10-10: 3 of the 52 lines under 6403, so "leather shoes for men" became slippers).
+ */
 async function taricBrowseHeadingFromTree(heading) {
   const h = heading.replace(/\D/g, "").slice(0, 4);
   if (h.length !== 4) return [];
@@ -395,35 +416,44 @@ async function taricBrowseHeadingFromTree(heading) {
   const year = now.getFullYear();
   const today = now.toISOString().slice(0, 10).replace(/-/g, "");
   const datesToTry = [`${year}0101`, `${year - 1}0101`, today];
-  let js = null;
-  for (const date of datesToTry) {
-    try {
-      const url = `${TARIC_TREE_BASE}/nomenclaturetree_en_${date}_${chapter}_en.js`;
-      const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
-      if (resp.ok) { js = await resp.text(); break; }
-    } catch { /* try next date */ }
-  }
-  if (!js) return [];
-  try {
-    const tree = extractJsonArray(js, "chaptertree");
+  let tree = treeCache.get(chapter) ?? null;
+  if (!tree) {
+    let js = null;
+    for (const date of datesToTry) {
+      try {
+        const url = `${TARIC_TREE_BASE}/nomenclaturetree_en_${date}_${chapter}_en.js`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
+        if (resp.ok) { js = await resp.text(); break; }
+      } catch { /* try next date */ }
+    }
+    if (!js) return [];
+    try { tree = extractJsonArray(js, "chaptertree"); } catch { tree = null; }
     if (!tree) return [];
+    treeCache.set(chapter, tree);
+  }
+  try {
     const results = [];
     const seen = new Set();
-    function walk(nodes) {
+    const clean = (d) => (typeof d === "string" ? d.replace(/ : $/, "").trim() : "");
+    function walk(nodes, ancestors) {
       if (!Array.isArray(nodes)) return;
       for (const node of nodes) {
         if (!Array.isArray(node) || node.length < 6) continue;
         const code = node[2];
-        const desc = node[5];
+        const desc = clean(node[5]);
         const children = node[7];
-        if (typeof code === "string" && code.length === 10 && code.startsWith(h)) {
+        const under = typeof code === "string" && code.startsWith(h);
+        /* The path starts below the heading itself: its own wording is the same for every line. */
+        const here = under && code !== `${h}000000` ? [...ancestors, desc] : ancestors;
+        if (typeof code === "string" && code.length === 10 && under) {
           const declarable = !Array.isArray(children);
           if (declarable && !seen.has(code)) {
             seen.add(code);
             results.push({
               cn8: code.slice(0, 8),
               cn10: code,
-              description: typeof desc === "string" ? desc.replace(/ : $/, "").trim() : "",
+              description: desc,
+              path: here.filter(Boolean).join(" > "),
               declarable: true,
               mfnRate: null,
               mfnRateRaw: null,
@@ -431,12 +461,38 @@ async function taricBrowseHeadingFromTree(heading) {
             });
           }
         }
-        if (Array.isArray(children)) walk(children);
+        if (Array.isArray(children)) walk(children, here);
       }
     }
-    walk(tree);
+    walk(tree, []);
     return results;
   } catch { return []; }
+}
+
+/**
+ * The duty rate, prohibitions and licensing of each candidate line, asked of TARIC's SOAP service
+ * in batches. Lines TARIC answers for lose `_fromTree` (they are verified); when the service is down
+ * for all of them the candidates stay as the tree gave them, rates unknown.
+ */
+async function taricRatesFor(candidates) {
+  const out = [...candidates];
+  let answered = 0;
+  for (let i = 0; i < out.length; i += 15) {
+    const batch = out.slice(i, i + 15);
+    const results = await Promise.all(batch.map((c) => taricVerifyExact(c.cn10).catch(() => undefined)));
+    batch.forEach((c, j) => {
+      const r = results[j];
+      if (r === undefined) return;                       // service trouble: leave as the tree had it
+      answered++;
+      if (r === null) { c.declarable = false; return; }  // the tree knows a line TARIC does not: keep, unverified
+      c.description = c.description || r.description;
+      c.declarable = r.declarable;
+      c.mfnRate = r.mfnRate; c.mfnRateRaw = r.mfnRateRaw;
+      c.prohibited = r.prohibited ?? false; c.licensing = r.licensing ?? [];
+      c._fromTree = false;
+    });
+  }
+  return answered ? out.filter((c) => c.declarable) : out;
 }
 
 // ── TARIC subheading browser ──────────────────────────────────────────────────
@@ -450,13 +506,8 @@ async function taricBrowseHeadingFromTree(heading) {
  * Returns only TARIC-confirmed declarable codes with descriptions and MFN duty rates.
  * Falls back to nomenclature tree files when the SOAP service is unavailable.
  */
-async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
-  const h = heading.replace(/\D/g, "").slice(0, 4);
-  if (h.length !== 4) return [];
-
-  // Helper: probe a single CN10 code via SOAP.
-  // Returns null if code not found; throws { isTaricDown: true } if service is broken.
-  async function verifyExact(cn10) {
+/** Probe one CN10 code via SOAP: null when TARIC has no such code; throws { isTaricDown } when the service is broken. */
+async function taricVerifyExact(cn10) {
     const code = cn10.replace(/\D/g, "").padEnd(10, "0").slice(0, 10);
     let descrXml;
     try {
@@ -516,7 +567,12 @@ async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
       } catch {} // Rate lookup failure is non-fatal
     }
     return { code10: code, description, declarable, mfnRate, mfnRateRaw, prohibited, licensing };
-  }
+}
+
+async function taricBrowseHeading(heading, extraCodes = [], nearHs6 = null) {
+  const h = heading.replace(/\D/g, "").slice(0, 4);
+  if (h.length !== 4) return [];
+  const verifyExact = taricVerifyExact;
 
   try {
     // Step 1: probe HS6 subheadings.
@@ -1234,18 +1290,24 @@ async function runClassification(data, userId, isPro, emit) {
   let siblings = [];
 
   if (autoTaric) {
-    emit({ type: "thinking", text: `Probing TARIC · heading ${heading}…` });
-    try {
-      siblings = await taricBrowseHeading(heading, [], hs6);
-    } catch (e) {
-      // Both SOAP + tree path already failed — siblings stays empty
+    emit({ type: "thinking", text: `Reading the nomenclature · heading ${heading}…` });
+    /* The nomenclature tree is the complete list of lines under the heading, each with its path;
+       TARIC's SOAP service then supplies the rates. The old order (probe round-numbered codes
+       first, tree only as a fallback) found 3 of 52 lines under 6403 and classified men's leather
+       shoes as slippers (2026-10-10). Probing remains the fallback when the tree is unreachable. */
+    const treeSiblings = await taricBrowseHeadingFromTree(heading);
+    if (treeSiblings.length > 0) {
+      siblings = await taricRatesFor(treeSiblings);
+      emit({ type: "thinking", text: `Nomenclature: ${siblings.length} declarable line${siblings.length !== 1 ? "s" : ""} under ${heading}` });
+    } else {
+      emit({ type: "thinking", text: `Nomenclature tree unavailable — probing TARIC · heading ${heading}…` });
+      try {
+        siblings = await taricBrowseHeading(heading, [], hs6);
+      } catch (e) {
+        // Both SOAP + tree path already failed — siblings stays empty
+      }
     }
-    // If SOAP returned empty (not thrown), try the tree as a secondary source
-    if (siblings.length === 0) {
-      const treeSiblings = await taricBrowseHeadingFromTree(heading);
-      if (treeSiblings.length > 0) siblings = treeSiblings;
-    }
-    const taricFromTree = siblings.length > 0 && siblings[0]?._fromTree;
+    const taricFromTree = siblings.length > 0 && siblings.every((s) => s._fromTree);
 
     if (siblings.length === 0) {
       // Unverified: either the heading is wrong (e.g. 8803 — abolished and
@@ -1272,19 +1334,33 @@ async function runClassification(data, userId, isPro, emit) {
       // sufficient (and faster than Opus). Always use Sonnet here regardless
       // of which model picked the parent subheading.
       const pickModel = "claude-sonnet-4-6";
-      if (matching.length > 1) {
-        // Multiple CN10s under Claude's preferred subheading — disambiguate.
-        const pickedCn10 = await pickCn8FromSiblings(
-          effectiveDescription, matching, claudeResult.reasoning || "", pickModel, attrs,
-        );
-        const picked = pickedCn10 ? matching.find((s) => s.cn10 === pickedCn10) : null;
-        if (picked) {
-          exactMatch = picked;
-          emit({ type: "thinking", text: `Narrowed to ${picked.cn8} from ${matching.length} candidates via description match` });
-        } else {
-          exactMatch = matching[0];
-          emit({ type: "thinking", text: `Disambiguation inconclusive — defaulting to ${exactMatch.cn8}` });
+      /* A pick that comes back as a question is put to the person, unless they have already
+         answered one (disambiguated): then the first line is taken, at low confidence and with a
+         warning, never silently at the model's self-reported figure. */
+      let undecided = false;
+      const askOrDefault = (pick, candidates, label) => {
+        if (pick?.cn10) {
+          const found = candidates.find((s) => s.cn10 === pick.cn10);
+          if (found) { emit({ type: "thinking", text: `${label}: ${found.cn8} (${found.path || found.description})` }); return found; }
         }
+        if (pick?.question && !data.disambiguated) {
+          emit({ type: "thinking", text: `Lines under ${hs6} split on something the description does not say — asking` });
+          emit({ type: "result", payload: {
+            status: "needs_info", needsMoreInfo: true,
+            reason: claudeResult.reasoning ?? null, hint: claudeResult.reasoning ?? null,
+            hs6, heading,
+            questions: [{ question: pick.question, answers: pick.options, why: `The tariff has ${candidates.length} lines under ${hs6}; this decides between them.` }],
+          } });
+          return "asked";
+        }
+        undecided = true;
+        emit({ type: "thinking", text: `Disambiguation inconclusive — ${candidates[0].cn8} taken at low confidence` });
+        return candidates[0];
+      };
+      if (matching.length > 1) {
+        const pick = await pickCn8FromSiblings(effectiveDescription, matching, claudeResult.reasoning || "", pickModel, attrs);
+        exactMatch = askOrDefault(pick, matching, `Narrowed from ${matching.length} lines`);
+        if (exactMatch === "asked") return;
       } else if (matching.length === 1) {
         exactMatch = matching[0];
       } else {
@@ -1293,20 +1369,21 @@ async function runClassification(data, userId, isPro, emit) {
         // declarable siblings so the model picks correctly instead of falling
         // back to siblings[0] which may be a completely different product.
         emit({ type: "thinking", text: `hs6 ${hs6} not found in TARIC — running full-heading disambiguation across ${siblings.length} siblings` });
-        const pickedCn10 = await pickCn8FromSiblings(
-          effectiveDescription, siblings, claudeResult.reasoning || "", pickModel, attrs,
-        );
-        exactMatch = pickedCn10 ? siblings.find((s) => s.cn10 === pickedCn10) : null;
-        if (exactMatch) {
-          emit({ type: "thinking", text: `Full-heading pick: ${exactMatch.cn8} (${exactMatch.description})` });
-        }
+        const pick = await pickCn8FromSiblings(effectiveDescription, siblings, claudeResult.reasoning || "", pickModel, attrs);
+        if (pick?.cn10) exactMatch = siblings.find((s) => s.cn10 === pick.cn10) ?? null;
+        else if (pick?.question && !data.disambiguated) { askOrDefault(pick, siblings, ""); return; }
+        if (exactMatch) emit({ type: "thinking", text: `Full-heading pick: ${exactMatch.cn8} (${exactMatch.path || exactMatch.description})` });
       }
       const bestMatch = exactMatch || siblings[0];
 
       finalResult.cn8 = bestMatch.cn8;
       finalResult.cn10 = bestMatch.cn10;
       finalResult.hs6 = bestMatch.cn8.slice(0, 6);
-      finalResult.description = meaningfulDescription(bestMatch.description, finalResult.shortLabel);
+      /* The line's place in the nomenclature, so "For men" is read with what it is under. */
+      finalResult.taricPath = bestMatch.path || null;
+      finalResult.description = bestMatch.path
+        ? bestMatch.path.split(" > ").slice(-3).join(" · ")
+        : meaningfulDescription(bestMatch.description, finalResult.shortLabel);
       finalResult.taricVerified = !taricFromTree; // Full SOAP verification only
       finalResult.saturnUrl = saturnUrl(bestMatch.cn10);
 
@@ -1320,7 +1397,11 @@ async function runClassification(data, userId, isPro, emit) {
         emit({ type: "thinking", text: "MFN duty rate: not found in TARIC measures" });
       }
 
-      if (!exactMatch) {
+      if (undecided) {
+        finalResult.taricWarning = `The tariff has ${matching.length} lines under ${hs6} and the description does not say which applies; ${bestMatch.cn8} is the first of them, not a finding. Review the siblings below.`;
+        finalResult.confidence = "low";
+        emit({ type: "thinking", text: `Undecided between ${matching.length} lines — confidence low` });
+      } else if (!exactMatch) {
         finalResult.taricWarning = `AI suggested ${hs6} but nearest valid code is ${bestMatch.cn8.slice(0, 6)}. Review the siblings below.`;
         if (finalResult.confidence === "high") finalResult.confidence = "medium";
         emit({ type: "thinking", text: `Best match: ${bestMatch.cn8} (nearest to suggested ${hs6})` });
@@ -1330,7 +1411,9 @@ async function runClassification(data, userId, isPro, emit) {
       }
       // Nudge the model's self-reported pct based on TARIC feedback rather
       // than snapping to a bucket: exact match +5, non-exact −10.
-      if (selfReportedPct != null) {
+      if (undecided) {
+        finalResult.confidencePct = Math.min(selfReportedPct ?? 45, 45);
+      } else if (selfReportedPct != null) {
         const delta = exactMatch ? 5 : -10;
         finalResult.confidencePct = Math.max(40, Math.min(99, selfReportedPct + delta));
       } else {
