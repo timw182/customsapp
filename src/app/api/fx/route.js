@@ -17,7 +17,12 @@ function getCached(key) {
   return entry.data;
 }
 
+/* Bounded since ?date= made the key space dates x currencies (2026-10-10 review): the oldest
+   entry goes when the map is full, and expired ones are only dropped when read. */
+const CACHE_MAX = 500;
+
 function setCached(key, data) {
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value);
   cache.set(key, { data, ts: Date.now() });
 }
 
