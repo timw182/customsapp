@@ -532,6 +532,7 @@ export default function CustomsCalculator({ user }) {
       vatRate: sum.vatRate,
       valEUR: sum.valueEUR,
       frEUR: sum.freightEUR,
+      frRestEUR: sum.freightExcludedEUR,
       insEUR: sum.insuranceEUR,
       airfreightPct: sum.airfreightPct,
       prefType: sum.preference,
@@ -1505,8 +1506,14 @@ export default function CustomsCalculator({ user }) {
                             <span className="v2-bk-val">€{fmt(result.antiDumpingDuty)}</span>
                           </div>
                         )}
+                        {result.frRestEUR > 0 && (
+                          <div className="v2-bk-row">
+                            <span className="v2-bk-lbl">Freight outside the customs value (VAT-able)</span>
+                            <span className="v2-bk-val">€{fmt(result.frRestEUR)}</span>
+                          </div>
+                        )}
                         <div className="v2-bk-row">
-                          <span className="v2-bk-lbl">Import VAT {((result.vatRate || 0.17) * 100).toFixed(0)}%</span>
+                          <span className="v2-bk-lbl">Import VAT {((result.vatRate || 0.17) * 100).toFixed(0)}% on €{fmt(result.vatBase)}</span>
                           <span className="v2-bk-val">€{fmt(result.importVAT)}</span>
                         </div>
                         <div className="v2-bk-sep"/>
@@ -1515,7 +1522,7 @@ export default function CustomsCalculator({ user }) {
                         {/* Grand total */}
                         <div className="v2-bk-grand">
                           <div>
-                            <div style={{fontSize:11,color:"var(--text-secondary)",marginBottom:4}}>Total landed cost (CIF + all duties)</div>
+                            <div style={{fontSize:11,color:"var(--text-secondary)",marginBottom:4}}>Total landed cost (CIF + remaining freight + all duties)</div>
                             <div style={{fontFamily:"var(--font-courier-prime),monospace",fontSize:28,fontWeight:700,color:"var(--foreground)",letterSpacing:-1}}>€{fmt(result.total)}</div>
                           </div>
                           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>

@@ -6,7 +6,15 @@
 // database or the network: rates in, figures out.
 //
 // Sources are named where they are used: LU VAT (Loi TVA), ADA excise rates, EU Reg. 2015/2447
-// Annex 23-01 for the airfreight share, UCC Art. 86 for the VAT base.
+// Annex 23-01 for the airfreight share, VAT Directive Art. 86 (Loi TVA art. 34) for the VAT base.
+//
+// Corrected 2026-10-10 after a review from the ELP tool: the VAT base used to be the customs value
+// plus duties, which left out the share of the air freight that customs excludes (30% from China)
+// and any carriage inside Luxembourg; the total left that freight out too, so it was not what the
+// importer paid; and a ticked preference with no TARIC rate behind it was given an invented
+// discount (0% for any FTA country, 35% of the rate for GSP).
+
+import { applyDuty, parseDutyRate } from "./taric-duty.mjs";
 
 // Luxembourg VAT rates (Loi TVA, 2026)
 // Maps HS chapter to applicable VAT rate
@@ -653,7 +661,8 @@ export function landedCost(input = {}) {
 
   const valueEUR = value * exchangeRate;
   const insuranceEUR = number(input.insurance) * exchangeRate;
-  let freightEUR = number(input.freight) * exchangeRate;
+  const freightPaidEUR = number(input.freight) * exchangeRate;
+  let freightEUR = freightPaidEUR;
 
   /* Only part of an airfreight cost enters the customs value, by distance zone (Annex 23-01). */
   const airfreightPct = input.transportMode === "air" ? getAirfreightPct(origin) : null;
@@ -665,52 +674,154 @@ export function landedCost(input = {}) {
   if (terms.needsFreight && terms.needsIns) customsValue = valueEUR + freightEUR + insuranceEUR;
   else if (!terms.needsFreight && terms.needsIns) customsValue = valueEUR + insuranceEUR;
 
+  /* Freight the importer pays that customs leaves out of its value: the rest of the air freight
+     when the Incoterm makes the buyer pay the freight. Under C and D terms the freight is inside
+     the price and nothing is outside. It is still a cost, and still VAT-able (Art. 86(1)(b)). */
+  const freightExcludedEUR = terms.needsFreight ? Math.max(0, freightPaidEUR - freightEUR) : 0;
+  /* Carriage from the EU border or port to the first destination in Luxembourg, when paid
+     separately: never in the customs value, always in the VAT base (Art. 86(1)(b)). */
+  const onwardCarriageEUR = number(input.onwardCarriage) * exchangeRate;
+
   const deMinimisActive = now < DE_MINIMIS_ENDS;
   const dutyFree = deMinimisActive && customsValue <= DE_MINIMIS_LIMIT;
 
-  let dutyRate = number(input.dutyRatePct) / 100;
+  const dutyRate = number(input.dutyRatePct) / 100;
   const agreement = ORIGIN_AGREEMENTS[origin]?.type || "";
-  const claimingPreference = !!input.preferential && !!input.hasProofOfOrigin;
-  if (claimingPreference && !input.usingPreferentialRate) {
-    /* Turkey's customs union covers industrial goods only; chapters 1–24 pay the MFN rate. */
-    const chapter = parseInt(hsCode.replace(/\D/g, "").substring(0, 2), 10) || 0;
-    const turkishFood = agreement === "cu" && origin === "TR" && chapter >= 1 && chapter <= 24;
-    if (turkishFood) dutyRate = dutyRate;
-    else if (["eba", "fta", "eea", "cu", "atp", "epa"].includes(agreement)) dutyRate = 0;
-    else if (agreement === "gsp+") dutyRate = dutyRate * 0.2;
-    else if (agreement === "gsp") dutyRate = dutyRate * 0.35;
-    else dutyRate = 0;
-  }
+  /* A preference counts only when the rate in hand IS the preferential one TARIC gave for this
+     code and origin, and the proof is held. Until 2026-10-10 a ticked box with no TARIC rate
+     behind it invented a discount by agreement type (0% for any FTA or EPA country, 35% of the
+     rate for GSP, 20% for GSP+). Neither the GSP (full suspension or 3.5 points off, by product)
+     nor the phased FTAs work like that: where TARIC lists no preference, there is none to claim,
+     and the rate stays what was typed. */
+  const claimingPreference = !!input.preferential && !!input.hasProofOfOrigin && !!input.usingPreferentialRate;
 
-  const customsDuty = dutyFree ? 0 : customsValue * dutyRate;
+  /* A specific or compound duty (euros per 100 kg, per litre…) needs the quantities declared:
+     `dutyExpression` is TARIC's text and `quantities` is { kg, l, lpa, items, m2, m3 }. When the
+     expression cannot be applied for want of a quantity, the duty is null and `dutyNeeds` says what
+     is missing, so the screen asks rather than printing a percentage of nothing. */
+  const expression = input.dutyExpression ? parseDutyRate(input.dutyExpression) : null;
+  const quantities = input.quantities && typeof input.quantities === "object" ? input.quantities : {};
+  let customsDuty = dutyFree ? 0 : customsValue * dutyRate;
+  let dutyNeeds = [];
+  if (expression && expression.complete && !dutyFree) {
+    const applied = applyDuty(expression, customsValue, quantities);
+    if (applied == null) {
+      dutyNeeds = [...new Set([expression, expression.min, expression.max].flatMap((p) => (p?.specifics ?? []).map((s) => s.basis)).filter(Boolean))];
+      customsDuty = null;
+    } else customsDuty = applied;
+  }
   /* Anti-dumping duty is a trade defence measure: de minimis does not reach it (UCC Art. 83). */
   const antiDumpingRate = number(input.antiDumpingRatePct) / 100;
   const antiDumpingDuty = customsValue * antiDumpingRate;
   const exciseDuty = number(input.exciseDuty);
+  const dutyKnown = customsDuty != null;
+  const dutyForBase = customsDuty ?? 0;
 
   const vatRate = input.vatRatePct != null ? number(input.vatRatePct) / 100 : getLuVAT(hsCode, !!input.stillWineLow);
-  /* VAT is charged on the customs value plus every duty on it (Loi TVA art. 42 / UCC Art. 86). */
-  const vatBase = customsValue + customsDuty + antiDumpingDuty + exciseDuty;
-  const importVAT = vatBase * vatRate;
+  /* VAT is charged on the customs value, every duty on it, and the incidental costs up to the first
+     place of destination in Luxembourg (VAT Directive Art. 86(1)(b), Loi TVA art. 34): that is the
+     freight customs left out and the onward carriage, which the customs value does not hold. */
+  const vatBase = customsValue + dutyForBase + antiDumpingDuty + exciseDuty + freightExcludedEUR + onwardCarriageEUR;
+  /* Who bears the VAT. Import VAT is charged and paid at import whoever the importer is (ELP,
+     2026-10-10: "it needs to be paid every time; companies then request it back"), so it is in the
+     total in every case. "recoverable" marks a Luxembourg VAT-registered business that reclaims it
+     on its return: the same total, with the reclaimable part named. "procedure42" is the one case
+     with no import VAT here: the goods go straight on to another member state and the customer
+     self-accounts at destination. "cost" is a private person or an unregistered importer. */
+  const vatPosition = ["cost", "recoverable", "procedure42"].includes(input.vatPosition) ? input.vatPosition : "cost";
+  const importVAT = vatPosition === "procedure42" ? 0 : vatBase * vatRate;
+  const vatRecoverable = vatPosition === "recoverable" ? importVAT : 0;
 
   return {
     valueEUR,
     freightEUR,
+    /** The freight paid that is not in the customs value: the airline's share beyond the zone percentage. */
+    freightExcludedEUR,
+    onwardCarriageEUR,
     insuranceEUR,
     airfreightPct: airfreightPct === null ? null : airfreightPct * 100,
     customsValue,
     dutyFree,
     deMinimisExpiringSoon: dutyFree && now >= new Date("2026-04-01"),
     effectiveDutyRate: dutyRate * 100,
+    /** TARIC's duty text as read, when one was given; the screen shows it beside the figure. */
+    dutyExpression: expression,
+    /** Null when a specific duty could not be applied: `dutyNeeds` names the quantities missing. */
     customsDuty,
+    dutyNeeds,
     antiDumpingRate: antiDumpingRate * 100,
     antiDumpingDuty,
     exciseDuty,
     vatRate,
     vatBase,
+    vatPosition,
     importVAT,
-    total: customsValue + customsDuty + antiDumpingDuty + exciseDuty + importVAT,
+    /* What the import costs: everything paid for the goods and their carriage, plus what customs
+       charges on it, VAT included. The customs value alone is not the cost when part of the freight
+       sits outside it. `vatRecoverable` is the part of that a registered business gets back later;
+       `cashAtImport` is what customs collects on the day. */
+    total: dutyKnown
+      ? customsValue + freightExcludedEUR + onwardCarriageEUR + customsDuty + antiDumpingDuty + exciseDuty + importVAT
+      : null,
+    vatRecoverable,
+    cashAtImport: dutyKnown ? customsDuty + antiDumpingDuty + exciseDuty + importVAT : null,
     preference: claimingPreference ? agreement || "fta" : null,
     incoterm,
+  };
+}
+
+/* ------------------------------------------------------- a whole invoice ---- */
+
+/**
+ * A shipment of several lines on one invoice. Each line has its own code, rates and value; the
+ * freight, insurance and onward carriage are the shipment's and are spread over the lines by value,
+ * which is how a declaration apportions them (UCC-IA Art. 138 lets any reasonable key serve; value
+ * is the one customs expects). Each line is then landedCost() on its own, and the totals are sums.
+ *
+ *   landedCostShipment({ lines: [{ value, hsCode, origin?, dutyRatePct, dutyExpression?, quantities?,
+ *                                   antiDumpingRatePct?, exciseDuty?, vatRatePct?, usingPreferentialRate?,
+ *                                   preferential?, hasProofOfOrigin? }],
+ *                        exchangeRate, incoterm, transportMode, origin, freight, insurance,
+ *                        onwardCarriage, vatPosition, now })
+ */
+export function landedCostShipment(input = {}) {
+  const lines = Array.isArray(input.lines) ? input.lines : [];
+  const values = lines.map((l) => Math.max(0, number(l.value)));
+  const sumValue = values.reduce((a, b) => a + b, 0);
+  const share = (i) => (sumValue > 0 ? values[i] / sumValue : lines.length ? 1 / lines.length : 0);
+
+  const results = lines.map((line, i) => landedCost({
+    ...input,
+    ...line,
+    origin: line.origin || input.origin,
+    freight: number(input.freight) * share(i),
+    insurance: number(input.insurance) * share(i),
+    onwardCarriage: number(input.onwardCarriage) * share(i),
+    /* A line's own VAT rate wins; otherwise the shipment's; otherwise the chapter's. */
+    vatRatePct: line.vatRatePct ?? input.vatRatePct ?? null,
+  }));
+
+  const sum = (key) => results.reduce((a, r) => (a == null || r[key] == null ? null : a + r[key]), 0);
+  const first = results[0];
+  return {
+    lines: results.map((r, i) => ({ ...r, share: share(i) })),
+    valueEUR: sum("valueEUR"),
+    freightEUR: sum("freightEUR"),
+    freightExcludedEUR: sum("freightExcludedEUR"),
+    onwardCarriageEUR: sum("onwardCarriageEUR"),
+    insuranceEUR: sum("insuranceEUR"),
+    airfreightPct: first ? first.airfreightPct : null,
+    customsValue: sum("customsValue"),
+    customsDuty: sum("customsDuty"),
+    dutyNeeds: [...new Set(results.flatMap((r) => r.dutyNeeds))],
+    antiDumpingDuty: sum("antiDumpingDuty"),
+    exciseDuty: sum("exciseDuty"),
+    vatBase: sum("vatBase"),
+    importVAT: sum("importVAT"),
+    vatRecoverable: sum("vatRecoverable"),
+    vatPosition: first ? first.vatPosition : "cost",
+    total: sum("total"),
+    cashAtImport: sum("cashAtImport"),
+    incoterm: first ? first.incoterm : (INCOTERMS_CIF[input.incoterm] ? input.incoterm : "EXW"),
   };
 }
