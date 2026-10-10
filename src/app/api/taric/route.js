@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/apiAuth';
+import { parseDutyRate as parseTaricDuty } from '@/lib/taric-duty.mjs';
 
 const TARIC_SOAP_URL = 'https://ec.europa.eu/taxation_customs/dds2/taric/services/goods';
 
@@ -37,38 +38,19 @@ function extractText(xml, tag) {
   return cur.trim();
 }
 
-/**
- * Parse a TARIC duty rate string into structured form.
- * Examples:
- *   "12%"              → { adValorem: 12, specific: null, type: "ad_valorem" }
- *   "0%"               → { adValorem: 0,  specific: null, type: "duty_free" }
- *   "0 + 44.0 EUR/100 kg" → { adValorem: 0, specific: { amount: 44, unit: "EUR/100 kg" }, type: "compound" }
- *   "44.0 EUR/100 kg"  → { adValorem: 0, specific: { amount: 44, unit: "EUR/100 kg" }, type: "specific" }
- *   "FREE"             → { adValorem: 0, specific: null, type: "duty_free" }
- */
+/* The duty text is read by src/lib/taric-duty.mjs (shared with landed-cost.mjs). The answer keeps the
+   fields the apps read — adValorem, specific {amount, unit}, type, raw — and adds the full reading. */
 function parseDutyRate(raw) {
-  if (!raw) return null;
-  const s = raw.trim();
-  if (!s || s.toUpperCase() === 'FREE' || s === '0%') {
-    return { adValorem: 0, specific: null, type: 'duty_free', raw: s };
-  }
-
-  // Match: optional ad valorem % + optional specific amount + unit
-  // Pattern: "12.5%" or "0 + 44.0 EUR/100 kg" or "44.0 EUR/100 kg"
-  const avMatch = s.match(/^(\d+(?:\.\d+)?)\s*%/);
-  const specificMatch = s.match(/(\d+(?:\.\d+)?)\s+(EUR\/[^\s+]+(?:\s+[^\s+]+)?)/i);
-
-  const adValorem = avMatch ? parseFloat(avMatch[1]) : 0;
-  const specific = specificMatch
-    ? { amount: parseFloat(specificMatch[1]), unit: specificMatch[2].trim() }
-    : null;
-
-  let type = 'duty_free';
-  if (adValorem > 0 && specific) type = 'compound';
-  else if (adValorem > 0) type = 'ad_valorem';
-  else if (specific) type = 'specific';
-
-  return { adValorem, specific, type, raw: s };
+  const p = parseTaricDuty(raw);
+  if (!p) return null;
+  const first = p.specifics[0] ?? null;
+  return {
+    adValorem: p.adValorem ?? 0,
+    specific: first ? { amount: first.amount, unit: `EUR/${first.label}`, code: first.unit } : null,
+    type: p.type,
+    raw: p.raw,
+    parsed: p,
+  };
 }
 
 // TARIC measure type codes (EU TARIC DB reference)
@@ -148,6 +130,16 @@ export async function POST(req) {
           measureType: extractText(mtBlock, 'measure_type'),
           measureDesc: extractText(mtBlock, 'description'),
           tradeMovement: extractText(mtBlock, 'trade_movement_code'),
+          /* Anti-dumping and countervailing duties are set per exporter: the additional code names
+             the company (C453 "Universal Cycle Corporation"), and the residual rate for everyone else
+             usually carries code 999 or no additional code at all (2026-10-10). */
+          additionalCode: (() => {
+            const ac = m.match(/<additional_code>([\s\S]*)<\/additional_code>/)?.[1];
+            if (!ac) return null;
+            const type = extractText(ac, 'additional_code_type');
+            const code = ac.match(/<additional_code>\s*([A-Z0-9]+)\s*<\/additional_code>/)?.[1] ?? null;
+            return { type, code, full: type && code ? `${type}${code}` : code, description: extractText(ac, 'description') };
+          })(),
           // Flag expired measures — filter them out of active calculations
           expired: validTo ? new Date(validTo) < now : false,
         };
