@@ -28,6 +28,12 @@ export async function GET(req) {
   const from = (searchParams.get('from') || 'EUR').toUpperCase();
   const toRaw = searchParams.get('to');
   const to = toRaw ? toRaw.toUpperCase() : null;
+  /* ?date=YYYY-MM-DD answers with the ECB rate of that day (or the last business day before it).
+     The customs exchange rate for a month is the ECB rate of the penultimate Wednesday of the month
+     before (UCC-IA Art. 146), which is what the ELP tool asks for (2026-10-10). */
+  const dateRaw = searchParams.get('date');
+  const date = dateRaw && /^\d{4}-\d{2}-\d{2}$/.test(dateRaw) ? dateRaw : null;
+  if (dateRaw && !date) return Response.json({ error: 'Invalid date' }, { status: 400 });
 
   // Validate before they ever reach the upstream URL or the cache key — both
   // are built by interpolation, so reject anything that isn't a 3-letter code.
@@ -35,16 +41,17 @@ export async function GET(req) {
     return Response.json({ error: 'Invalid currency code' }, { status: 400 });
   }
 
-  const cacheKey = to ? `${from}-${to}` : `${from}-all`;
+  const cacheKey = `${date ?? 'latest'}:${to ? `${from}-${to}` : `${from}-all`}`;
   const cached = getCached(cacheKey);
   if (cached) {
     return Response.json({ ...cached, cached: true });
   }
 
   try {
+    const when = date ?? 'latest';
     const url = to
-      ? `https://api.frankfurter.app/latest?from=${from}&to=${to}`
-      : `https://api.frankfurter.app/latest?from=${from}`;
+      ? `https://api.frankfurter.app/${when}?from=${from}&to=${to}`
+      : `https://api.frankfurter.app/${when}?from=${from}`;
 
     const resp = await fetch(url, {
       next: { revalidate: 14400 }, // 4h Next.js cache hint
