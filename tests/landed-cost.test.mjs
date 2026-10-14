@@ -64,7 +64,8 @@ test("freight inside a C or D price comes off it at the post-border share, as th
   const r = landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false });
   close(r.customsValue, 52246.9, "customs value"); close(r.freightExcludedEUR, 1253.1);
   close(r.total, 53500 + r.customsDuty + r.importVAT, "the price already holds the freight");
-  for (const incoterm of ["CIF", "CPT", "CFR", "CIP", "DPU", "DDP"]) close(landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false, incoterm }).customsValue, 52246.9, incoterm);
+  for (const incoterm of ["CIF", "CPT", "CFR", "CIP", "DPU"]) close(landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false, incoterm }).customsValue, 52246.9, incoterm);
+  close(landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false, incoterm: "DDP" }).customsValue, 52246.9 / 1.017, "DDP: the duty comes out too");
 });
 
 test("freight in the price is ignored under E and F terms, where the freight box counts it", () => {
@@ -140,6 +141,19 @@ test("an airport the Annex does not name takes the nearest named one; none at al
 test("the clearance fee is in the VAT base and the cost, never in the customs value", () => {
   const r = landedCost({ ...base, agencyFees: 125, dutyRatePct: 4 });
   close(r.customsValue, 10750); close(r.vatBase, 10750 + 430 + 300 + 125); close(r.total, 10000 + 1000 + 50 + 430 + 125 + r.importVAT);
+});
+
+/* Sheets "Accuray - DDP" and 80 of the 82 DDP sheets: a DDP price holds the duty too, so the office
+   backs it out before charging it: duty = (price less post-border freight) × rate / (1 + rate).
+   Accuray: €164.09 at 6.5% gives €10.01, not €10.67 (UCC Art. 72(d): duties in the price are not
+   part of the customs value). */
+test("under DDP the duty is backed out of the price, as the office declares", () => {
+  const r = landedCost({ value: 195, exchangeRate: 1, freightInPrice: 181.82, incoterm: "DDP", transportMode: "air", origin: "JP", dutyRatePct: 6.5, vatRatePct: 17, now: new Date("2026-08-28") });
+  close(r.customsValue, 164.09 / 1.065, "customs value, duty taken out"); close(Math.round(r.customsDuty * 100) / 100, 10.01, "duty");
+  close(r.dutyInPriceEUR, 10.01, "the duty the price held");
+  close(r.total, 195 + r.importVAT, "the price already paid the duty");
+  const dap = landedCost({ value: 195, exchangeRate: 1, freightInPrice: 181.82, incoterm: "DAP", transportMode: "air", origin: "JP", dutyRatePct: 6.5, vatRatePct: 17 });
+  close(dap.customsDuty, 164.09 * 0.065, "DAP: nothing backed out");
 });
 
 test("duty and anti-dumping are charged on the customs value and both feed the VAT base", () => {

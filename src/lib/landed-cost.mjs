@@ -797,6 +797,12 @@ export function landedCost(input = {}) {
   const dutyFree = deMinimisActive && customsValue <= DE_MINIMIS_LIMIT;
 
   const dutyRate = number(input.dutyRatePct) / 100;
+  /* A DDP price holds the duty as well as the freight, and duties in the price are not part of the
+     customs value (UCC Art. 72(d)): the office backs them out, duty = value × rate / (1 + rate), on 80
+     of its 82 DDP sheets (2026-10-14). Only for a percentage duty; a specific one cannot be backed out
+     this way and is left as it stands. */
+  const dutyInPriceEUR = incoterm === "DDP" && dutyRate > 0 && !input.dutyExpression ? customsValue - customsValue / (1 + dutyRate) : 0;
+  customsValue -= dutyInPriceEUR;
   const agreement = ORIGIN_AGREEMENTS[origin]?.type || "";
   /* A preference counts only when the rate in hand IS the preferential one TARIC gave for this
      code and origin, and the proof is held. Until 2026-10-10 a ticked box with no TARIC rate
@@ -852,6 +858,8 @@ export function landedCost(input = {}) {
     freightEUR: (terms.needsFreight ? freightEUR : 0) + freightInPriceCounted,
     /** The freight a C or D price holds, whole, as given. */
     freightInPriceEUR,
+    /** Under DDP, the duty the price held and that was taken out of the customs value. */
+    dutyInPriceEUR,
     originChargesEUR,
     agencyFeesEUR,
     airfreightVia: share ? share.via : null,
@@ -882,7 +890,7 @@ export function landedCost(input = {}) {
        sits outside it. `vatRecoverable` is the part of that a registered business gets back later;
        `cashAtImport` is what customs collects on the day. */
     total: dutyKnown
-      ? customsValue + freightExcludedEUR + onwardCarriageEUR + agencyFeesEUR + customsDuty + antiDumpingDuty + exciseDuty + importVAT
+      ? customsValue + (incoterm === "DDP" ? dutyInPriceEUR : customsDuty) + freightExcludedEUR + onwardCarriageEUR + agencyFeesEUR + antiDumpingDuty + exciseDuty + importVAT
       : null,
     vatRecoverable,
     cashAtImport: dutyKnown ? customsDuty + antiDumpingDuty + exciseDuty + importVAT : null,
@@ -942,6 +950,7 @@ export function landedCostShipment(input = {}) {
     valueEUR: sum("valueEUR"),
     freightEUR: sum("freightEUR"),
     freightInPriceEUR: sum("freightInPriceEUR"),
+    dutyInPriceEUR: sum("dutyInPriceEUR"),
     originChargesEUR: sum("originChargesEUR"),
     agencyFeesEUR: sum("agencyFeesEUR"),
     airfreightVia: first ? first.airfreightVia : null,
