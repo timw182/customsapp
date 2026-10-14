@@ -38,6 +38,43 @@ test("under C and D terms the freight is inside the price: nothing sits outside 
   close(cfr.customsValue, 10050, "CFR adds insurance only");
 });
 
+/* File 2313832 (ELP, 2026-08-28): BKS knives from Indonesia, DAP Ehlerange, goods €28,931.12 with
+   the freight on its own line, €2,838.88. Luxembourg customs (MRN 26LU715L00004V4IR8) valued it at
+   goods + 70% of that freight and charged €525.61 at 1.7%; this tool, ignoring the line, said €491.83. */
+const bks = { value: 28931.12, exchangeRate: 1, invoiceFreight: 2838.88, incoterm: "DAP", transportMode: "air",
+  origin: "ID", hsCode: "8208900000", dutyRatePct: 1.7, vatRatePct: 17, now: new Date("2026-08-28") };
+
+test("freight a DAP invoice shows on its own line counts at the air share, as customs charged on 2313832", () => {
+  const r = landedCost(bks);
+  close(r.customsValue, 30918.34, "customs value");
+  close(Math.round(r.customsDuty * 100) / 100, 525.61, "duty");
+  close(r.freightEUR, 1987.22); close(r.freightExcludedEUR, 851.66);
+});
+
+test("the invoice's freight beyond the air share is still VAT-able and part of the cost", () => {
+  const r = landedCost(bks);
+  close(r.vatBase, 30918.34 + r.customsDuty + 851.66, "VAT base");
+  close(r.total, 28931.12 + 2838.88 + r.customsDuty + r.importVAT, "total");
+});
+
+test("invoice freight is ignored under E and F terms, where the freight box already counts it", () => {
+  const exw = landedCost({ ...bks, incoterm: "EXW" });
+  close(exw.customsValue, 28931.12);
+});
+
+test("off the air, freight shown on a C or D invoice counts whole", () => {
+  const r = landedCost({ ...bks, transportMode: "road" });
+  close(r.customsValue, 31770);
+});
+
+test("a whole invoice spreads the invoice freight over its lines by value", () => {
+  const r = landedCostShipment({ ...bks, lines: [
+    { value: 8953.56, hsCode: "8208900000", dutyRatePct: 1.7 },
+    { value: 19977.56, hsCode: "8208900000", dutyRatePct: 1.7 },
+  ] });
+  close(r.customsValue, 30918.34); close(Math.round(r.customsDuty * 100) / 100, 525.61);
+});
+
 test("duty and anti-dumping are charged on the customs value and both feed the VAT base", () => {
   const r = landedCost({ ...base, transportMode: "road", freight: 800, insurance: 0, dutyRatePct: 6, antiDumpingRatePct: 48.5 });
   close(r.customsValue, 10800); close(r.customsDuty, 648); close(r.antiDumpingDuty, 5238);

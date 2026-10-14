@@ -677,7 +677,19 @@ export function landedCost(input = {}) {
   /* Freight the importer pays that customs leaves out of its value: the rest of the air freight
      when the Incoterm makes the buyer pay the freight. Under C and D terms the freight is inside
      the price and nothing is outside. It is still a cost, and still VAT-able (Art. 86(1)(b)). */
-  const freightExcludedEUR = terms.needsFreight ? Math.max(0, freightPaidEUR - freightEUR) : 0;
+  let freightExcludedEUR = terms.needsFreight ? Math.max(0, freightPaidEUR - freightEUR) : 0;
+  /* Freight a C or D invoice shows on its own line, on top of the goods. The seller bills the
+     carriage, so it is in the price paid, but transport after the EU border stays out of the value
+     when the invoice shows it apart (UCC Art. 72(a)): on air, the Annex 23-01 share counts, as for
+     E and F terms. Case: file 2313832 (2026-08-28), DAP from Indonesia, goods €28,931.12 plus a
+     freight line of €2,838.88; Luxembourg customs took goods + 70% of it and charged €525.61, where
+     this read the goods alone and said €491.83. Freight hidden inside the prices cannot be split,
+     and then the whole price is the value, as before. `freight` keeps its meaning under these
+     terms (ignored), because Dutify's own calculator sends it whatever the Incoterm. */
+  const invoiceFreightPaidEUR = terms.needsFreight ? 0 : number(input.invoiceFreight) * exchangeRate;
+  const invoiceFreightEUR = airfreightPct !== null ? invoiceFreightPaidEUR * airfreightPct : invoiceFreightPaidEUR;
+  customsValue += invoiceFreightEUR;
+  freightExcludedEUR += invoiceFreightPaidEUR - invoiceFreightEUR;
   /* Carriage from the EU border or port to the first destination in Luxembourg, when paid
      separately: never in the customs value, always in the VAT base (Art. 86(1)(b)). */
   const onwardCarriageEUR = number(input.onwardCarriage) * exchangeRate;
@@ -734,7 +746,8 @@ export function landedCost(input = {}) {
 
   return {
     valueEUR,
-    freightEUR,
+    /** The freight in the customs value: the freight box's share, or the invoice line's. */
+    freightEUR: (terms.needsFreight ? freightEUR : 0) + invoiceFreightEUR,
     /** The freight paid that is not in the customs value: the airline's share beyond the zone percentage. */
     freightExcludedEUR,
     onwardCarriageEUR,
@@ -781,7 +794,7 @@ export function landedCost(input = {}) {
  *   landedCostShipment({ lines: [{ value, hsCode, origin?, dutyRatePct, dutyExpression?, quantities?,
  *                                   antiDumpingRatePct?, exciseDuty?, vatRatePct?, usingPreferentialRate?,
  *                                   preferential?, hasProofOfOrigin? }],
- *                        exchangeRate, incoterm, transportMode, origin, freight, insurance,
+ *                        exchangeRate, incoterm, transportMode, origin, freight, invoiceFreight, insurance,
  *                        onwardCarriage, vatPosition, now })
  */
 export function landedCostShipment(input = {}) {
@@ -795,6 +808,7 @@ export function landedCostShipment(input = {}) {
     ...line,
     origin: line.origin || input.origin,
     freight: number(input.freight) * share(i),
+    invoiceFreight: number(input.invoiceFreight) * share(i),
     insurance: number(input.insurance) * share(i),
     onwardCarriage: number(input.onwardCarriage) * share(i),
     /* A line's own VAT rate wins; otherwise the shipment's; otherwise the chapter's. */

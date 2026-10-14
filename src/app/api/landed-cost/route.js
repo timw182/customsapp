@@ -45,6 +45,8 @@ const shipmentSchema = z.object({
   currency: z.string().length(3).optional(),
   exchangeRate: z.coerce.number().positive().max(1e6).default(1),
   freight: money.optional(),
+  /* Under C and D terms, the freight the invoice shows on its own line, on top of the goods. */
+  invoiceFreight: money.optional(),
   insurance: money.optional(),
   onwardCarriage: money.optional(),
   incoterm: z.enum(Object.keys(INCOTERMS_CIF)).default("EXW"),
@@ -60,6 +62,8 @@ const schema = z.object({
   /* EUR per unit of the invoice currency; 1 for an invoice already in EUR. */
   exchangeRate: z.coerce.number().positive().max(1e6).default(1),
   freight: money.optional(),
+  /* Under C and D terms, the freight the invoice shows on its own line, on top of the goods. */
+  invoiceFreight: money.optional(),
   insurance: money.optional(),
   /* Carriage from the EU border or port to the first destination in Luxembourg, paid separately:
      outside the customs value, inside the VAT base and the total. */
