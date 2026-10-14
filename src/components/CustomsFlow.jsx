@@ -19,7 +19,7 @@ function getLuVAT(hs) {
   const ch = parseInt(String(hs).replace(/\D/g,"").substring(0,2), 10);
   if (ch === 30) return 0.03;
   if (LU_VAT_3.includes(ch)) return 0.03;
-  if (ch === 90) return 0.08;
+  /* Chapter 90 was 8% here until 2026-10-14; its instruments are 17% (landed-cost.mjs says why). */
   if (ch === 22) return 0.14;
   return 0.17;
 }

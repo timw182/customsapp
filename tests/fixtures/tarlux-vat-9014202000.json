@@ -1,0 +1,157 @@
+{
+ "count": 72,
+ "items": [
+  {
+   "sid": -19020,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "9014000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "geographicalArea": {
+    "id": "1011",
+    "type": "G",
+    "descriptions": {
+     "en": "ERGA OMNES",
+     "fr": "ERGA OMNES"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "17.0000%",
+    "fr": "17.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": -18728,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "9014000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "geographicalArea": {
+    "id": "1010",
+    "type": "G",
+    "descriptions": {
+     "en": "European Union",
+     "fr": "Union européenne"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "17.0000%",
+    "fr": "17.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": 3494593,
+   "national": false,
+   "regulation": {
+    "id": "R1047/16",
+    "national": false,
+    "urls": {
+     "en": "https://eur-lex.europa.eu/JOHtml.do?uri=OJ:L:2016:170:SOM:EN:HTML"
+    }
+   },
+   "commodityCode": "9014200000",
+   "measureType": {
+    "id": "103",
+    "national": false,
+    "series": "C",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "Third country duty",
+     "fr": "Droit pays tiers"
+    }
+   },
+   "footnotes": [],
+   "geographicalArea": {
+    "id": "1011",
+    "type": "G",
+    "descriptions": {
+     "en": "ERGA OMNES",
+     "fr": "ERGA OMNES"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "0.0000%",
+    "fr": "0.0000%"
+   },
+   "conditions": false,
+   "startDate": "2016-07-01",
+   "certificates": [],
+   "unreleased": false
+  }
+ ],
+ "additionalCodes": [
+  {
+   "typeAndId": "4053",
+   "startDate": "2003-05-23",
+   "descriptions": {
+    "en": "Optical, photographic or cinematographic apparatus, between 50 and 100 years old, other than those covered by the additional codes 4008, 4010, 4011, 4013, 4023, 4040 - 4048",
+    "fr": "Instruments d'optique, de photographie ou de cinématographie, ayant entre 50 et 100 ans, autres que ceux repris sous les codes additionnels 4008, 4010, 4011, 4013, 4023, 4040 - 4048"
+   },
+   "national": false,
+   "footnotes": [],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  },
+  {
+   "typeAndId": "4098",
+   "startDate": "2013-12-15",
+   "descriptions": {
+    "en": "Other than those mentioned in Regulation (EC) no 1332/2013 (OJ L 335): no restrictions",
+    "fr": "Autres que ceux relevant du règlement (CE) n° 1332/2013 (JO L 335): pas de restrictions"
+   },
+   "national": false,
+   "footnotes": [],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  },
+  {
+   "typeAndId": "4099",
+   "startDate": "2003-05-23",
+   "descriptions": {
+    "en": "Other than those mentioned in Regulation (EC) no 1210/2003 (OJ L 169): no restrictions",
+    "fr": "Autres que ceux relevant du règlement (CE) n° 1210/2003 (JO L 169): pas de restrictions"
+   },
+   "national": false,
+   "footnotes": [],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  }
+ ]
+}

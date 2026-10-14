@@ -147,3 +147,29 @@ test("a shipment with one open specific duty has an open total and says what it 
   ] });
   assert.equal(r.total, null); assert.deepEqual(r.dutyNeeds, ["kg"]);
 });
+
+/* ---- The VAT rate a code implies, from TARLUX first and the chapter guess second (2026-10-14) ---- */
+import { getLuVAT, luVatAnswer } from "../src/lib/landed-cost.mjs";
+
+test("the chapter guess no longer puts every chapter-90 instrument at 8%", () => {
+  /* 9014 20 20 00, aeronautical navigation instruments, is 17% in TARLUX; the old list had 90 at 8%. */
+  assert.equal(getLuVAT("9014202000"), 0.17);
+});
+
+test("the rate comes from TARLUX when it answers, with its choices and a source", async () => {
+  const rows = { ratePct: 17, choices: [{ ratePct: 17, additionalCode: "1994", description: "Other goods" }, { ratePct: 8, additionalCode: "1926", description: "Cut flowers" }] };
+  const a = await luVatAnswer("0603110000", false, { lookup: async () => rows });
+  assert.equal(a.vatRatePct, 17);
+  assert.equal(a.vatSource, "tarlux");
+  assert.equal(a.vatChoices.length, 2);
+});
+
+test("the chapter guess stands in, and says so, when TARLUX refuses the code or cannot be reached", async () => {
+  const refused = await luVatAnswer("0603110000", false, { lookup: async () => null });
+  assert.equal(refused.vatRatePct, 3, "chapter 6 is in the 3% list");
+  assert.equal(refused.vatSource, "chapter");
+  assert.deepEqual(refused.vatChoices, []);
+  const down = await luVatAnswer("9014202000", false, { lookup: async () => { throw new Error("timeout"); } });
+  assert.equal(down.vatRatePct, 17);
+  assert.equal(down.vatSource, "chapter");
+});

@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/apiAuth";
-import { landedCost, landedCostShipment, getLuVAT, INCOTERMS_CIF, ORIGIN_AGREEMENTS } from "@/lib/landed-cost.mjs";
+import { landedCost, landedCostShipment, luVatAnswer, INCOTERMS_CIF, ORIGIN_AGREEMENTS } from "@/lib/landed-cost.mjs";
 
 export const runtime = "nodejs";
 
@@ -94,9 +94,11 @@ export async function GET(req) {
 
   const hsCode = new URL(req.url).searchParams.get("hsCode") || "";
   const stillWineLow = new URL(req.url).searchParams.get("stillWineLow") === "1";
+  /* TARLUX's national VAT measure for the code, or the chapter guess marked as such (2026-10-14). */
+  const vat = await luVatAnswer(hsCode, stillWineLow);
   return NextResponse.json({
     hsCode,
-    vatRatePct: getLuVAT(hsCode, stillWineLow) * 100,
+    ...vat,
     /* What Luxembourg charges, for a picker: super-reduced, reduced, intermediate, standard. */
     luVatRates: [3, 8, 14, 17],
   });

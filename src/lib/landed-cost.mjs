@@ -15,11 +15,16 @@
 // discount (0% for any FTA country, 35% of the rate for GSP).
 
 import { applyDuty, parseDutyRate } from "./taric-duty.mjs";
+import { luVatFor } from "./tarlux-vat.mjs";
 
-// Luxembourg VAT rates (Loi TVA, 2026)
-// Maps HS chapter to applicable VAT rate
+// Luxembourg VAT rates (Loi TVA, 2026), guessed from the HS chapter alone. A FALLBACK since
+// 2026-10-14: luVatAnswer() below asks TARLUX for the code's real national VAT measure first, and
+// this table stands in only when TARLUX refuses the code or is down. It is rough by nature (a
+// chapter mixes rates: natural gas in 27 is 8%, diesel 17%; medicines in 30 are 3%, the rest 17%)
+// and was wrong outright for chapter 90, which it put at 8% when the aeronautical instruments of
+// 9014 are 17% (Tim, 2026-10-14; the only reduced chapter-90 goods are aids for the disabled, at 3%).
 export const LU_VAT_RATES_3 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 36, 49];
-export const LU_VAT_RATES_8 = [27, 90];
+export const LU_VAT_RATES_8 = [27];
 // Chapter 22: still wine ≤13° ABV = 14%, still wine >13° ABV = 17%, sparkling/beer/spirits = 17%
 // stillWineLow flag passed from UI when user confirms still wine ≤13° ABV
 // chapter 30 pharma = 3%, chapter 61-64 children items = 3% (needs user input for size)
@@ -32,6 +37,25 @@ export function getLuVAT(hsCode, stillWineLow = false) {
   if (chapter === 30) return 0.03; // pharma
   if (chapter === 22 && stillWineLow) return 0.14; // still wine ≤13° ABV (LU Loi TVA)
   return 0.17;
+}
+
+/**
+ * The VAT rate a code implies, as the rate screen reports it: TARLUX's national measure when it
+ * answers (`vatSource` "tarlux", with every rate it lists as a choice), else the chapter guess
+ * (`vatSource` "chapter", no choices) so the screen can say the rate is only a guess. A TARLUX
+ * failure never fails the lookup: the duty rate beside it is the figure the person came for.
+ */
+export async function luVatAnswer(hsCode, stillWineLow = false, { lookup = luVatFor, now = new Date() } = {}) {
+  const digits = String(hsCode ?? "").replace(/\D/g, "");
+  if (digits.length === 10) {
+    try {
+      const rows = await lookup(digits, now);
+      if (rows) return { vatRatePct: rows.ratePct, vatSource: "tarlux", vatChoices: rows.choices };
+    } catch (e) {
+      console.warn(`[landed-cost] TARLUX VAT lookup failed for ${digits}: ${e?.message ?? e}`);
+    }
+  }
+  return { vatRatePct: getLuVAT(digits, stillWineLow) * 100, vatSource: "chapter", vatChoices: [] };
 }
 
 // Official Luxembourg ADA excise rates effective 01.01.2026

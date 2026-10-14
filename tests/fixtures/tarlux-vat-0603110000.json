@@ -1,0 +1,238 @@
+{
+ "count": 71,
+ "items": [
+  {
+   "sid": -18409,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "0603000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "additionalCode": "1926",
+   "geographicalArea": {
+    "id": "1011",
+    "type": "G",
+    "descriptions": {
+     "en": "ERGA OMNES",
+     "fr": "ERGA OMNES"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "8.0000%",
+    "fr": "8.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": -19179,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "0603000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "additionalCode": "1994",
+   "geographicalArea": {
+    "id": "1011",
+    "type": "G",
+    "descriptions": {
+     "en": "ERGA OMNES",
+     "fr": "ERGA OMNES"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "17.0000%",
+    "fr": "17.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": -18408,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "0603000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "additionalCode": "1926",
+   "geographicalArea": {
+    "id": "1010",
+    "type": "G",
+    "descriptions": {
+     "en": "European Union",
+     "fr": "Union européenne"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "8.0000%",
+    "fr": "8.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": -19067,
+   "national": true,
+   "regulation": {
+    "id": "000001LL",
+    "national": true
+   },
+   "commodityCode": "0603000000",
+   "measureType": {
+    "id": "LBT",
+    "national": true,
+    "series": "P",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "VAT",
+     "fr": "Taxe sur la valeur ajoutée"
+    }
+   },
+   "footnotes": [],
+   "additionalCode": "1994",
+   "geographicalArea": {
+    "id": "1010",
+    "type": "G",
+    "descriptions": {
+     "en": "European Union",
+     "fr": "Union européenne"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "17.0000%",
+    "fr": "17.0000%"
+   },
+   "conditions": false,
+   "startDate": "2024-01-01",
+   "certificates": [],
+   "unreleased": false
+  },
+  {
+   "sid": 4225988,
+   "national": false,
+   "regulation": {
+    "id": "R1926/25",
+    "national": false,
+    "urls": {
+     "en": "https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ:L_202501926"
+    }
+   },
+   "commodityCode": "0603110000",
+   "measureType": {
+    "id": "103",
+    "national": false,
+    "series": "C",
+    "tradeDirection": "0",
+    "descriptions": {
+     "en": "Third country duty",
+     "fr": "Droit pays tiers"
+    }
+   },
+   "footnotes": [],
+   "geographicalArea": {
+    "id": "1011",
+    "type": "G",
+    "descriptions": {
+     "en": "ERGA OMNES",
+     "fr": "ERGA OMNES"
+    }
+   },
+   "excludedCountryIds": [],
+   "dutyExpressions": {
+    "en": "12.0000%",
+    "fr": "12.0000%"
+   },
+   "conditions": false,
+   "startDate": "2026-06-01",
+   "endDate": "2026-10-31",
+   "certificates": [],
+   "unreleased": false
+  }
+ ],
+ "additionalCodes": [
+  {
+   "typeAndId": "1926",
+   "startDate": "2009-01-01",
+   "descriptions": {
+    "en": "Cut flowers and flower buds of a kind suitable for bouquets or for ornamental purposes, fresh, dried,",
+    "fr": "Fleurs et boutons de fleurs, coupés, pour bouquets ou pour ornements, frais ou séchés"
+   },
+   "national": true,
+   "footnotes": [],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  },
+  {
+   "typeAndId": "1994",
+   "startDate": "2009-01-01",
+   "descriptions": {
+    "en": "Other Goods liable to VAT at rate of 17% in accordance with the VAT Legislation ",
+    "fr": "Taux de TVA de 17% conformément à la législation sur la TVA"
+   },
+   "national": true,
+   "footnotes": [],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  },
+  {
+   "typeAndId": "G024",
+   "startDate": "2025-10-29",
+   "descriptions": {
+    "en": "Goods as described in the footnote PS 00024",
+    "fr": "Produits décrits dans la note de bas de page PS 00024"
+   },
+   "national": false,
+   "footnotes": [
+    "PS00024"
+   ],
+   "applicationCode": "1",
+   "associatedCommodities": []
+  }
+ ]
+}
