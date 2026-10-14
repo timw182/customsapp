@@ -41,7 +41,7 @@ test("under C and D terms the freight is inside the price: nothing sits outside 
 /* File 2313832 (ELP, 2026-08-28): BKS knives from Indonesia, DAP Ehlerange, goods €28,931.12 with
    the freight on its own line, €2,838.88. Luxembourg customs (MRN 26LU715L00004V4IR8) valued it at
    goods + 70% of that freight and charged €525.61 at 1.7%; this tool, ignoring the line, said €491.83. */
-const bks = { value: 28931.12, exchangeRate: 1, invoiceFreight: 2838.88, incoterm: "DAP", transportMode: "air",
+const bks = { value: 28931.12, exchangeRate: 1, freightInPrice: 2838.88, freightShownApart: true, incoterm: "DAP", transportMode: "air",
   origin: "ID", hsCode: "8208900000", dutyRatePct: 1.7, vatRatePct: 17, now: new Date("2026-08-28") };
 
 test("freight a DAP invoice shows on its own line counts at the air share, as customs charged on 2313832", () => {
@@ -57,22 +57,89 @@ test("the invoice's freight beyond the air share is still VAT-able and part of t
   close(r.total, 28931.12 + 2838.88 + r.customsDuty + r.importVAT, "total");
 });
 
-test("invoice freight is ignored under E and F terms, where the freight box already counts it", () => {
-  const exw = landedCost({ ...bks, incoterm: "EXW" });
-  close(exw.customsValue, 28931.12);
+/* The office's workbook ("IMPORT - customs value details.xls", 1,159 declarations since 2002), sheet
+   "BKS - DAP": a DAP price of €53,500 with the AWB freight of €4,177 inside it; 30% of that freight,
+   the part flown after the EU border, comes off the price: customs value €52,246.90. */
+test("freight inside a C or D price comes off it at the post-border share, as the office declares", () => {
+  const r = landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false });
+  close(r.customsValue, 52246.9, "customs value"); close(r.freightExcludedEUR, 1253.1);
+  close(r.total, 53500 + r.customsDuty + r.importVAT, "the price already holds the freight");
+  for (const incoterm of ["CIF", "CPT", "CFR", "CIP", "DPU", "DDP"]) close(landedCost({ ...bks, value: 53500, freightInPrice: 4177, freightShownApart: false, incoterm }).customsValue, 52246.9, incoterm);
 });
 
-test("off the air, freight shown on a C or D invoice counts whole", () => {
-  const r = landedCost({ ...bks, transportMode: "road" });
-  close(r.customsValue, 31770);
+test("freight in the price is ignored under E and F terms, where the freight box counts it", () => {
+  close(landedCost({ ...bks, incoterm: "EXW" }).customsValue, 28931.12);
+  close(landedCost({ ...bks, incoterm: "FOB", freightShownApart: false }).customsValue, 28931.12);
 });
 
-test("a whole invoice spreads the invoice freight over its lines by value", () => {
-  const r = landedCostShipment({ ...bks, lines: [
-    { value: 8953.56, hsCode: "8208900000", dutyRatePct: 1.7 },
-    { value: 19977.56, hsCode: "8208900000", dutyRatePct: 1.7 },
+test("off the air, freight in a C or D price stays in it whole, and a freight line counts whole", () => {
+  close(landedCost({ ...bks, transportMode: "road" }).customsValue, 31770);
+  close(landedCost({ ...bks, value: 53500, freightShownApart: false, transportMode: "sea" }).customsValue, 53500);
+});
+
+/* Sheet "KTI-CPT": CPT from Korea, €4,970 (2.2%) and €335 (1.7%), AWB freight €1,400, 17% off, spread
+   over the lines by NET WEIGHT (207 kg and 3 kg), which is how the office has always apportioned
+   transport: duty €104.1788 + €5.6372 = €109.816. By value it would be €109.69. */
+test("a whole invoice spreads the transport over its lines by net weight when every line has one", () => {
+  const r = landedCostShipment({ exchangeRate: 1, freightInPrice: 1400, incoterm: "CPT", transportMode: "air", origin: "KR", vatRatePct: 17, now: new Date("2026-08-28"), lines: [
+    { value: 4970, hsCode: "8418999099", dutyRatePct: 2.2, quantities: { kg: 207 } },
+    { value: 335, hsCode: "8421392590", dutyRatePct: 1.7, quantities: { kg: 3 } },
   ] });
-  close(r.customsValue, 30918.34); close(Math.round(r.customsDuty * 100) / 100, 525.61);
+  close(r.lines[0].customsValue, 4735.4); close(r.lines[1].customsValue, 331.6);
+  close(r.customsDuty, 109.816, "duty"); close(r.customsValue, 5067);
+  assert.equal(r.spreadBy, "weight");
+});
+
+test("without a weight on every line the transport is spread by value, and insurance always is", () => {
+  const r = landedCostShipment({ exchangeRate: 1, freight: 1000, insurance: 100, incoterm: "EXW", transportMode: "road", origin: "CH", vatRatePct: 17, lines: [
+    { value: 3000, dutyRatePct: 0, quantities: { kg: 10 } }, { value: 1000, dutyRatePct: 0 },
+  ] });
+  assert.equal(r.spreadBy, "value");
+  close(r.lines[0].customsValue, 3000 + 750 + 75); close(r.lines[1].customsValue, 1000 + 250 + 25);
+  const w = landedCostShipment({ exchangeRate: 1, freight: 1000, insurance: 100, incoterm: "EXW", transportMode: "road", origin: "CH", vatRatePct: 17, lines: [
+    { value: 3000, dutyRatePct: 0, quantities: { kg: 10 } }, { value: 1000, dutyRatePct: 0, quantities: { kg: 30 } },
+  ] });
+  close(w.lines[0].customsValue, 3000 + 250 + 75, "freight by weight, insurance by value"); close(w.lines[1].customsValue, 1000 + 750 + 25);
+});
+
+/* Sheet "3 D DONNA B FASO": EXW from Burkina Faso, XOF 574,280 air freight at 50% (zone E) plus
+   XOF 2,918.28 of other charges at origin, which count whole: €437.74 + €4.45 = €442.19 on €1,065. */
+test("other charges at origin go into the customs value whole, not at the air share", () => {
+  const r = landedCost({ value: 1065 * 655.957, exchangeRate: 1 / 655.957, freight: 574280, originCharges: 2918.28, incoterm: "EXW", transportMode: "air", origin: "BF", dutyRatePct: 0, vatRatePct: 17 });
+  close(r.airfreightPct, 50); close(r.originChargesEUR, 4.45, "origin charges"); close(r.customsValue, 1507.19, "customs value");
+});
+
+/* Annex 23-01 splits the United States, Canada and Russia by airport. Houston, ELP's commonest
+   import origin (321 files in the 18 months to 2026-10-14), is zone B at 78%, not the 70% of New York. */
+test("the air share for the US, Canada and Russia follows the departure airport", () => {
+  const at = (origin, departureAirport, extra = {}) => landedCost({ ...base, origin, departureAirport, ...extra }).airfreightPct;
+  assert.equal(at("US", "IAH"), 78); assert.equal(at("US", "JFK"), 70); assert.equal(at("US", "ANC"), 89);
+  assert.equal(at("CA", "YVR"), 78); assert.equal(at("CA", "YYZ"), 70);
+  assert.equal(at("RU", "SVO"), 30); assert.equal(at("RU", "OVB"), 57); assert.equal(at("RU", "VVO"), 83);
+  assert.equal(at("CN", "IAH"), 70, "an airport cannot move a one-zone country");
+});
+
+test("the share follows the departure, not the goods' origin: Chinese goods flown out of Houston are zone B", () => {
+  assert.equal(landedCost({ ...base, origin: "CN", departureCountry: "US", departureAirport: "IAH" }).airfreightPct, 78);
+  const r = landedCostShipment({ ...base, origin: "US", departureAirport: "IAH", lines: [{ value: 1000, origin: "CN", dutyRatePct: 0 }, { value: 1000, dutyRatePct: 0 }] });
+  assert.equal(r.lines[0].airfreightPct, 78); assert.equal(r.lines[1].airfreightPct, 78);
+  assert.equal(landedCost({ ...base, origin: "CN" }).airfreightPct, 70, "no departure given: the origin's zone");
+});
+
+test("an airport the Annex does not name takes the nearest named one; none at all, the country's usual zone", () => {
+  const hou = landedCost({ ...base, origin: "US", departureAirport: "HOU", departureLat: 29.65, departureLon: -95.28 });
+  assert.equal(hou.airfreightPct, 78); assert.equal(hou.airfreightVia, "IAH");
+  const sat = landedCost({ ...base, origin: "US", departureAirport: "SAT" });
+  assert.equal(sat.airfreightPct, 70); assert.equal(sat.airfreightVia, null); assert.equal(sat.airportUnknown, true);
+  assert.equal(landedCost({ ...base, origin: "US" }).airportUnknown, true);
+  assert.equal(landedCost({ ...base, origin: "CN" }).airportUnknown, false);
+});
+
+/* The office's VAT block adds its clearance fee (€125 on 166 of 196 sheets) to the base: a commission
+   to the first destination is an incidental expense (VAT Directive Art. 86(1)(b)). */
+test("the clearance fee is in the VAT base and the cost, never in the customs value", () => {
+  const r = landedCost({ ...base, agencyFees: 125, dutyRatePct: 4 });
+  close(r.customsValue, 10750); close(r.vatBase, 10750 + 430 + 300 + 125); close(r.total, 10000 + 1000 + 50 + 430 + 125 + r.importVAT);
 });
 
 test("duty and anti-dumping are charged on the customs value and both feed the VAT base", () => {

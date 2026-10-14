@@ -652,8 +652,70 @@ export const AIRFREIGHT_ZONES = {
   GB: 5,
 };
 
-export function getAirfreightPct(countryCode) {
-  return (AIRFREIGHT_ZONES[countryCode] ?? 70) / 100;
+/* Annex 23-01 names airports, not countries, for the United States, Canada and Russia: Houston is
+   zone B (78%), New York zone A (70%), Anchorage zone C (89%); Moscow 30%, Novosibirsk 57%,
+   Irkutsk 70%, Vladivostok 83%. Until 2026-10-14 the whole of each country was one zone here, and
+   ELP's commonest import origin, IAH (321 files in 18 months), was done at 70%. An airport the Annex
+   does not name takes the nearest named one in the same country (the Annex's own rule), which needs
+   its position; the ELP tool passes it from its airports table. Positions to a tenth of a degree. */
+export const AIR_ZONE_AIRPORTS = {
+  US: {
+    CAK: [70, 40.9, -81.4], ALB: [70, 42.7, -73.8], ATL: [70, 33.6, -84.4], BWI: [70, 39.2, -76.7], BOS: [70, 42.4, -71.0],
+    BUF: [70, 42.9, -78.7], CHS: [70, 32.9, -80.0], ORD: [70, 42.0, -87.9], MDW: [70, 41.8, -87.8], CVG: [70, 39.0, -84.7],
+    CMH: [70, 40.0, -82.9], DTW: [70, 42.2, -83.4], IND: [70, 39.7, -86.3], JAX: [70, 30.5, -81.7], MCI: [70, 39.3, -94.7],
+    LEX: [70, 38.0, -84.6], SDF: [70, 38.2, -85.7], MEM: [70, 35.0, -90.0], MKE: [70, 43.0, -87.9], MSP: [70, 44.9, -93.2],
+    BNA: [70, 36.1, -86.7], MSY: [70, 30.0, -90.3], JFK: [70, 40.6, -73.8], EWR: [70, 40.7, -74.2], LGA: [70, 40.8, -73.9],
+    PHL: [70, 39.9, -75.2], PIT: [70, 40.5, -80.2], STL: [70, 38.7, -90.4], IAD: [70, 38.9, -77.5], DCA: [70, 38.9, -77.0],
+    ABQ: [78, 35.0, -106.6], AUS: [78, 30.2, -97.7], BIL: [78, 45.8, -108.5], DFW: [78, 32.9, -97.0], DEN: [78, 39.9, -104.7],
+    IAH: [78, 30.0, -95.3], LAS: [78, 36.1, -115.2], LAX: [78, 33.9, -118.4], MIA: [78, 25.8, -80.3], OKC: [78, 35.4, -97.6],
+    PHX: [78, 33.4, -112.0], PDX: [78, 45.6, -122.6], SJU: [78, 18.4, -66.0], SLC: [78, 40.8, -112.0], SFO: [78, 37.6, -122.4],
+    SEA: [78, 47.4, -122.3],
+    ANC: [89, 61.2, -150.0], FAI: [89, 64.8, -147.9], HNL: [89, 21.3, -157.9], JNU: [89, 58.4, -134.6],
+  },
+  CA: {
+    YQX: [70, 48.9, -54.6], YHZ: [70, 44.9, -63.5], YQM: [70, 46.1, -64.7], YUL: [70, 45.5, -73.7], YMX: [70, 45.7, -74.0],
+    YOW: [70, 45.3, -75.7], YQB: [70, 46.8, -71.4], YYZ: [70, 43.7, -79.6],
+    YEG: [78, 53.3, -113.6], YVR: [78, 49.2, -123.2], YWG: [78, 49.9, -97.2],
+  },
+  RU: {
+    SVO: [30, 56.0, 37.4], DME: [30, 55.4, 37.9], VKO: [30, 55.6, 37.3], GOJ: [30, 56.2, 43.8], KUF: [30, 53.5, 50.2],
+    OEL: [30, 52.9, 36.0], ROV: [30, 47.5, 39.9], VOG: [30, 48.8, 44.4], VOZ: [30, 51.8, 39.2],
+    OVB: [57, 55.0, 82.7], OMS: [57, 55.0, 73.3], PEE: [57, 57.9, 56.0], SVX: [57, 56.7, 60.8],
+    IKT: [70, 52.3, 104.4], KCK: [70, 57.8, 108.1], KJA: [70, 56.2, 92.5],
+    KHV: [83, 48.5, 135.2], VVO: [83, 43.4, 132.2],
+  },
+};
+/* With no airport: the zone of the country's main gateway (New York, Toronto, Moscow). */
+const AIR_ZONE_DEFAULT = { US: 70, CA: 70, RU: 30 };
+
+const km = (lat1, lon1, lat2, lon2) => {
+  const r = Math.PI / 180, a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+};
+
+/**
+ * The share of the air freight in the customs value, as a fraction, with how it was found: `via` is
+ * the Annex airport used when it is not the one given, `unknown` says the country has several zones
+ * and the airport settled none of them.
+ */
+export function airfreightShare(countryCode, departureAirport, lat, lon) {
+  const zones = AIR_ZONE_AIRPORTS[countryCode];
+  if (!zones) return { pct: (AIRFREIGHT_ZONES[countryCode] ?? 70) / 100, via: null, unknown: false };
+  const code = String(departureAirport || "").toUpperCase();
+  if (zones[code]) return { pct: zones[code][0] / 100, via: null, unknown: false };
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    let best = null;
+    for (const [iata, [pct, la, lo]] of Object.entries(zones)) {
+      const d = km(lat, lon, la, lo);
+      if (!best || d < best.d) best = { d, iata, pct };
+    }
+    return { pct: best.pct / 100, via: best.iata, unknown: false };
+  }
+  return { pct: AIR_ZONE_DEFAULT[countryCode] / 100, via: null, unknown: true };
+}
+
+export function getAirfreightPct(countryCode, departureAirport, lat, lon) {
+  return airfreightShare(countryCode, departureAirport, lat, lon).pct;
 }
 
 /* ------------------------------------------------------------ the sum ---- */
@@ -688,32 +750,45 @@ export function landedCost(input = {}) {
   const freightPaidEUR = number(input.freight) * exchangeRate;
   let freightEUR = freightPaidEUR;
 
-  /* Only part of an airfreight cost enters the customs value, by distance zone (Annex 23-01). */
-  const airfreightPct = input.transportMode === "air" ? getAirfreightPct(origin) : null;
-  if (airfreightPct !== null) freightEUR = freightEUR * airfreightPct;
-
   /* The Incoterm decides what the customs value already includes. */
   const terms = INCOTERMS_CIF[incoterm] || {};
-  let customsValue = valueEUR;
-  if (terms.needsFreight && terms.needsIns) customsValue = valueEUR + freightEUR + insuranceEUR;
-  else if (!terms.needsFreight && terms.needsIns) customsValue = valueEUR + insuranceEUR;
+
+  /* Only part of an airfreight cost enters the customs value, by distance zone (Annex 23-01). */
+  const coord = (v) => (v == null || v === "" ? NaN : Number(v));
+  /* The share goes by where the flight left from, not where the goods were made: Chinese goods flown
+     out of Houston are zone B. `departureCountry` is the shipment's; a line's origin is only the fallback. */
+  const shipFrom = String(input.departureCountry || origin).toUpperCase();
+  const share = input.transportMode === "air" ? airfreightShare(shipFrom, input.departureAirport, coord(input.departureLat), coord(input.departureLon)) : null;
+  const airfreightPct = share ? share.pct : null;
+  if (airfreightPct !== null) freightEUR = freightEUR * airfreightPct;
+  /* Charges at origin the buyer pays apart from the freight (pick-up, handling, export fees): all of
+     it is incurred before the flight, so all of it is in the value. The office's workbook counts them
+     whole on 390 of 1,159 declarations; typed into the freight box they would be cut to the air share. */
+  const originChargesEUR = terms.needsFreight ? number(input.originCharges) * exchangeRate : 0;
+
+  let customsValue = valueEUR + originChargesEUR;
+  if (terms.needsFreight && terms.needsIns) customsValue += freightEUR + insuranceEUR;
+  else if (!terms.needsFreight && terms.needsIns) customsValue += insuranceEUR;
 
   /* Freight the importer pays that customs leaves out of its value: the rest of the air freight
-     when the Incoterm makes the buyer pay the freight. Under C and D terms the freight is inside
-     the price and nothing is outside. It is still a cost, and still VAT-able (Art. 86(1)(b)). */
+     when the Incoterm makes the buyer pay the freight. It is still a cost, and still VAT-able
+     (Art. 86(1)(b)). */
   let freightExcludedEUR = terms.needsFreight ? Math.max(0, freightPaidEUR - freightEUR) : 0;
-  /* Freight a C or D invoice shows on its own line, on top of the goods. The seller bills the
-     carriage, so it is in the price paid, but transport after the EU border stays out of the value
-     when the invoice shows it apart (UCC Art. 72(a)): on air, the Annex 23-01 share counts, as for
-     E and F terms. Case: file 2313832 (2026-08-28), DAP from Indonesia, goods €28,931.12 plus a
-     freight line of €2,838.88; Luxembourg customs took goods + 70% of it and charged €525.61, where
-     this read the goods alone and said €491.83. Freight hidden inside the prices cannot be split,
-     and then the whole price is the value, as before. `freight` keeps its meaning under these
-     terms (ignored), because Dutify's own calculator sends it whatever the Incoterm. */
-  const invoiceFreightPaidEUR = terms.needsFreight ? 0 : number(input.invoiceFreight) * exchangeRate;
-  const invoiceFreightEUR = airfreightPct !== null ? invoiceFreightPaidEUR * airfreightPct : invoiceFreightPaidEUR;
-  customsValue += invoiceFreightEUR;
-  freightExcludedEUR += invoiceFreightPaidEUR - invoiceFreightEUR;
+  /* Under C and D terms the seller pays the carriage, so the price holds it; the part flown after
+     the EU border still comes out of the value when it can be shown (UCC Art. 72(a)), and the AWB
+     shows it. This is how the office has declared since 2002 ("IMPORT - customs value details.xls",
+     470 of 1,159 sheets): the delivered price, less the post-border share of the AWB freight. When
+     the invoice bills the freight on its own line (`freightShownApart`), the lines hold the goods
+     alone and the pre-border share is added instead; the same value either way. Case: file 2313832
+     (DAP from Indonesia, goods €28,931.12 plus a freight line of €2,838.88), where customs took
+     goods + 70% and charged €525.61 and this, reading the goods alone, said €491.83 (2026-10-14).
+     `freight` keeps its meaning under these terms (ignored): Dutify's own calculator sends it
+     whatever the Incoterm. */
+  const freightInPriceEUR = terms.needsFreight ? 0 : number(input.freightInPrice) * exchangeRate;
+  const freightInPriceCounted = airfreightPct !== null ? freightInPriceEUR * airfreightPct : freightInPriceEUR;
+  if (input.freightShownApart) customsValue += freightInPriceCounted;
+  else customsValue -= freightInPriceEUR - freightInPriceCounted;
+  freightExcludedEUR += freightInPriceEUR - freightInPriceCounted;
   /* Carriage from the EU border or port to the first destination in Luxembourg, when paid
      separately: never in the customs value, always in the VAT base (Art. 86(1)(b)). */
   const onwardCarriageEUR = number(input.onwardCarriage) * exchangeRate;
@@ -757,7 +832,10 @@ export function landedCost(input = {}) {
   /* VAT is charged on the customs value, every duty on it, and the incidental costs up to the first
      place of destination in Luxembourg (VAT Directive Art. 86(1)(b), Loi TVA art. 34): that is the
      freight customs left out and the onward carriage, which the customs value does not hold. */
-  const vatBase = customsValue + dutyForBase + antiDumpingDuty + exciseDuty + freightExcludedEUR + onwardCarriageEUR;
+  /* The clearance fee is a commission to the first destination, so it is in the base too; the
+     office's VAT block has always added it (€125 on most of its sheets), the customs value never. */
+  const agencyFeesEUR = number(input.agencyFees);
+  const vatBase = customsValue + dutyForBase + antiDumpingDuty + exciseDuty + freightExcludedEUR + onwardCarriageEUR + agencyFeesEUR;
   /* Who bears the VAT. Import VAT is charged and paid at import whoever the importer is (ELP,
      2026-10-10: "it needs to be paid every time; companies then request it back"), so it is in the
      total in every case. "recoverable" marks a Luxembourg VAT-registered business that reclaims it
@@ -770,13 +848,19 @@ export function landedCost(input = {}) {
 
   return {
     valueEUR,
-    /** The freight in the customs value: the freight box's share, or the invoice line's. */
-    freightEUR: (terms.needsFreight ? freightEUR : 0) + invoiceFreightEUR,
+    /** The freight in the customs value: the freight box's share, or the share of the freight in the price. */
+    freightEUR: (terms.needsFreight ? freightEUR : 0) + freightInPriceCounted,
+    /** The freight a C or D price holds, whole, as given. */
+    freightInPriceEUR,
+    originChargesEUR,
+    agencyFeesEUR,
+    airfreightVia: share ? share.via : null,
+    airportUnknown: share ? share.unknown : false,
     /** The freight paid that is not in the customs value: the airline's share beyond the zone percentage. */
     freightExcludedEUR,
     onwardCarriageEUR,
     insuranceEUR,
-    airfreightPct: airfreightPct === null ? null : airfreightPct * 100,
+    airfreightPct: airfreightPct === null ? null : Math.round(airfreightPct * 10000) / 100,
     customsValue,
     dutyFree,
     deMinimisExpiringSoon: dutyFree && now >= new Date("2026-04-01"),
@@ -798,7 +882,7 @@ export function landedCost(input = {}) {
        sits outside it. `vatRecoverable` is the part of that a registered business gets back later;
        `cashAtImport` is what customs collects on the day. */
     total: dutyKnown
-      ? customsValue + freightExcludedEUR + onwardCarriageEUR + customsDuty + antiDumpingDuty + exciseDuty + importVAT
+      ? customsValue + freightExcludedEUR + onwardCarriageEUR + agencyFeesEUR + customsDuty + antiDumpingDuty + exciseDuty + importVAT
       : null,
     vatRecoverable,
     cashAtImport: dutyKnown ? customsDuty + antiDumpingDuty + exciseDuty + importVAT : null,
@@ -818,23 +902,34 @@ export function landedCost(input = {}) {
  *   landedCostShipment({ lines: [{ value, hsCode, origin?, dutyRatePct, dutyExpression?, quantities?,
  *                                   antiDumpingRatePct?, exciseDuty?, vatRatePct?, usingPreferentialRate?,
  *                                   preferential?, hasProofOfOrigin? }],
- *                        exchangeRate, incoterm, transportMode, origin, freight, invoiceFreight, insurance,
+ *                        exchangeRate, incoterm, transportMode, origin, departureAirport, departureLat, departureLon,
+ *                        freight, freightInPrice, freightShownApart, originCharges, insurance, agencyFees,
  *                        onwardCarriage, vatPosition, now })
  */
 export function landedCostShipment(input = {}) {
   const lines = Array.isArray(input.lines) ? input.lines : [];
   const values = lines.map((l) => Math.max(0, number(l.value)));
   const sumValue = values.reduce((a, b) => a + b, 0);
-  const share = (i) => (sumValue > 0 ? values[i] / sumValue : lines.length ? 1 / lines.length : 0);
+  const byValue = (i) => (sumValue > 0 ? values[i] / sumValue : lines.length ? 1 / lines.length : 0);
+  /* Transport is priced by weight, and the office has always spread it over the lines by net weight
+     (every sheet of its workbook); insurance is priced on value and stays by value. Weight only when
+     every line has one, else value for all, so no line is left carrying nothing. */
+  const kgs = lines.map((l) => number(l.quantities?.kg));
+  const sumKg = kgs.reduce((a, b) => a + b, 0);
+  const spreadBy = lines.length > 1 && kgs.every((k) => k > 0) ? "weight" : "value";
+  const share = spreadBy === "weight" ? (i) => kgs[i] / sumKg : byValue;
 
   const results = lines.map((line, i) => landedCost({
     ...input,
     ...line,
     origin: line.origin || input.origin,
+    departureCountry: input.departureCountry || input.origin,
     freight: number(input.freight) * share(i),
-    invoiceFreight: number(input.invoiceFreight) * share(i),
-    insurance: number(input.insurance) * share(i),
+    freightInPrice: number(input.freightInPrice) * share(i),
+    originCharges: number(input.originCharges) * share(i),
     onwardCarriage: number(input.onwardCarriage) * share(i),
+    insurance: number(input.insurance) * byValue(i),
+    agencyFees: number(input.agencyFees) * byValue(i),
     /* A line's own VAT rate wins; otherwise the shipment's; otherwise the chapter's. */
     vatRatePct: line.vatRatePct ?? input.vatRatePct ?? null,
   }));
@@ -843,8 +938,14 @@ export function landedCostShipment(input = {}) {
   const first = results[0];
   return {
     lines: results.map((r, i) => ({ ...r, share: share(i) })),
+    spreadBy,
     valueEUR: sum("valueEUR"),
     freightEUR: sum("freightEUR"),
+    freightInPriceEUR: sum("freightInPriceEUR"),
+    originChargesEUR: sum("originChargesEUR"),
+    agencyFeesEUR: sum("agencyFeesEUR"),
+    airfreightVia: first ? first.airfreightVia : null,
+    airportUnknown: first ? first.airportUnknown : false,
     freightExcludedEUR: sum("freightExcludedEUR"),
     onwardCarriageEUR: sum("onwardCarriageEUR"),
     insuranceEUR: sum("insuranceEUR"),

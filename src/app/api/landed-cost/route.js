@@ -45,8 +45,19 @@ const shipmentSchema = z.object({
   currency: z.string().length(3).optional(),
   exchangeRate: z.coerce.number().positive().max(1e6).default(1),
   freight: money.optional(),
-  /* Under C and D terms, the freight the invoice shows on its own line, on top of the goods. */
-  invoiceFreight: money.optional(),
+  /* Under C and D terms, the freight the price holds (the AWB's); `freightShownApart` when the
+     invoice bills it on its own line and the lines are the goods alone. */
+  freightInPrice: money.optional(),
+  freightShownApart: z.boolean().optional(),
+  /* Charges at origin apart from the freight, counted whole; the clearance fee, VAT base only. */
+  originCharges: money.optional(),
+  agencyFees: money.optional(),
+  /* The departure airport settles the zone for the US, Canada and Russia; its position finds the
+     nearest airport Annex 23-01 names when it is not one of them. */
+  departureCountry: z.string().length(2).optional(),
+  departureAirport: z.string().length(3).optional(),
+  departureLat: z.coerce.number().min(-90).max(90).optional(),
+  departureLon: z.coerce.number().min(-180).max(180).optional(),
   insurance: money.optional(),
   onwardCarriage: money.optional(),
   incoterm: z.enum(Object.keys(INCOTERMS_CIF)).default("EXW"),
@@ -62,8 +73,19 @@ const schema = z.object({
   /* EUR per unit of the invoice currency; 1 for an invoice already in EUR. */
   exchangeRate: z.coerce.number().positive().max(1e6).default(1),
   freight: money.optional(),
-  /* Under C and D terms, the freight the invoice shows on its own line, on top of the goods. */
-  invoiceFreight: money.optional(),
+  /* Under C and D terms, the freight the price holds (the AWB's); `freightShownApart` when the
+     invoice bills it on its own line and the lines are the goods alone. */
+  freightInPrice: money.optional(),
+  freightShownApart: z.boolean().optional(),
+  /* Charges at origin apart from the freight, counted whole; the clearance fee, VAT base only. */
+  originCharges: money.optional(),
+  agencyFees: money.optional(),
+  /* The departure airport settles the zone for the US, Canada and Russia; its position finds the
+     nearest airport Annex 23-01 names when it is not one of them. */
+  departureCountry: z.string().length(2).optional(),
+  departureAirport: z.string().length(3).optional(),
+  departureLat: z.coerce.number().min(-90).max(90).optional(),
+  departureLon: z.coerce.number().min(-180).max(180).optional(),
   insurance: money.optional(),
   /* Carriage from the EU border or port to the first destination in Luxembourg, paid separately:
      outside the customs value, inside the VAT base and the total. */
