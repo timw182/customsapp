@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeDescription, callClaude, extractAttributes, narrowHeadings, pickFromCandidates } from "@/lib/hs-pipeline.mjs";
+import { normalizeDescription, callClaude, extractAttributes, narrowHeadings, pickFromCandidates, reconcileHs6, subheadingTexts } from "@/lib/hs-pipeline.mjs";
 import { requireUser } from "@/lib/apiAuth";
 import { FREE_SONNET_LIMIT } from "@/lib/limits";
 import { z } from "zod";
@@ -1162,7 +1162,7 @@ async function runClassification(data, userId, isPro, emit) {
   // Prefer the model's self-calibrated confidencePct (0–99). Only fall back
   // to the bucket map when the response is from an older shape that didn't
   // include the field — the map exists as a safety net, not a forced bucket.
-  const selfReportedPct = Number.isFinite(claudeResult.confidencePct)
+  let selfReportedPct = Number.isFinite(claudeResult.confidencePct)
     ? Math.max(0, Math.min(99, Math.round(claudeResult.confidencePct)))
     : null;
   const resolvedPct = selfReportedPct ?? CONFIDENCE_PCT[claudeResult.confidence] ?? 72;
@@ -1323,6 +1323,18 @@ async function runClassification(data, userId, isPro, emit) {
     } else {
       const treeNote = taricFromTree ? " (TARIC SOAP unavailable — rates via Saturn link)" : "";
       emit({ type: "thinking", text: `TARIC: found ${siblings.length} declarable CN code${siblings.length !== 1 ? "s" : ""} under ${heading}${treeNote}` });
+      /* The code must be the one the reasoning reaches, judged against the subheadings' own texts now
+         that they are in hand (hs-pipeline.mjs, reconcileHs6; the tyre of 2026-10-26). */
+      const reconciled = await reconcileHs6({ ...claudeResult, hs6 }, subheadingTexts(siblings));
+      if (reconciled._reconciled) {
+        emit({ type: "thinking", text: `${modelUsed} wrote ${reconciled._reconciled.from} but argued for ${reconciled._reconciled.to} — the argument wins` });
+        claudeResult = reconciled;
+        hs6 = reconciled.hs6;
+        selfReportedPct = Number.isFinite(reconciled.confidencePct) ? reconciled.confidencePct : selfReportedPct;
+        finalResult.hs6 = hs6;
+        finalResult.confidencePct = selfReportedPct ?? finalResult.confidencePct;
+        finalResult.alternatives = normalizeAlternatives(claudeResult.alternatives, hs6, finalResult.confidencePct);
+      }
       // Narrow disambiguation: only pick between siblings that share Claude's
       // 6-digit prefix. We trust Claude's CN6 choice — widening to the whole
       // heading causes regressions because TARIC's CN8 descriptions lose the

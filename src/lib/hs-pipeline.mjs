@@ -366,12 +366,12 @@ RESPONSE FORMAT — pick exactly ONE of the four options below. Output raw JSON 
 OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
 {
   "status": "classified",
-  "hs6": "6-digit string (e.g. 880730)",
+  "reasoning": "Authoritative reasoning citing: (1) which GRI applies (GRI 1–6) and why, (2) the relevant Chapter Note or Section Note by number (e.g. 'Chapter 61 Note 3 excludes...'), (3) the WCO Explanatory Note for the heading/subheading (e.g. 'EN 6203 covers...'), (4) any applicable EU BTI reference or CJEU ruling. If a CN 2026 dedicated subheading exists for this product, state it explicitly. Be specific — quote the rule, do not just name it. End by naming the 6-digit subheading you conclude on.",
+  "hs6": "6-digit string (e.g. 880730) — the subheading your reasoning concluded on, never another",
   "heading": "4-digit heading (e.g. 8807)",
   "confidence": "high | medium",
   "confidencePct": <integer 60-99>,
   "shortLabel": "2-3 word product label (e.g. 'Wireless headphones', 'Portable computer', 'Cotton t-shirt'). Title-case the first word; keep it concrete and visual — a user scanning a list of past lookups should recognise the product at a glance.",
-  "reasoning": "Authoritative reasoning citing: (1) which GRI applies (GRI 1–6) and why, (2) the relevant Chapter Note or Section Note by number (e.g. 'Chapter 61 Note 3 excludes...'), (3) the WCO Explanatory Note for the heading/subheading (e.g. 'EN 6203 covers...'), (4) any applicable EU BTI reference or CJEU ruling. If a CN 2026 dedicated subheading exists for this product, state it explicitly. Be specific — quote the rule, do not just name it.",
   "chapter": "HS chapter name",
   "notes": "any ambiguity, assumptions, or CN 2026 subheading notes",
   "alternatives": [
@@ -379,6 +379,8 @@ OPTION 1 — HIGH/MEDIUM CONFIDENCE (you can determine a single subheading):
     {"hs6": "6-digit string", "heading": "4-digit heading", "confidence_pct": <integer 1-59>, "label": "short product label", "reasoning": "1-2 sentence summary"}
   ]
 }
+
+Write the fields of OPTION 1 in the order shown: the reasoning first, the code after it. The code is read by machines and the reasoning by people; a code that contradicts its own reasoning is the worst answer you can give.
 
 Rules for alternatives in OPTION 1:
 - ALWAYS include exactly 2 alternatives — the 2 next-most-plausible 6-digit subheadings you considered. They show your work; they need not be credible competitors.
@@ -726,6 +728,99 @@ function formatAttributesBlock(attrs) {
  * When `prior` is supplied (Opus escalation), Sonnet's pick + reasoning are
  * shown so Opus can confirm or override with deeper analysis.
  */
+// ── The code must be the one the argument reaches ─────────────────────────────
+//
+// The pick returns a code field and a reasoning field, and the two can disagree: on 2026-10-26
+// Sonnet wrote hs6 "401120" (bus and lorry tyres) for a 265/50R20 passenger tyre and then argued,
+// in the reasoning and again in the notes, for 4011 10. TARIC resolved the field, the person read
+// the reasoning, and the result was a lorry-tyre code over a car-tyre explanation. The format now
+// asks for the reasoning before the code; this step catches the slip when it still happens.
+//
+// It is judged against the nomenclature's own texts, not the numbers alone, because the slip runs
+// both ways: a cached pick of 2026-10 wrote "7318 20 (other screws/bolts)" in its reasoning while
+// its field said 7318 15, and 7318 15 IS "other screws and bolts" (7318 20 is lock washers). The
+// number in the text was the slip there, and the texts are what show it. So the check runs once the
+// heading's lines are in hand (the route's TARIC step), and a code the text names that is no real
+// subheading ("8807 00") is not a contradiction at all.
+//
+// Cheap gate first: only when the text names another real subheading under the same heading is
+// there anything to reconcile. Then a small model reads the argument beside the official texts and
+// reports which named subheading it concludes on. It may not classify the goods itself.
+
+/**
+ * Every 6-digit subheading under `heading` the text names, however written ("4011 10", "4011.10",
+ * "4011-10", "401110"). An 8- or 10-digit code is not a 6-digit mention and is left alone.
+ */
+function subheadingsMentioned(text, heading) {
+  const out = new Set();
+  const four = String(heading ?? "").replace(/\D/g, "").slice(0, 4);
+  if (four.length !== 4) return out;
+  const re = new RegExp(`(?<!\\d)${four}[\\s.\\-]?(\\d{2})(?!\\d)`, "g");
+  for (const m of String(text ?? "").matchAll(re)) out.add(four + m[1]);
+  return out;
+}
+
+/**
+ * The official text of each 6-digit subheading the lines under a heading sit in: the part of the
+ * lines' paths they share within the subheading, so 4011 20 reads "Of a kind used on buses or
+ * lorries" and not one line's "… > With a load index not exceeding 121".
+ */
+function subheadingTexts(siblings) {
+  const shared = new Map();
+  for (const s of siblings ?? []) {
+    const code = String(s?.cn8 ?? s?.cn10 ?? "").replace(/\D/g, "").slice(0, 6);
+    if (code.length !== 6) continue;
+    const parts = String(s.path || s.description || "").split(" > ").map((t) => t.trim()).filter(Boolean);
+    const cur = shared.get(code);
+    if (!cur) { shared.set(code, { first: parts, common: parts }); continue; }
+    let i = 0;
+    while (i < cur.common.length && i < parts.length && cur.common[i] === parts[i]) i++;
+    cur.common = cur.common.slice(0, i);
+  }
+  const out = new Map();
+  for (const [code, { first, common }] of shared) out.set(code, (common.length ? common : first).join(" > ") || "(no text)");
+  return out;
+}
+
+const RECONCILE_SYSTEM = `You read a customs classification argument beside the official texts of the 6-digit HS subheadings it names, and report which ONE subheading the argument concludes on.
+Judge by substance: the argument may have mis-numbered a subheading whose text it describes correctly. The conclusion is the subheading whose official text matches what the argument says the goods are, whatever number the argument attached to it.
+The argument may also name subheadings it compares against or rejects; those are not its conclusion.
+Do not classify the goods yourself and do not reconsider the argument: report its conclusion, even if you disagree with it.
+Output raw JSON only, no markdown: {"hs6":"6-digit string"}. If the argument reaches no single subheading, {"hs6":null}.`;
+
+/**
+ * A classified pick with its code field made to agree with its reasoning, judged against the
+ * official texts of the heading's subheadings (`texts`, from subheadingTexts). Returns the pick
+ * unchanged when the two already agree, when no other real subheading is named, or when the check
+ * fails; never throws. A swap is recorded in `_reconciled` and the self-reported confidence is
+ * capped, because a pick that contradicted itself once is not 99 % sure.
+ */
+async function reconcileHs6(result, texts, { ask = callClaude, model = "claude-haiku-4-5-20251001" } = {}) {
+  if (!result || result.status !== "classified") return result;
+  const hs6 = String(result.hs6 ?? "").replace(/\D/g, "").slice(0, 6);
+  if (hs6.length !== 6 || !(texts instanceof Map)) return result;
+  const named = subheadingsMentioned(`${result.reasoning ?? ""}\n${result.notes ?? ""}`, hs6.slice(0, 4));
+  named.delete(hs6);
+  for (const code of named) if (!texts.has(code)) named.delete(code);
+  if (named.size === 0) return result;
+  const listed = [hs6, ...named].filter((c) => texts.has(c)).map((c) => `${c.slice(0, 4)} ${c.slice(4)}: ${texts.get(c)}`);
+  try {
+    const verdict = await ask(
+      RECONCILE_SYSTEM,
+      `Code given: ${hs6}\n\nSubheadings named, with their official texts:\n${listed.join("\n")}\n\nReasoning:\n${result.reasoning ?? ""}\n\nNotes:\n${result.notes ?? ""}`,
+      model,
+      100,
+    );
+    const concluded = String(verdict?.hs6 ?? "").replace(/\D/g, "").slice(0, 6);
+    if (concluded.length !== 6 || concluded === hs6 || !named.has(concluded)) return result;
+    const pct = Number.isFinite(Number(result.confidencePct)) ? Math.min(90, Number(result.confidencePct)) : result.confidencePct;
+    return { ...result, hs6: concluded, heading: concluded.slice(0, 4), confidencePct: pct, _reconciled: { from: hs6, to: concluded } };
+  } catch (e) {
+    console.warn("[hs-lookup] reconcile skipped:", e?.message ?? e);
+    return result;
+  }
+}
+
 async function pickFromCandidates({
   description,
   attrs,
@@ -782,5 +877,8 @@ export {
   formatCandidatesBlock,
   formatAttributesBlock,
   rationaleInstruction,
+  subheadingsMentioned,
+  subheadingTexts,
+  reconcileHs6,
   pickFromCandidates,
 };
