@@ -485,7 +485,7 @@ export default function AdminPanel() {
         )}
 
         <p className="mono text-xs faint mt-4">
-          Auto-checked every 14 days via cron · source: ae.gouvernement.lu
+          Auto-checked every 14 days via cron · source: official ADA table, douanes.public.lu
         </p>
       </section>
 
