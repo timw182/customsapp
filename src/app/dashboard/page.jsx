@@ -204,6 +204,34 @@ function thinkingToProgress(text) {
   return null
 }
 
+// Browser equivalent of the mobile lib/photo.ts pipeline: load the chosen
+// file, downscale to a 1568 px longest edge (Anthropic's vision ceiling), and
+// re-encode as JPEG q0.7 → raw base64 (no data: prefix) for /api/hs-lookup.
+function fileToResizedBase64(file, MAX = 1568, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    if (!file?.type?.startsWith('image/')) { reject(new Error('Please choose an image file')); return }
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const longest = Math.max(img.width, img.height) || MAX
+      const scale = longest > MAX ? MAX / longest : 1
+      const w = Math.max(1, Math.round(img.width * scale))
+      const h = Math.max(1, Math.round(img.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('Canvas not supported')); return }
+      ctx.drawImage(img, 0, 0, w, h)
+      const base64 = (canvas.toDataURL('image/jpeg', quality).split(',')[1]) || ''
+      if (!base64) { reject(new Error('Failed to encode image')); return }
+      resolve({ base64, mediaType: 'image/jpeg' })
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not load image')) }
+    img.src = url
+  })
+}
+
 function SearchPage({ onNavigate, onHsFound }) {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -276,9 +304,69 @@ function SearchPage({ onNavigate, onHsFound }) {
     setProgress(prev => (pct > prev ? pct : prev))
   }, [])
 
-  const runClassify = useCallback(async (desc) => {
-    const trimmed = (desc ?? '').trim()
-    if (!trimmed) return
+  // Shared transport for both the text and image classification paths: POSTs
+  // a body to /api/hs-lookup and consumes either a one-shot JSON reply or the
+  // SSE thinking/result/error stream, updating state as events arrive.
+  const streamClassify = useCallback(async (body, ctrl) => {
+    const res = await fetch('/api/hs-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    })
+
+    const ct = res.headers.get('content-type') || ''
+    if (!res.ok && !ct.includes('text/event-stream')) {
+      const txt = await res.text().catch(() => '')
+      let msg = `Server returned ${res.status}`
+      try { const j = JSON.parse(txt); if (j?.error) msg = j.error } catch {}
+      setError(msg)
+      return
+    }
+
+    if (!ct.includes('text/event-stream')) {
+      const data = await res.json().catch(() => null)
+      if (!data) { setError('Invalid response'); return }
+      setResult(data)
+      advanceProgress(100)
+      onHsFound(data.hs6 || '')
+      loadRecent()
+      return
+    }
+
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    let buf = ''
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += dec.decode(value, { stream: true })
+      let idx
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const chunk = buf.slice(0, idx).trim()
+        buf = buf.slice(idx + 2)
+        if (!chunk.startsWith('data:')) continue
+        const payload = chunk.slice(5).trim()
+        let ev
+        try { ev = JSON.parse(payload) } catch { continue }
+        if (ev.type === 'thinking' && ev.text) {
+          setThinking(prev => [...prev, ev.text])
+          const pct = thinkingToProgress(ev.text)
+          if (pct != null) advanceProgress(pct)
+        } else if (ev.type === 'result') {
+          setResult(ev.payload)
+          advanceProgress(100)
+          onHsFound(ev.payload?.hs6 || '')
+          loadRecent()
+        } else if (ev.type === 'error') {
+          setError(ev.message || 'Classification error')
+        }
+      }
+    }
+  }, [onHsFound, loadRecent, advanceProgress])
+
+  // Reset the workspace and arm a fresh AbortController for a new run.
+  const beginRun = useCallback(() => {
     abortRef.current?.abort()
     const ctrl = new AbortController()
     abortRef.current = ctrl
@@ -289,70 +377,47 @@ function SearchPage({ onNavigate, onHsFound }) {
     setThinking([])
     setProgress(0)
     setAnswer('')
+    return ctrl
+  }, [])
 
+  const runClassify = useCallback(async (desc) => {
+    const trimmed = (desc ?? '').trim()
+    if (!trimmed) return
+    const ctrl = beginRun()
     try {
-      const res = await fetch('/api/hs-lookup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ type: 'classify', description: trimmed }),
-        signal: ctrl.signal,
-      })
-
-      const ct = res.headers.get('content-type') || ''
-      if (!res.ok && !ct.includes('text/event-stream')) {
-        const txt = await res.text().catch(() => '')
-        let msg = `Server returned ${res.status}`
-        try { const j = JSON.parse(txt); if (j?.error) msg = j.error } catch {}
-        setError(msg)
-        return
-      }
-
-      if (!ct.includes('text/event-stream')) {
-        const data = await res.json().catch(() => null)
-        if (!data) { setError('Invalid response'); return }
-        setResult(data)
-        advanceProgress(100)
-        onHsFound(data.hs6 || '')
-        loadRecent()
-        return
-      }
-
-      const reader = res.body.getReader()
-      const dec = new TextDecoder()
-      let buf = ''
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buf += dec.decode(value, { stream: true })
-        let idx
-        while ((idx = buf.indexOf('\n\n')) !== -1) {
-          const chunk = buf.slice(0, idx).trim()
-          buf = buf.slice(idx + 2)
-          if (!chunk.startsWith('data:')) continue
-          const payload = chunk.slice(5).trim()
-          let ev
-          try { ev = JSON.parse(payload) } catch { continue }
-          if (ev.type === 'thinking' && ev.text) {
-            setThinking(prev => [...prev, ev.text])
-            const pct = thinkingToProgress(ev.text)
-            if (pct != null) advanceProgress(pct)
-          } else if (ev.type === 'result') {
-            setResult(ev.payload)
-            advanceProgress(100)
-            onHsFound(ev.payload?.hs6 || '')
-            loadRecent()
-          } else if (ev.type === 'error') {
-            setError(ev.message || 'Classification error')
-          }
-        }
-      }
+      await streamClassify({ type: 'classify', description: trimmed }, ctrl)
     } catch (e) {
       if (e?.name !== 'AbortError') setError(e?.message || 'Network error')
     } finally {
       setLoading(false)
       abortRef.current = null
     }
-  }, [onHsFound, loadRecent, advanceProgress])
+  }, [beginRun, streamClassify])
+
+  // Image classification (Pro): resize client-side, then stream classify-image.
+  // The current text box, if any, rides along as a vision hint.
+  const runClassifyImage = useCallback(async (file) => {
+    const ctrl = beginRun()
+    setThinking(['Reading image…'])
+    try {
+      const { base64, mediaType } = await fileToResizedBase64(file)
+      await streamClassify(
+        { type: 'classify-image', imageBase64: base64, imageMediaType: mediaType, hint: query.trim() || undefined },
+        ctrl,
+      )
+    } catch (e) {
+      if (e?.name !== 'AbortError') setError(e?.message || 'Could not read image')
+    } finally {
+      setLoading(false)
+      abortRef.current = null
+    }
+  }, [beginRun, streamClassify, query])
+
+  const onPickImage = useCallback((e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (file) runClassifyImage(file)
+  }, [runClassifyImage])
 
   const handleClassify = useCallback(() => runClassify(query), [runClassify, query])
 
@@ -448,7 +513,7 @@ function SearchPage({ onNavigate, onHsFound }) {
         <div className={s.searchTop}>
           <h1 className={s.pageTitle}>Dutify HS Code Lookup</h1>
 
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} />
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
 
           {/* Mobile-style input row: mic | text | camera — fused pill */}
           <div className={`${s.mInputRow} ${recording ? s.mInputRowListening : ''}`}>
@@ -1572,6 +1637,16 @@ const STG_SECTIONS = [
   { id: 'ai',            label: 'AI' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'privacy',       label: 'Privacy' },
+  { id: 'support',       label: 'Support' },
+]
+
+// Deletable data categories surfaced in Privacy → Your Data. Keys match the
+// counts returned by GET /api/me/data and the categories accepted by DELETE.
+const DATA_CATEGORIES = [
+  { key: 'searchHistory', label: 'Search history',  unit: 'lookup',       unitPlural: 'lookups' },
+  { key: 'favourites',    label: 'Saved codes',     unit: 'record',       unitPlural: 'records' },
+  { key: 'shipments',     label: 'Saved shipments', unit: 'shipment',     unitPlural: 'shipments' },
+  { key: 'notifications', label: 'Notifications',   unit: 'notification', unitPlural: 'notifications' },
 ]
 
 function SettingsPage() {
@@ -1583,10 +1658,27 @@ function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [proMsg, setProMsg] = useState(null) // null | string (field name)
+  // Profile (account-wide store at /api/me/profile)
+  const [profile, setProfile] = useState(null) // { name, company, phone, avatar }
+  const [profileForm, setProfileForm] = useState({ name: '', company: '', phone: '' })
+  const [profileStatus, setProfileStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
+  const avatarFileRef = useRef(null)
+  // Change password
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
+  const [pwStatus, setPwStatus] = useState(null) // null | 'saving' | 'saved'
+  const [pwError, setPwError] = useState(null)
+  // Support ticket
+  const [support, setSupport] = useState({ subject: '', message: '' })
+  const [supportStatus, setSupportStatus] = useState(null) // null | 'sending' | 'sent' | 'error'
+  const [supportError, setSupportError] = useState(null)
+  // Data categories
+  const [dataCounts, setDataCounts] = useState(null)
+  const [dataBusy, setDataBusy] = useState(null) // category currently clearing
   const sectionRefs = useRef({})
   const saveTimer = useRef(null)
   const saveStatusTimer = useRef(null)
   const proMsgTimer = useRef(null)
+  const profileSaveTimer = useRef(null)
 
   // Load from localStorage immediately, then replace with server prefs once fetched
   useEffect(() => { setPrefs(loadStoredPrefs()) }, [])
@@ -1595,7 +1687,9 @@ function SettingsPage() {
     Promise.all([
       fetch('/api/me', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
       fetch('/api/me/prefs', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
-    ]).then(([meData, prefsData]) => {
+      fetch('/api/me/profile', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+      fetch('/api/me/data', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+    ]).then(([meData, prefsData, profData, dataData]) => {
       if (meData?.user) setMe(meData.user)
       if (prefsData?.prefs) {
         const merged = { ...DEFAULT_PREFS, ...prefsData.prefs }
@@ -1603,6 +1697,15 @@ function SettingsPage() {
         // Keep localStorage in sync as a fast local cache
         try { localStorage.setItem(PREFS_KEY, JSON.stringify(merged)) } catch {}
       }
+      if (profData?.profile) {
+        setProfile(profData.profile)
+        setProfileForm({
+          name: profData.profile.name || '',
+          company: profData.profile.company || '',
+          phone: profData.profile.phone || '',
+        })
+      }
+      if (dataData) setDataCounts(dataData)
     }).catch(() => {})
   }, [])
 
@@ -1664,6 +1767,153 @@ function SettingsPage() {
     setDeleteLoading(false)
   }
 
+  // ── Profile ───────────────────────────────────────────────────────
+  const putProfile = useCallback((payload) => {
+    setProfileStatus('saving')
+    return fetch('/api/me/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('save failed')))
+      .then(data => {
+        if (data?.profile) setProfile(data.profile)
+        setProfileStatus('saved')
+        clearTimeout(profileSaveTimer.current)
+        profileSaveTimer.current = setTimeout(() => setProfileStatus(null), 2000)
+        return data?.profile
+      })
+      .catch(() => {
+        setProfileStatus('error')
+        clearTimeout(profileSaveTimer.current)
+        profileSaveTimer.current = setTimeout(() => setProfileStatus(null), 2500)
+      })
+  }, [])
+
+  const handleProfileSave = useCallback(() => {
+    putProfile({
+      name: profileForm.name.trim() || null,
+      company: profileForm.company.trim() || null,
+      phone: profileForm.phone.trim() || null,
+    })
+  }, [putProfile, profileForm])
+
+  const handleAvatarPick = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const { base64, mediaType } = await fileToResizedBase64(file, 512, 0.82)
+      await putProfile({ avatar: { mime: mediaType, base64 } })
+    } catch {
+      setProfileStatus('error')
+      clearTimeout(profileSaveTimer.current)
+      profileSaveTimer.current = setTimeout(() => setProfileStatus(null), 2500)
+    }
+  }, [putProfile])
+
+  const handleAvatarClear = useCallback(() => { putProfile({ avatar: null }) }, [putProfile])
+
+  // ── Change password ───────────────────────────────────────────────
+  const handleChangePassword = useCallback(async () => {
+    setPwError(null)
+    if (pw.next.length < 8) { setPwError('New password must be at least 8 characters'); return }
+    if (pw.next !== pw.confirm) { setPwError('New passwords do not match'); return }
+    setPwStatus('saving')
+    try {
+      const r = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.next }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) { setPwStatus(null); setPwError(data?.error || 'Could not change password'); return }
+      setPwStatus('saved')
+      setPw({ current: '', next: '', confirm: '' })
+      setTimeout(() => setPwStatus(null), 2500)
+    } catch {
+      setPwStatus(null)
+      setPwError('Network error')
+    }
+  }, [pw])
+
+  // ── Support ───────────────────────────────────────────────────────
+  const handleSupportSend = useCallback(async () => {
+    setSupportError(null)
+    if (!support.subject.trim() || !support.message.trim()) {
+      setSupportError('Subject and message are required'); return
+    }
+    setSupportStatus('sending')
+    try {
+      const r = await fetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: support.subject.trim(),
+          message: support.message.trim(),
+          appVersion: 'web',
+          platform: 'web',
+        }),
+      })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok) { setSupportStatus('error'); setSupportError(data?.error || 'Could not send'); return }
+      setSupportStatus('sent')
+      setSupport({ subject: '', message: '' })
+      setTimeout(() => setSupportStatus(null), 3000)
+    } catch {
+      setSupportStatus('error')
+      setSupportError('Network error')
+    }
+  }, [support])
+
+  // ── Data categories ───────────────────────────────────────────────
+  const handleClearCategory = useCallback(async (category) => {
+    setDataBusy(category)
+    try {
+      const r = await fetch('/api/me/data', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category }),
+      })
+      if (r.ok) {
+        const counts = await fetch('/api/me/data', { headers: { Accept: 'application/json' } })
+          .then(res => res.ok ? res.json() : null).catch(() => null)
+        if (counts) setDataCounts(counts)
+      }
+    } catch {}
+    setDataBusy(null)
+  }, [])
+
+  const handleExportData = useCallback(async () => {
+    try {
+      const [profileRes, prefsRes, favRes, histRes, notifRes] = await Promise.all([
+        fetch('/api/me/profile', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+        fetch('/api/me/prefs', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+        fetch('/api/favourites', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+        fetch('/api/hs-lookup/history', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+        fetch('/api/me/notifications', { headers: { Accept: 'application/json' } }).then(r => r.ok ? r.json() : null),
+      ])
+      const bundle = {
+        exportedAt: new Date().toISOString(),
+        account: { email: me?.email || session?.user?.email || '', plan: me?.plan ?? 'free' },
+        profile: profileRes?.profile ?? null,
+        preferences: prefsRes?.prefs ?? null,
+        favourites: favRes ?? [],
+        searchHistory: histRes ?? [],
+        notifications: notifRes?.notifications ?? [],
+      }
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `dutify-data-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }, [me, session])
+
   const FREE_LIMIT = 50
   const used = me?.usageThisMonth ?? 0
   const remaining = Math.max(0, FREE_LIMIT - used)
@@ -1718,14 +1968,119 @@ function SettingsPage() {
             <div className={s.stgCard}>
               <div className={s.stgCardLabel}>Profile</div>
               <div className={s.stgProfileRow}>
-                <div className={s.stgAvatar}>{initials}</div>
+                <button
+                  type="button"
+                  className={s.stgAvatarBtn}
+                  onClick={() => avatarFileRef.current?.click()}
+                  title="Change profile picture"
+                >
+                  {profile?.avatar?.dataUrl
+                    ? <img src={profile.avatar.dataUrl} alt="" className={s.stgAvatarImg} />
+                    : <span className={s.stgAvatar}>{initials}</span>}
+                  <span className={s.stgAvatarEditBadge}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </span>
+                </button>
+                <input ref={avatarFileRef} type="file" accept="image/*" onChange={handleAvatarPick} style={{ display: 'none' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className={s.stgProfileName}>{displayName}</div>
                   <div className={s.stgProfileEmail}>{email}</div>
                   <span className={`${s.stgPlanBadge} ${me?.plan === 'pro' ? s.stgPlanBadgePro : ''}`}>
                     {me?.plan === 'pro' ? '★ Pro' : 'Free Plan'}
                   </span>
+                  {profile?.avatar?.dataUrl && (
+                    <button type="button" className={s.stgAvatarRemove} onClick={handleAvatarClear}>Remove photo</button>
+                  )}
                 </div>
+              </div>
+
+              <div className={s.stgFormGrid}>
+                <StgField label="Name">
+                  <input
+                    className={s.stgInput}
+                    value={profileForm.name}
+                    onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Your name"
+                    maxLength={120}
+                  />
+                </StgField>
+                <StgField label="Company">
+                  <input
+                    className={s.stgInput}
+                    value={profileForm.company}
+                    onChange={e => setProfileForm(f => ({ ...f, company: e.target.value }))}
+                    placeholder="Company (optional)"
+                    maxLength={120}
+                  />
+                </StgField>
+                <StgField label="Phone">
+                  <input
+                    className={s.stgInput}
+                    value={profileForm.phone}
+                    onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="Phone (optional)"
+                    maxLength={40}
+                  />
+                </StgField>
+              </div>
+              <div className={s.stgFormFoot}>
+                {profileStatus === 'saved' && <span className={s.stgFormOk}>✓ Saved</span>}
+                {profileStatus === 'error' && <span className={s.stgFormErr}>Could not save</span>}
+                <button
+                  className={s.stgPrimaryBtn}
+                  onClick={handleProfileSave}
+                  disabled={profileStatus === 'saving'}
+                >
+                  {profileStatus === 'saving' ? 'Saving…' : 'Save profile'}
+                </button>
+              </div>
+            </div>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Security</div>
+              <div className={s.stgFormGrid}>
+                <StgField label="Current password">
+                  <input
+                    className={s.stgInput}
+                    type="password"
+                    value={pw.current}
+                    onChange={e => setPw(p => ({ ...p, current: e.target.value }))}
+                    autoComplete="current-password"
+                  />
+                </StgField>
+                <StgField label="New password">
+                  <input
+                    className={s.stgInput}
+                    type="password"
+                    value={pw.next}
+                    onChange={e => setPw(p => ({ ...p, next: e.target.value }))}
+                    autoComplete="new-password"
+                    placeholder="At least 8 characters"
+                  />
+                </StgField>
+                <StgField label="Confirm new password">
+                  <input
+                    className={s.stgInput}
+                    type="password"
+                    value={pw.confirm}
+                    onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))}
+                    autoComplete="new-password"
+                  />
+                </StgField>
+              </div>
+              <div className={s.stgFormFoot}>
+                {pwError && <span className={s.stgFormErr}>{pwError}</span>}
+                {pwStatus === 'saved' && <span className={s.stgFormOk}>✓ Password changed</span>}
+                <button
+                  className={s.stgPrimaryBtn}
+                  onClick={handleChangePassword}
+                  disabled={pwStatus === 'saving' || !pw.current || !pw.next}
+                >
+                  {pwStatus === 'saving' ? 'Updating…' : 'Change password'}
+                </button>
               </div>
             </div>
 
@@ -1936,6 +2291,35 @@ function SettingsPage() {
               />
             </div>
 
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Your Data</div>
+              {DATA_CATEGORIES.map(cat => {
+                const count = dataCounts?.[cat.key]
+                return (
+                  <div key={cat.key} className={s.stgDataRow}>
+                    <div className={s.stgDataText}>
+                      <div className={s.stgDataLabel}>{cat.label}</div>
+                      <div className={s.stgDataCount}>
+                        {count == null ? '—' : `${count} ${count === 1 ? cat.unit : cat.unitPlural}`}
+                      </div>
+                    </div>
+                    <button
+                      className={s.stgGhostBtn}
+                      onClick={() => handleClearCategory(cat.key)}
+                      disabled={dataBusy === cat.key || !count}
+                    >
+                      {dataBusy === cat.key ? 'Clearing…' : 'Clear'}
+                    </button>
+                  </div>
+                )
+              })}
+              <div className={s.stgFormFoot}>
+                <button className={s.stgPrimaryBtn} onClick={handleExportData}>
+                  ↓ Export my data (JSON)
+                </button>
+              </div>
+            </div>
+
             <div className={s.stgCard} style={{ borderColor: 'rgba(196,99,74,0.3)' }}>
               <div className={s.stgCardLabel} style={{ color: 'var(--terracotta)' }}>Danger Zone</div>
               {!deleteConfirm ? (
@@ -1967,6 +2351,51 @@ function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </section>
+
+          {/* ── Support ── */}
+          <section ref={ref('support')} className={s.stgSection}>
+            <header className={s.stgSectionHead}>
+              <h2 className={s.stgSectionTitle}>Support</h2>
+              <span className={s.stgSectionAccent} />
+            </header>
+
+            <div className={s.stgCard}>
+              <div className={s.stgCardLabel}>Contact Us</div>
+              <div className={s.stgToggleSub} style={{ marginBottom: 14 }}>
+                Send a message to the Dutify team. We reply to {email || 'your registered address'}.
+              </div>
+              <StgField label="Subject">
+                <input
+                  className={s.stgInput}
+                  value={support.subject}
+                  onChange={e => setSupport(v => ({ ...v, subject: e.target.value }))}
+                  placeholder="What can we help with?"
+                  maxLength={120}
+                />
+              </StgField>
+              <StgField label="Message">
+                <textarea
+                  className={s.stgTextarea}
+                  value={support.message}
+                  onChange={e => setSupport(v => ({ ...v, message: e.target.value }))}
+                  placeholder="Describe your question or issue…"
+                  rows={5}
+                  maxLength={4000}
+                />
+              </StgField>
+              <div className={s.stgFormFoot}>
+                {supportError && <span className={s.stgFormErr}>{supportError}</span>}
+                {supportStatus === 'sent' && <span className={s.stgFormOk}>✓ Message sent</span>}
+                <button
+                  className={s.stgPrimaryBtn}
+                  onClick={handleSupportSend}
+                  disabled={supportStatus === 'sending' || !support.subject.trim() || !support.message.trim()}
+                >
+                  {supportStatus === 'sending' ? 'Sending…' : 'Send message'}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -2260,17 +2689,148 @@ function chapterHue(hsCode) {
   return '#5A6B8B'
 }
 
+/* ── Reductions (tariff preferences by origin) ───────────────────── */
+const REDUCTION_ORIGINS = [
+  { v: 'CN', l: 'China' }, { v: 'US', l: 'United States' }, { v: 'IN', l: 'India' },
+  { v: 'VN', l: 'Vietnam' }, { v: 'GB', l: 'United Kingdom' }, { v: 'CH', l: 'Switzerland' },
+  { v: 'JP', l: 'Japan' }, { v: 'KR', l: 'South Korea' }, { v: 'TR', l: 'Turkey' },
+  { v: 'BD', l: 'Bangladesh' }, { v: 'NO', l: 'Norway' }, { v: 'CA', l: 'Canada' },
+  { v: 'MX', l: 'Mexico' }, { v: 'ZA', l: 'South Africa' }, { v: 'BR', l: 'Brazil' },
+  { v: 'EG', l: 'Egypt' }, { v: 'MA', l: 'Morocco' }, { v: 'UA', l: 'Ukraine' },
+  { v: 'TH', l: 'Thailand' }, { v: 'ID', l: 'Indonesia' }, { v: 'SG', l: 'Singapore' },
+]
+
+// Heuristic scheme classification from a zone's acronym / description, used to
+// colour the preference badge. Purely cosmetic — the zone data is authoritative.
+function reductionScheme(zone) {
+  const t = `${zone.acronym || ''} ${zone.description || ''}`.toLowerCase()
+  if (/everything but arms|\beba\b/.test(t)) return { label: 'EBA', tone: 'sage' }
+  if (/gsp|generalised|generalized|preferences/.test(t)) return { label: 'GSP', tone: 'sage' }
+  if (/customs union/.test(t)) return { label: 'Customs Union', tone: 'navy' }
+  if (/free trade|fta|economic partnership|\bepa\b|association/.test(t)) return { label: 'FTA', tone: 'navy' }
+  if (/pan-euro|\bpem\b|cumulation/.test(t)) return { label: 'PEM', tone: 'navy' }
+  return { label: 'Preference', tone: 'muted' }
+}
+
+function ReductionsPage({ initialOrigin }) {
+  const [origin, setOrigin] = useState(initialOrigin && /^[A-Z]{2}$/.test(initialOrigin) ? initialOrigin : '')
+  const [zones, setZones] = useState(null) // null | array | { error: true }
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!origin) { setZones(null); return }
+    setLoading(true)
+    const ctrl = new AbortController()
+    fetch(`/api/trade-agreements?origin=${encodeURIComponent(origin)}`, {
+      headers: { Accept: 'application/json' }, signal: ctrl.signal,
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('lookup failed')))
+      .then(d => setZones(Array.isArray(d.zones) ? d.zones : []))
+      .catch(e => { if (e?.name !== 'AbortError') setZones({ error: true }) })
+      .finally(() => setLoading(false))
+    return () => ctrl.abort()
+  }, [origin])
+
+  const originLabel = REDUCTION_ORIGINS.find(o => o.v === origin)?.l || origin
+
+  return (
+    <div className={s.page}>
+      <h1 className={s.pageTitle}>Tariff Reductions</h1>
+      <p className={s.redIntro}>
+        See the EU preferential trade arrangements that cover a country of origin — GSP/EBA, free-trade
+        agreements, customs unions and Pan-Euro-Med cumulation. Preferential duty rates require valid
+        proof of origin (REX statement, EUR.1, or origin declaration).
+      </p>
+
+      <div className={s.redControls}>
+        <StgSelect value={origin} onChange={setOrigin}>
+          <option value="">Select a country of origin…</option>
+          {REDUCTION_ORIGINS.map(o => <option key={o.v} value={o.v}>{o.l} ({o.v})</option>)}
+        </StgSelect>
+      </div>
+
+      {!origin && (
+        <div className={s.empty}>Choose an origin country to list the trade arrangements it belongs to.</div>
+      )}
+      {origin && loading && <div className={s.empty}>Querying EU TARIC geographical areas…</div>}
+      {origin && !loading && zones?.error && (
+        <div className={s.errorCard}>Could not load trade arrangements. Try again.</div>
+      )}
+      {origin && !loading && Array.isArray(zones) && zones.length === 0 && (
+        <div className={s.empty}>
+          No active EU preferential arrangement found for {originLabel}. Imports are charged the standard
+          (MFN / erga omnes) duty rate.
+        </div>
+      )}
+      {origin && !loading && Array.isArray(zones) && zones.length > 0 && (
+        <>
+          <div className={s.redCount}>
+            {zones.length} arrangement{zones.length !== 1 ? 's' : ''} cover {originLabel}
+          </div>
+          <div className={s.redGrid}>
+            {zones.map(z => {
+              const scheme = reductionScheme(z)
+              return (
+                <div key={z.code} className={s.redCard}>
+                  <div className={s.redCardHead}>
+                    <span className={`${s.badge} ${scheme.tone === 'sage' ? s.badgeSage : scheme.tone === 'navy' ? s.badgeNavy : s.badgeCache}`}>
+                      {scheme.label}
+                    </span>
+                    <span className={s.redCardCode}>{z.acronym || z.code}</span>
+                  </div>
+                  <div className={s.redCardDesc}>{z.description || z.acronym || z.code}</div>
+                </div>
+              )
+            })}
+          </div>
+          <a
+            className={s.redA2m}
+            href={`https://trade.ec.europa.eu/access-to-markets/en/search?product=&origin=${origin}&destination=LU`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Look up exact preferential rates on Access2Markets →
+          </a>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Saved-records order is a client-side preference (the favourites API has no
+// order column), mirroring the mobile app's local savedOrder store. We keep an
+// array of favourite ids in localStorage and reconcile it against the server
+// list on load: known ids first (in saved order), then any new ones by recency.
+const SAVED_ORDER_KEY = 'dutify.savedOrder'
+function loadSavedOrder() {
+  try { const v = JSON.parse(localStorage.getItem(SAVED_ORDER_KEY) || '[]'); return Array.isArray(v) ? v : [] }
+  catch { return [] }
+}
+function saveSavedOrder(ids) {
+  try { localStorage.setItem(SAVED_ORDER_KEY, JSON.stringify(ids)) } catch {}
+}
+function applySavedOrder(items, order) {
+  if (!order.length) return items
+  const rank = new Map(order.map((id, i) => [id, i]))
+  return [...items].sort((a, b) => {
+    const ra = rank.has(a.id) ? rank.get(a.id) : Infinity
+    const rb = rank.has(b.id) ? rank.get(b.id) : Infinity
+    return ra - rb // ties (both unranked) keep server order (createdAt desc)
+  })
+}
+
 function RecordsPage({ onNavigate, onHsFound }) {
   const [tab, setTab] = useState('saved')
   const [savedItems, setSavedItems] = useState(null)
   const [histItems, setHistItems] = useState(null)
   const [modal, setModal] = useState(null) // { hsCode, description, dutyRate, confidencePct, sensitiveGoods? }
   const [clearingHistory, setClearingHistory] = useState(false)
+  const [dragId, setDragId] = useState(null)
 
   useEffect(() => {
     fetch('/api/favourites', { headers: { Accept: 'application/json' } })
       .then(r => r.ok ? r.json() : [])
-      .then(data => setSavedItems(Array.isArray(data) ? data : []))
+      .then(data => setSavedItems(applySavedOrder(Array.isArray(data) ? data : [], loadSavedOrder())))
       .catch(() => setSavedItems([]))
 
     fetch('/api/hs-lookup/history', { headers: { Accept: 'application/json' } })
@@ -2278,6 +2838,21 @@ function RecordsPage({ onNavigate, onHsFound }) {
       .then(data => setHistItems(Array.isArray(data) ? data : []))
       .catch(() => setHistItems([]))
   }, [])
+
+  function onDropFav(targetId) {
+    if (!dragId || dragId === targetId) { setDragId(null); return }
+    setSavedItems(prev => {
+      const arr = [...prev]
+      const from = arr.findIndex(f => f.id === dragId)
+      const to = arr.findIndex(f => f.id === targetId)
+      if (from === -1 || to === -1) return prev
+      const [moved] = arr.splice(from, 1)
+      arr.splice(to, 0, moved)
+      saveSavedOrder(arr.map(f => f.id))
+      return arr
+    })
+    setDragId(null)
+  }
 
   async function deleteFav(e, id) {
     e.stopPropagation()
@@ -2348,6 +2923,9 @@ function RecordsPage({ onNavigate, onHsFound }) {
           )}
           {savedItems?.length > 0 && (
             <>
+              {savedItems.length > 1 && (
+                <div className={s.recReorderHint}>Drag tiles to reorder</div>
+              )}
               <div className={s.recGrid}>
                 {savedItems.map(fav => {
                   const code = formatCn(fav.hsCode)
@@ -2355,7 +2933,12 @@ function RecordsPage({ onNavigate, onHsFound }) {
                   return (
                     <div
                       key={fav.id}
-                      className={`${s.recTile} ${isSensitive ? s.recTileSensitive : ''}`}
+                      draggable
+                      onDragStart={(e) => { setDragId(fav.id); e.dataTransfer.effectAllowed = 'move' }}
+                      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                      onDrop={(e) => { e.preventDefault(); onDropFav(fav.id) }}
+                      onDragEnd={() => setDragId(null)}
+                      className={`${s.recTile} ${isSensitive ? s.recTileSensitive : ''} ${dragId === fav.id ? s.recTileDragging : ''}`}
                       onClick={() => setModal({ hsCode: fav.hsCode, description: fav.description, dutyRate: fav.dutyRate, confidencePct: fav.confidencePct, sensitiveGoods: fav.sensitiveGoods })}
                     >
                       <button
@@ -2522,7 +3105,7 @@ export default function Dashboard() {
       case 'records':     return <RecordsPage onNavigate={setPage} onHsFound={setCalcHs} />
       case 'calculator':  return <CalcWizard initialHs={calcHs} onHsFound={setCalcHs} />
       case 'settings':    return <SettingsPage />
-      case 'reductions':  return <PlaceholderPage title="Reductions" message="Tariff preference schemes and suspensions — coming soon." />
+      case 'reductions':  return <ReductionsPage />
       case 'goods':       return <GoodsIndexPage />
       case 'rulings':     return <RulingsPage prefillHs={calcHs} onNavigate={setPage} />
       case 'notifications': return <NotificationsPage onUnreadChange={setUnread} />
