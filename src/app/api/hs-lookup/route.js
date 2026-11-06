@@ -768,8 +768,10 @@ async function describeImage(base64, mediaType, hint) {
 function saturnUrl(cn10) {
   const code = (cn10 || "").replace(/\D/g, "");
   if (!code) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  return `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn?sd=${today}&d=I&l=en&ql=en&cn=${code}`;
+  /* Saturn's search-by-nomenclature page reads the code from `cc` (its bookmark loader: cc, d, sd,
+     ql, ea, l) and runs the search itself. The link said `cn` until 2026-10-26, so the page opened
+     with an empty box. No `sd`: the page takes today when it is absent. */
+  return `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn?cc=${code}&d=I&ql=en&l=en&ea=true`;
 }
 
 // ── Core classification (streaming-aware) ─────────────────────────────────────

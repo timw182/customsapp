@@ -223,7 +223,8 @@ function buildEbtiUrl(hs) {
 function buildSaturnUrl(hs) {
   const digits = String(hs || '').replace(/\D/g, '')
   if (!digits) return 'https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn'
-  return `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn?code=${digits}`
+  // Saturn reads the code from `cc` and searches on opening; `code` was ignored (2026-10-26).
+  return `https://saturn.etat.lu/ite-tariff-public/#/taric/nomenclature/sbn?cc=${digits}&d=I&ql=en&l=en&ea=true`
 }
 
 function Step1HsLookup({ state, setState, onComplete }) {
