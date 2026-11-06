@@ -28,6 +28,12 @@ test("onward carriage in Luxembourg is VAT-able and part of the cost, never of t
   close(r.customsValue, 10750); close(r.vatBase, 11170); close(r.total, 11170 + 11170 * 0.17);
 });
 
+test("delivery in Luxembourg is typed in euros and not converted, whatever the invoice's currency (2026-10-26)", () => {
+  const r = landedCost({ ...base, exchangeRate: 0.876347, onwardCarriage: 125 });
+  assert.equal(r.onwardCarriageEUR, 125);
+  assert.ok(Math.abs(r.freightEUR - 1000 * 0.7 * 0.876347) < 0.01, "the freight still converts");
+});
+
 test("under C and D terms the freight is inside the price: nothing sits outside the customs value", () => {
   for (const incoterm of ["CIF", "CPT", "DAP", "DDP"]) {
     const r = landedCost({ ...base, incoterm, dutyRatePct: 4 });

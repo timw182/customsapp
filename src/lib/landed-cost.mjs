@@ -790,8 +790,11 @@ export function landedCost(input = {}) {
   else customsValue -= freightInPriceEUR - freightInPriceCounted;
   freightExcludedEUR += freightInPriceEUR - freightInPriceCounted;
   /* Carriage from the EU border or port to the first destination in Luxembourg, when paid
-     separately: never in the customs value, always in the VAT base (Art. 86(1)(b)). */
-  const onwardCarriageEUR = number(input.onwardCarriage) * exchangeRate;
+     separately: never in the customs value, always in the VAT base (Art. 86(1)(b)). Typed in
+     euros, like the agency fee, and not converted: a Luxembourg trucker bills in euros whatever
+     the invoice's currency, and converting it priced a €125 delivery under a USD invoice at
+     €109.54 (2026-10-26). */
+  const onwardCarriageEUR = number(input.onwardCarriage);
 
   const deMinimisActive = now < DE_MINIMIS_ENDS;
   const dutyFree = deMinimisActive && customsValue <= DE_MINIMIS_LIMIT;
