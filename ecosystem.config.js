@@ -26,10 +26,14 @@ module.exports = {
   apps: [{
     name: "customs-calculator",
     script: ".next/standalone/server.js",
-    cwd: "/var/www/customs",
+    cwd: __dirname,
+    out_file: "/var/log/apps/apps/customs-calculator-out.log",
+    error_file: "/var/log/apps/apps/customs-calculator-err.log",
+    merge_logs: true,
     env: {
       NODE_ENV: "production",
       ...loadDotenv(".env"),
+      HOSTNAME: "127.0.0.1", // bind loopback only (standalone server reads HOSTNAME); after spread so it wins
     },
     exec_mode: "fork",
     instances: 1,

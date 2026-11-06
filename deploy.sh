@@ -1,15 +1,18 @@
 #!/bin/bash
+# Deploy dutify / customs-calculator. Run as root; every Node/PM2 step runs as the
+# unprivileged "apps" user via /usr/local/sbin/as-apps (the app lives in apps' own PM2).
+# `npm run build` already copies .next/static and public/ into the standalone output (postbuild).
 set -e
-cd /var/www/customs
+cd "$(dirname "$0")"
+if [[ $EUID -ne 0 ]]; then echo "deploy.sh: run as root (Node steps switch to 'apps' automatically)" >&2; exit 1; fi
 
-echo "Building..."
-npm run build
+echo "Building (as apps)..."
+as-apps npm run build
 
-echo "Copying static assets to standalone..."
-cp -r .next/static .next/standalone/.next/static
-cp -r public .next/standalone/public
+echo "Fixing ownership..."
+apps-perms "$PWD"
 
-echo "Restarting..."
-pm2 restart customs-calculator
+echo "Restarting (apps PM2)..."
+as-apps pm2 restart customs-calculator --update-env
 
 echo "Done."
